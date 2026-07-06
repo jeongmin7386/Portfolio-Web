@@ -28,11 +28,12 @@ export function SignupPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    const cleanSlug = slugify(portfolioSlug || suggestedSlug || 'portfolio') || 'portfolio';
     mutation.mutate({
-      email,
+      email: email.trim().toLowerCase(),
       password,
-      name,
-      portfolioSlug: portfolioSlug || suggestedSlug || 'portfolio'
+      name: name.trim(),
+      portfolioSlug: cleanSlug
     });
   }
 

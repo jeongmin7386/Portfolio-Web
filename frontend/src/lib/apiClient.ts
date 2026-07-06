@@ -56,7 +56,19 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
     return fallback;
   }
 
-  const data = error.response?.data as { message?: string; details?: string[] } | undefined;
+  const data = error.response?.data as { message?: string; details?: string[] } | string | undefined;
+  if (typeof data === 'string' && data.trim()) {
+    return data.trim().slice(0, 220);
+  }
+  if (!data && error.response?.status) {
+    return `${error.response.status}: ${fallback}`;
+  }
+  if (!error.response) {
+    return `${error.message}. API: ${API_BASE_URL}`;
+  }
+  if (typeof data !== 'object') {
+    return fallback;
+  }
   if (data?.details?.length) {
     return data.details.join(', ');
   }
