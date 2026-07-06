@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+outputs
+work
+frontend/node_modules
+frontend/dist
+backend/target
+backend/uploads
+*.log

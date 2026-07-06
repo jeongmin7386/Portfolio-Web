@@ -74,3 +74,25 @@ More details:
 
 - API: `docs/API.md`
 - Architecture: `docs/ARCHITECTURE.md`
+
+## Render Deploy
+
+The repository includes `render.yaml` for a Render Blueprint deployment:
+
+- `portfolio-web-api`: Spring Boot Docker web service
+- `portfolio-web`: React static site
+- `portfolio-web-db`: Render Postgres
+
+Steps:
+
+1. Push this repository to GitHub.
+2. In Render, create a new Blueprint and select the GitHub repository.
+3. Render reads `render.yaml` and provisions the API, static site, and database.
+4. After the first deploy, open the `portfolio-web` static site URL.
+
+Notes:
+
+- Render provides `DATABASE_URL`; the backend converts it to a JDBC URL at startup.
+- The backend listens on Render's `PORT` environment variable.
+- The frontend receives the API hostname from the backend service and normalizes it to `https://.../api`.
+- Uploaded thumbnails use `/tmp/uploads` on Render. This is suitable for MVP testing, but files are ephemeral across redeploys/restarts. Use S3-compatible storage or a paid persistent disk before production use.

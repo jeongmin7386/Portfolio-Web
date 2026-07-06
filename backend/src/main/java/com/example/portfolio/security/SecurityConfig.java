@@ -1,6 +1,8 @@
 package com.example.portfolio.security;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -61,9 +63,23 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-origin}") String frontendOrigin) {
+    CorsConfigurationSource corsConfigurationSource(
+        @Value("${app.frontend-origin}") String frontendOrigin,
+        @Value("${app.frontend-origin-patterns:}") String frontendOriginPatterns
+    ) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(frontendOrigin));
+        List<String> origins = splitCsv(frontendOrigin)
+            .map(this::normalizeOrigin)
+            .toList();
+        List<String> originPatterns = splitCsv(frontendOriginPatterns)
+            .map(this::normalizeOriginPattern)
+            .toList();
+        if (!origins.isEmpty()) {
+            configuration.setAllowedOrigins(origins);
+        }
+        if (!originPatterns.isEmpty()) {
+            configuration.setAllowedOriginPatterns(originPatterns);
+        }
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -71,5 +87,31 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private Stream<String> splitCsv(String value) {
+        if (value == null || value.isBlank()) {
+            return Stream.empty();
+        }
+        return Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(item -> !item.isBlank());
+    }
+
+    private String normalizeOrigin(String value) {
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            return value;
+        }
+        if (value.startsWith("localhost") || value.startsWith("127.0.0.1")) {
+            return "http://" + value;
+        }
+        return "https://" + value;
+    }
+
+    private String normalizeOriginPattern(String value) {
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            return value;
+        }
+        return "https://" + value;
     }
 }
