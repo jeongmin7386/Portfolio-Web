@@ -14,12 +14,14 @@ export type LoginPayload = {
 };
 
 export async function signup(payload: SignupPayload) {
+  localStorage.removeItem('accessToken');
   const { data } = await apiClient.post<AuthResponse>('/auth/signup', payload);
   localStorage.setItem('accessToken', data.accessToken);
   return data;
 }
 
 export async function login(payload: LoginPayload) {
+  localStorage.removeItem('accessToken');
   const { data } = await apiClient.post<AuthResponse>('/auth/login', payload);
   localStorage.setItem('accessToken', data.accessToken);
   return data;
