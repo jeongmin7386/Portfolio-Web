@@ -17,11 +17,11 @@ export function PortfolioPage() {
   const projects = useMemo(() => portfolioQuery.data?.projects ?? [], [portfolioQuery.data]);
 
   if (portfolioQuery.isLoading) {
-    return <div className="center-screen">Loading portfolio...</div>;
+    return <div className="center-screen">포트폴리오를 불러오는 중입니다...</div>;
   }
 
   if (!portfolioQuery.data) {
-    return <div className="center-screen">Portfolio not found.</div>;
+    return <div className="center-screen">포트폴리오를 찾을 수 없습니다.</div>;
   }
 
   const { profile, categories } = portfolioQuery.data;
@@ -39,10 +39,10 @@ export function PortfolioPage() {
           {profile.bio && <p>{profile.bio}</p>}
           <div className="public-header-actions">
             <a className="button button-primary" href="#work">
-              View work
+              작업 보기
             </a>
             <a className="button button-secondary" href="mailto:hello@example.com">
-              Contact
+              연락하기
             </a>
           </div>
         </div>
@@ -55,9 +55,9 @@ export function PortfolioPage() {
         </div>
       </header>
 
-      <div className="filter-bar" aria-label="Project category filter">
+      <div className="filter-bar" aria-label="프로젝트 카테고리 필터">
         <button className={!activeCategory ? 'active' : ''} onClick={() => setActiveCategory(null)}>
-          All
+          전체
         </button>
         {categories.map((category) => (
           <button
@@ -77,7 +77,7 @@ export function PortfolioPage() {
               {project.thumbnailUrl ? <img src={assetUrl(project.thumbnailUrl)} alt="" /> : <span>{project.title}</span>}
             </div>
             <div className="public-card-body">
-              <p>{project.category?.name ?? 'Project'}</p>
+              <p>{project.category?.name ?? '프로젝트'}</p>
               <h2>{project.title}</h2>
               <div className="chip-row">
                 {project.techStacks.slice(0, 3).map((stack) => (

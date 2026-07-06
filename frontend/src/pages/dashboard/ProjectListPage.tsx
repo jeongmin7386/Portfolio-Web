@@ -32,20 +32,19 @@ export function ProjectListPage() {
     <section className="studio-page">
       <div className="studio-hero-panel">
         <div>
-          <p className="eyebrow">Portfolio Studio</p>
-          <h1>Design and publish your portfolio website.</h1>
+          <p className="eyebrow">포트폴리오 스튜디오</p>
+          <h1>내 포트폴리오 웹사이트를 디자인하고 게시하세요.</h1>
           <p>
-            Manage your project gallery, choose a template, open the visual editor, and keep an eye on publishing status from one
-            dashboard.
+            프로젝트 갤러리, 템플릿 선택, 비주얼 에디터, 게시 상태를 한 화면에서 관리할 수 있습니다.
           </p>
         </div>
         <div className="studio-hero-actions">
           <Link className="button button-primary" to="/dashboard/projects/new">
-            New portfolio project
+            새 프로젝트 추가
           </Link>
           {profile && (
             <Link className="button button-secondary" to={`/${profile.slug}`} target="_blank">
-              View live site
+              공개 사이트 보기
             </Link>
           )}
         </div>
@@ -54,40 +53,40 @@ export function ProjectListPage() {
       <div className="studio-overview-grid">
         <article className="portfolio-site-card">
           <div>
-            <p className="eyebrow">My portfolio</p>
-            <h2>{profile?.displayName ?? 'Portfolio website'}</h2>
-            <p>{profile?.bio || 'A visual portfolio site powered by your project gallery.'}</p>
+            <p className="eyebrow">내 포트폴리오</p>
+            <h2>{profile?.displayName ?? '포트폴리오 웹사이트'}</h2>
+            <p>{profile?.bio || '프로젝트 갤러리를 중심으로 구성되는 나만의 포트폴리오 사이트입니다.'}</p>
           </div>
           <div className="status-stack">
             <span className={`status-pill ${profile?.publicProfile ? 'status-public' : 'status-private'}`}>
-              {profile?.publicProfile ? 'Published' : 'Private'}
+              {profile?.publicProfile ? '게시됨' : '비공개'}
             </span>
-            <span>{profile ? `/${profile.slug}` : 'Loading URL'}</span>
+            <span>{profile ? `/${profile.slug}` : '주소 불러오는 중'}</span>
           </div>
         </article>
 
         <article className="metric-card">
           <span>{stats.total}</span>
-          <p>Total projects</p>
+          <p>전체 프로젝트</p>
         </article>
         <article className="metric-card">
           <span>{stats.published}</span>
-          <p>Published</p>
+          <p>게시됨</p>
         </article>
         <article className="metric-card">
           <span>{stats.private}</span>
-          <p>Private or draft</p>
+          <p>비공개/초안</p>
         </article>
       </div>
 
       <section className="dashboard-band">
         <div className="section-heading compact-heading">
           <div>
-            <p className="eyebrow">Template selection</p>
-            <h2>Current visual direction</h2>
+            <p className="eyebrow">템플릿 선택</p>
+            <h2>현재 사이트 분위기</h2>
           </div>
           <Link className="button button-secondary" to="/dashboard/settings">
-            Choose template
+            템플릿 고르기
           </Link>
         </div>
         <div className="template-strip">
@@ -104,21 +103,21 @@ export function ProjectListPage() {
       <section className="dashboard-band">
         <div className="section-heading compact-heading">
           <div>
-            <p className="eyebrow">Project gallery</p>
-            <h2>Work shown on your website</h2>
+            <p className="eyebrow">프로젝트 갤러리</p>
+            <h2>웹사이트에 보여줄 작업</h2>
           </div>
           <Link className="button button-primary" to="/dashboard/projects/new">
-            Add project
+            프로젝트 추가
           </Link>
         </div>
 
-        {projectsQuery.isLoading && <p className="muted">Loading your project gallery...</p>}
+        {projectsQuery.isLoading && <p className="muted">프로젝트 갤러리를 불러오는 중입니다...</p>}
         {projects.length === 0 && !projectsQuery.isLoading && (
           <div className="empty-state">
-            <h2>Create the first gallery item</h2>
-            <p>Add a project with a cover image, stack, links, and case study body.</p>
+            <h2>첫 번째 프로젝트를 추가해보세요</h2>
+            <p>커버 이미지, 사용 기술, 링크, 케이스 스터디 본문을 넣어 포트폴리오 갤러리를 채울 수 있습니다.</p>
             <Link className="button button-primary" to="/dashboard/projects/new">
-              New portfolio project
+              새 프로젝트 추가
             </Link>
           </div>
         )}

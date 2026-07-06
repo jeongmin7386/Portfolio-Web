@@ -13,16 +13,16 @@ export function DashboardSidebar() {
   return (
     <aside className="dashboard-sidebar">
       <div>
-        <p className="eyebrow">Builder</p>
-        <h2>Canvasfolio</h2>
+        <p className="eyebrow">빌더</p>
+        <h2>캔버스폴리오</h2>
       </div>
       <nav>
-        <NavLink to="/dashboard/projects">Portfolio Studio</NavLink>
-        <NavLink to="/dashboard/categories">Categories</NavLink>
-        <NavLink to="/dashboard/settings">Templates & Theme</NavLink>
+        <NavLink to="/dashboard/projects">포트폴리오 스튜디오</NavLink>
+        <NavLink to="/dashboard/categories">카테고리</NavLink>
+        <NavLink to="/dashboard/settings">템플릿과 테마</NavLink>
       </nav>
       <Button variant="ghost" onClick={handleLogout}>
-        Log out
+        로그아웃
       </Button>
     </aside>
   );

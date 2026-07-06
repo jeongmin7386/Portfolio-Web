@@ -23,18 +23,18 @@ export function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel">
-        <p className="eyebrow">Canvasfolio Studio</p>
-        <h1>Open your portfolio builder.</h1>
+        <p className="eyebrow">캔버스폴리오 스튜디오</p>
+        <h1>포트폴리오 빌더로 돌아가기</h1>
         <form onSubmit={handleSubmit} className="stack">
-          <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          <Input label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          {mutation.isError && <p className="form-error">{getApiErrorMessage(mutation.error, 'Check your login information.')}</p>}
+          <Input label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <Input label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          {mutation.isError && <p className="form-error">{getApiErrorMessage(mutation.error, '로그인 정보를 확인해주세요.')}</p>}
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Logging in...' : 'Log in'}
+            {mutation.isPending ? '로그인 중...' : '로그인'}
           </Button>
         </form>
         <p className="muted">
-          No account yet? <Link to="/signup">Create one</Link>
+          아직 계정이 없나요? <Link to="/signup">회원가입</Link>
         </p>
       </section>
     </main>

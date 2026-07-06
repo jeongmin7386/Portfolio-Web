@@ -43,8 +43,8 @@ export function SettingsPage() {
     <section className="settings-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Templates & Theme</p>
-          <h1>Choose how your portfolio website feels.</h1>
+          <p className="eyebrow">템플릿과 테마</p>
+          <h1>포트폴리오 웹사이트의 분위기를 선택하세요.</h1>
         </div>
       </div>
 
@@ -53,8 +53,8 @@ export function SettingsPage() {
           <section className="dashboard-band">
             <div className="compact-heading section-heading">
               <div>
-                <p className="eyebrow">Template selection</p>
-                <h2>Portfolio layouts</h2>
+                <p className="eyebrow">템플릿 선택</p>
+                <h2>포트폴리오 레이아웃</h2>
               </div>
             </div>
             <div className="template-grid compact-template-grid">
@@ -67,19 +67,19 @@ export function SettingsPage() {
 
         <aside className="settings-inspector">
           <div className="inspector-section">
-            <p className="panel-label">Publishing</p>
-            <Toggle checked={publicProfile} onChange={setPublicProfile} label={publicProfile ? 'Published' : 'Private'} />
+            <p className="panel-label">게시 상태</p>
+            <Toggle checked={publicProfile} onChange={setPublicProfile} label={publicProfile ? '게시됨' : '비공개'} />
           </div>
           <div className="inspector-section">
-            <Input label="Public URL" value={slug} onChange={(event) => setSlug(event.target.value)} required />
-            <Input label="Display name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
-            <Textarea label="Portfolio intro" value={bio} onChange={(event) => setBio(event.target.value)} rows={5} />
-            <Input label="Profile image URL" value={profileImageUrl} onChange={(event) => setProfileImageUrl(event.target.value)} />
+            <Input label="공개 주소" value={slug} onChange={(event) => setSlug(event.target.value)} required />
+            <Input label="표시 이름" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
+            <Textarea label="포트폴리오 소개" value={bio} onChange={(event) => setBio(event.target.value)} rows={5} />
+            <Input label="프로필 이미지 URL" value={profileImageUrl} onChange={(event) => setProfileImageUrl(event.target.value)} />
           </div>
-          {mutation.isSuccess && <p className="form-success">Settings saved.</p>}
-          {mutation.isError && <p className="form-error">Could not save settings.</p>}
+          {mutation.isSuccess && <p className="form-success">설정이 저장되었습니다.</p>}
+          {mutation.isError && <p className="form-error">설정을 저장하지 못했습니다.</p>}
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving...' : 'Save theme'}
+            {mutation.isPending ? '저장 중...' : '테마 저장'}
           </Button>
         </aside>
       </form>

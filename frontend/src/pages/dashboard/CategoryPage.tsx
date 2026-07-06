@@ -34,16 +34,16 @@ export function CategoryPage() {
     <section className="settings-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Project filters</p>
-          <h1>Organize the gallery navigation.</h1>
+          <p className="eyebrow">프로젝트 필터</p>
+          <h1>갤러리 카테고리를 정리하세요.</h1>
         </div>
       </div>
 
       <section className="dashboard-band narrow-band">
         <form className="inline-form" onSubmit={handleSubmit}>
-          <Input label="New category" value={name} onChange={(event) => setName(event.target.value)} required />
+          <Input label="새 카테고리" value={name} onChange={(event) => setName(event.target.value)} required />
           <Button type="submit" disabled={createMutation.isPending}>
-            Add
+            추가
           </Button>
         </form>
 
@@ -61,7 +61,7 @@ export function CategoryPage() {
               />
               <span>/{category.slug}</span>
               <Button variant="ghost" onClick={() => deleteMutation.mutate(category.id)}>
-                Delete
+                삭제
               </Button>
             </div>
           ))}

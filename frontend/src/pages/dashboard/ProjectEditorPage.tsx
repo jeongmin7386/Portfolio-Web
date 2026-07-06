@@ -48,7 +48,7 @@ export function ProjectEditorPage() {
   const numericProjectId = projectId ? Number(projectId) : undefined;
   const [draft, setDraft] = useState<ProjectDraft>(emptyProjectDraft);
   const [themeDraft, setThemeDraft] = useState<ThemeDraft>(defaultThemeDraft);
-  const [activeSection, setActiveSection] = useState('Project gallery');
+  const [activeSection, setActiveSection] = useState('프로젝트 갤러리');
 
   const projectQuery = useQuery({
     queryKey: ['project', numericProjectId],
@@ -88,7 +88,7 @@ export function ProjectEditorPage() {
   });
 
   if (numericProjectId && projectQuery.isLoading) {
-    return <p className="muted">Loading the project builder...</p>;
+    return <p className="muted">프로젝트 빌더를 불러오는 중입니다...</p>;
   }
 
   return (
@@ -99,10 +99,10 @@ export function ProjectEditorPage() {
         <div className="editor-topbar">
           <div>
             <p className="eyebrow">{activeSection}</p>
-            <h1>{numericProjectId ? 'Website project builder' : 'Create a portfolio project'}</h1>
+            <h1>{numericProjectId ? '웹사이트 프로젝트 빌더' : '새 포트폴리오 프로젝트 만들기'}</h1>
           </div>
           <Link className="button button-secondary" to="/dashboard/projects">
-            Back to studio
+            스튜디오로 돌아가기
           </Link>
         </div>
         <WebsitePreviewCanvas
@@ -123,13 +123,13 @@ export function ProjectEditorPage() {
           onChange={setDraft}
           onSubmit={() => saveMutation.mutate()}
         />
-        {saveMutation.isError && <p className="form-error">Save failed. Check required fields and try again.</p>}
+        {saveMutation.isError && <p className="form-error">저장에 실패했습니다. 필수 입력값을 확인한 뒤 다시 시도해주세요.</p>}
         {numericProjectId && projectQuery.data ? (
           <ThumbnailUploader projectId={numericProjectId} thumbnailUrl={projectQuery.data.thumbnailUrl} />
         ) : (
           <div className="side-note">
-            <h2>Cover image</h2>
-            <p>Save the project once, then upload a thumbnail for the live gallery.</p>
+            <h2>커버 이미지</h2>
+            <p>프로젝트를 한 번 저장한 뒤, 공개 갤러리에 사용할 썸네일 이미지를 업로드할 수 있습니다.</p>
           </div>
         )}
       </aside>

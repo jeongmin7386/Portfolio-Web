@@ -40,30 +40,31 @@ export function SignupPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel auth-panel-wide">
-        <p className="eyebrow">Canvasfolio Studio</p>
-        <h1>Create your portfolio website.</h1>
+        <p className="eyebrow">캔버스폴리오 스튜디오</p>
+        <h1>포트폴리오 웹사이트 만들기</h1>
         <form onSubmit={handleSubmit} className="stack">
-          <Input label="Name" value={name} onChange={(event) => setName(event.target.value)} required />
-          <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          <Input label="Password" type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <Input label="이름" value={name} onChange={(event) => setName(event.target.value)} required />
+          <Input label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <Input label="비밀번호" type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required />
           <Input
-            label="Public URL"
+            label="공개 주소"
             value={portfolioSlug}
             onChange={(event) => setPortfolioSlug(event.target.value)}
             placeholder={suggestedSlug || 'my-portfolio'}
             required={!suggestedSlug}
           />
+          <p className="field-hint">영문 소문자, 숫자, 하이픈만 사용됩니다. 예: my-portfolio7386</p>
           {mutation.isError && (
             <p className="form-error">
-              {getApiErrorMessage(mutation.error, 'Could not create the account. Check the email or public URL.')}
+              {getApiErrorMessage(mutation.error, '계정을 만들 수 없습니다. 이메일 또는 공개 주소를 확인해주세요.')}
             </p>
           )}
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating...' : 'Start building'}
+            {mutation.isPending ? '생성 중...' : '시작하기'}
           </Button>
         </form>
         <p className="muted">
-          Already have an account? <Link to="/login">Log in</Link>
+          이미 계정이 있나요? <Link to="/login">로그인</Link>
         </p>
       </section>
     </main>

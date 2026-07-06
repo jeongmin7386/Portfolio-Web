@@ -13,22 +13,28 @@ type WebsitePreviewCanvasProps = {
 };
 
 function previewFont(fontFamily: string) {
+  if (fontFamily === 'Pretendard') {
+    return 'Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  }
+  if (fontFamily === 'Noto Sans KR') {
+    return '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  }
   if (fontFamily === 'Georgia') {
     return 'Georgia, serif';
   }
   if (fontFamily === 'Mono') {
     return '"SFMono-Regular", Consolas, monospace';
   }
-  return 'Inter, ui-sans-serif, system-ui, sans-serif';
+  return 'Inter, Pretendard, "Noto Sans KR", ui-sans-serif, system-ui, sans-serif';
 }
 
-export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name', profileTheme, theme }: WebsitePreviewCanvasProps) {
+export function WebsitePreviewCanvas({ draft, project, profileName = '내 이름', profileTheme, theme }: WebsitePreviewCanvasProps) {
   const template = findPortfolioTemplate(profileTheme);
-  const title = draft.title || 'Selected Project';
-  const description = draft.description || 'Describe the purpose, audience, and result of this work.';
+  const title = draft.title || '대표 프로젝트';
+  const description = draft.description || '프로젝트의 목적, 대상 사용자, 결과를 짧게 소개해보세요.';
   const caseStudy =
     draft.caseStudy ||
-    'Use the case study area to explain the problem, process, decisions, and measurable outcome behind the project.';
+    '케이스 스터디 영역에는 문제 정의, 작업 과정, 주요 의사결정, 결과와 배운 점을 정리할 수 있습니다.';
   const thumbnail = project?.thumbnailUrl;
 
   return (
@@ -37,7 +43,7 @@ export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name'
         <span />
         <span />
         <span />
-        <strong>Live portfolio preview</strong>
+        <strong>실시간 포트폴리오 미리보기</strong>
       </div>
 
       <div
@@ -52,9 +58,9 @@ export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name'
         <header className="canvas-nav">
           <strong>{profileName}</strong>
           <nav>
-            <span>Work</span>
-            <span>About</span>
-            <span>Contact</span>
+            <span>작업</span>
+            <span>소개</span>
+            <span>연락</span>
           </nav>
         </header>
 
@@ -62,7 +68,7 @@ export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name'
           <p className="canvas-kicker" style={{ color: theme.accentColor }}>
             {template.name}
           </p>
-          <h1>Portfolio website for visual work and product stories.</h1>
+          <h1>나의 작업과 이야기를 보여주는 포트폴리오 웹사이트</h1>
           <p>{template.tagline}</p>
         </section>
 
@@ -73,7 +79,7 @@ export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name'
             </div>
             <div>
               <p className="canvas-kicker" style={{ color: theme.accentColor }}>
-                Featured project
+                대표 프로젝트
               </p>
               <h2>{title}</h2>
               <p>{description}</p>
@@ -97,12 +103,12 @@ export function WebsitePreviewCanvas({ draft, project, profileName = 'Your Name'
 
         <section className="canvas-case-study">
           <p className="canvas-kicker" style={{ color: theme.accentColor }}>
-            Case study
+            케이스 스터디
           </p>
-          <h2>Process and outcome</h2>
+          <h2>과정과 결과</h2>
           <p>{caseStudy}</p>
           <div className={`canvas-button canvas-button-${theme.buttonStyle.toLowerCase()}`} style={{ borderColor: theme.accentColor }}>
-            View project
+            프로젝트 보기
           </div>
         </section>
       </div>
