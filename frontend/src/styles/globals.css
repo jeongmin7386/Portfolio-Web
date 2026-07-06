@@ -377,6 +377,176 @@ img {
   border-radius: 8px;
 }
 
+.canvas-editable-object {
+  position: relative;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.canvas-editable-object:hover,
+.canvas-editable-object.selected {
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.canvas-editable-object.selected {
+  background: rgba(255, 250, 242, 0.78);
+}
+
+.canvas-object-label {
+  position: absolute;
+  top: -13px;
+  left: 12px;
+  z-index: 2;
+  display: none;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.canvas-editable-object:hover .canvas-object-label,
+.canvas-editable-object.selected .canvas-object-label {
+  display: inline-flex;
+}
+
+.canvas-inline-input,
+.canvas-object-fields input,
+.canvas-object-fields textarea,
+.canvas-editable-grid input,
+.canvas-editable-grid textarea,
+.canvas-project-info-edit input {
+  width: 100%;
+  border: 1px solid #cfc6ba;
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #111111;
+  outline: none;
+}
+
+.canvas-inline-input:focus,
+.canvas-object-fields input:focus,
+.canvas-object-fields textarea:focus,
+.canvas-editable-grid input:focus,
+.canvas-editable-grid textarea:focus,
+.canvas-project-info-edit input:focus {
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.canvas-inline-input,
+.canvas-object-fields textarea,
+.canvas-editable-grid textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.canvas-object-fields input,
+.canvas-editable-grid input,
+.canvas-project-info-edit input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.canvas-heading-input {
+  min-height: 82px;
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.canvas-heading-input.hero,
+.canvas-title-input {
+  min-height: 140px;
+  font-size: clamp(42px, 6vw, 76px);
+  font-weight: 950;
+  line-height: 0.98;
+}
+
+.canvas-text-input,
+.canvas-summary-input {
+  color: #504a43;
+  font-size: 18px;
+}
+
+.canvas-subtitle-input {
+  min-height: 52px;
+  color: #504a43;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 900;
+}
+
+.canvas-kicker-input {
+  min-height: 36px;
+  color: #8f553f;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.canvas-object-fields,
+.canvas-editable-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.canvas-editable-media {
+  display: grid;
+  gap: 12px;
+}
+
+.canvas-editable-grid .site-photo-grid {
+  width: 100%;
+}
+
+.canvas-editable-grid figure {
+  display: grid;
+  gap: 8px;
+}
+
+.canvas-small-button {
+  justify-self: start;
+}
+
+.canvas-editable-quote {
+  display: grid;
+  gap: 10px;
+}
+
+.canvas-editable-quote textarea {
+  min-height: 150px;
+  border: 1px solid #cfc6ba;
+  border-radius: 8px;
+  background: #fffdf9;
+  font-size: clamp(24px, 3vw, 42px);
+  line-height: 1.25;
+}
+
+.canvas-button-fields {
+  max-width: 520px;
+}
+
+.canvas-project-info-edit dd {
+  display: grid;
+}
+
+.canvas-project-card-edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+}
+
 .builder-empty-preview {
   min-height: 280px;
   display: grid;
@@ -1008,7 +1178,8 @@ img {
   .builder-mvp-page,
   .site-public-hero-grid,
   .site-public-section,
-  .site-project-card a {
+  .site-project-card a,
+  .canvas-project-card-edit {
     grid-template-columns: 1fr;
   }
 

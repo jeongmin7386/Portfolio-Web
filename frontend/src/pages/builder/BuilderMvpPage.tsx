@@ -5,7 +5,7 @@ import { queryClient } from '../../app/queryClient';
 import { blockLabel, defaultBlockContent } from '../../features/site-builder/blockCatalog';
 import { BlockEditorCard } from '../../features/site-builder/components/BlockEditorCard';
 import { BlockPalette } from '../../features/site-builder/components/BlockPalette';
-import { BlockRenderer } from '../../features/site-builder/components/BlockRenderer';
+import { EditableBlockCanvas } from '../../features/site-builder/components/EditableBlockCanvas';
 import {
   createBlock,
   createBuilderProject,
@@ -274,6 +274,12 @@ export function BuilderMvpPage() {
     setBlockDrafts((current) => ({ ...current, [block.id]: nextBlock }));
   }
 
+  function replaceBlockDraft(block: SiteBlock) {
+    console.log('[builder:canvas-block-draft]', block);
+    setSelectedBlockId(block.id);
+    setBlockDrafts((current) => ({ ...current, [block.id]: block }));
+  }
+
   function handleCreatePage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newPageTitle.trim()) {
@@ -478,9 +484,19 @@ export function BuilderMvpPage() {
             </div>
           </nav>
           <div className="builder-preview-body">
-            {previewProject ? <ProjectPreviewHero project={previewProject} /> : null}
+            {previewProject ? <ProjectPreviewHero project={previewProject} onPatch={patchProject} /> : null}
             {draftBlocks.length ? (
-              draftBlocks.filter((block) => block.visible).map((block) => <BlockRenderer key={block.id} block={block} />)
+              draftBlocks
+                .filter((block) => block.visible)
+                .map((block) => (
+                  <EditableBlockCanvas
+                    key={block.id}
+                    block={block}
+                    selected={selectedBlock?.id === block.id}
+                    onSelect={() => setSelectedBlockId(block.id)}
+                    onChange={replaceBlockDraft}
+                  />
+                ))
             ) : (
               <div className="builder-empty-preview">
                 <p className="eyebrow">빈 페이지</p>
@@ -650,7 +666,13 @@ function projectFromDraft(project: BuilderProject, draft: BuilderProjectPayload)
   };
 }
 
-function ProjectPreviewHero({ project }: { project: BuilderProject }) {
+function ProjectPreviewHero({
+  project,
+  onPatch
+}: {
+  project: BuilderProject;
+  onPatch: <K extends keyof BuilderProjectPayload>(field: K, value: BuilderProjectPayload[K]) => void;
+}) {
   const metaItems = [
     project.period,
     project.role,
@@ -659,49 +681,70 @@ function ProjectPreviewHero({ project }: { project: BuilderProject }) {
   ].filter(Boolean);
 
   return (
-    <header className="builder-project-hero">
-      {project.category ? <p className="eyebrow">{project.category}</p> : null}
+    <header className="builder-project-hero canvas-editable-object selected">
+      <span className="canvas-object-label">PROJECT HERO</span>
       <div className="builder-project-hero-grid">
-        <div>
-          <h1>{project.title}</h1>
-          {project.subtitle ? <h2>{project.subtitle}</h2> : null}
-          {project.summary ? <p>{project.summary}</p> : null}
+        <div className="canvas-object-fields canvas-hero-fields">
+          <input
+            className="canvas-kicker-input"
+            value={project.category ?? ''}
+            onChange={(event) => onPatch('category', event.target.value)}
+            placeholder="카테고리"
+          />
+          <textarea
+            className="canvas-title-input"
+            value={project.title}
+            onChange={(event) => onPatch('title', event.target.value)}
+            placeholder="프로젝트 제목"
+          />
+          <input
+            className="canvas-subtitle-input"
+            value={project.subtitle ?? ''}
+            onChange={(event) => onPatch('subtitle', event.target.value)}
+            placeholder="짧은 부제목"
+          />
+          <textarea
+            className="canvas-summary-input"
+            value={project.summary ?? ''}
+            onChange={(event) => onPatch('summary', event.target.value)}
+            placeholder="짧은 설명"
+          />
           {metaItems.length ? (
             <div className="builder-project-meta">
-              {metaItems.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
+              {metaItems.map((item) => (item ? <span key={item}>{item}</span> : null))}
             </div>
           ) : null}
-          {project.techStacks.length ? (
-            <div className="builder-tech-stack">
-              {project.techStacks.map((tech) => (
-                <span key={tech}>{tech}</span>
-              ))}
-            </div>
-          ) : null}
-          {(project.githubUrl || project.liveUrl) ? (
-            <div className="action-row">
-              {project.githubUrl ? (
-                <a className="button button-secondary" href={project.githubUrl} target="_blank" rel="noreferrer">
-                  GitHub
-                </a>
-              ) : null}
-              {project.liveUrl ? (
-                <a className="button button-primary" href={project.liveUrl} target="_blank" rel="noreferrer">
-                  배포 사이트
-                </a>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="compact-field-grid">
+            <input value={project.period ?? ''} onChange={(event) => onPatch('period', event.target.value)} placeholder="기간" />
+            <input value={project.role ?? ''} onChange={(event) => onPatch('role', event.target.value)} placeholder="역할" />
+            <input value={project.contribution ?? ''} onChange={(event) => onPatch('contribution', event.target.value)} placeholder="기여도" />
+            <input value={project.techStacks.join(', ')} onChange={(event) => onPatch('techStacks', csvToArray(event.target.value))} placeholder="기술 스택" />
+          </div>
+          <div className="compact-field-grid">
+            <input value={project.githubUrl ?? ''} onChange={(event) => onPatch('githubUrl', event.target.value)} placeholder="GitHub 링크" />
+            <input value={project.liveUrl ?? ''} onChange={(event) => onPatch('liveUrl', event.target.value)} placeholder="배포 링크" />
+          </div>
+          <div className="builder-tech-stack">
+            {project.techStacks.map((tech) => (
+              <span key={tech}>{tech}</span>
+            ))}
+          </div>
         </div>
-        {project.thumbnailUrl ? (
-          <figure className="builder-project-cover">
+        <figure className="builder-project-cover canvas-object-fields">
+          {project.thumbnailUrl ? (
             <img src={assetUrl(project.thumbnailUrl)} alt={project.title} />
-          </figure>
-        ) : null}
+          ) : (
+            <div className="image-placeholder">썸네일 이미지 URL을 입력하세요</div>
+          )}
+          <input value={project.thumbnailUrl ?? ''} onChange={(event) => onPatch('thumbnailUrl', event.target.value)} placeholder="썸네일 이미지 URL" />
+        </figure>
       </div>
-      {project.description ? <p className="builder-project-description">{project.description}</p> : null}
+      <textarea
+        className="canvas-inline-input canvas-text-input builder-project-description"
+        value={project.description ?? ''}
+        onChange={(event) => onPatch('description', event.target.value)}
+        placeholder="케이스 스터디 본문을 입력하세요"
+      />
     </header>
   );
 }
