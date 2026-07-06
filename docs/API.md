@@ -115,3 +115,185 @@ Reorder:
 - `GET /public/portfolios/{slug}/projects`
 - `GET /public/portfolios/{slug}/projects?category=frontend`
 - `GET /public/portfolios/{slug}/projects/{projectSlug}`
+
+## Loginless Site Builder MVP
+
+The block builder MVP is intentionally open and single-user for fast prototyping.
+It is mounted under `/builder` on the frontend and `/api/builder` on the backend.
+
+### Builder State
+
+- `GET /builder`
+
+Response:
+
+```json
+{
+  "site": {
+    "id": 1,
+    "slug": "my-portfolio",
+    "title": "나의 포트폴리오",
+    "description": "프로젝트와 작업 과정을 보여주는 개인 포트폴리오입니다.",
+    "profileImageUrl": null,
+    "published": true,
+    "theme": {
+      "id": 1,
+      "name": "Studio Minimal",
+      "settings": {
+        "accentColor": "#111111",
+        "fontFamily": "Pretendard",
+        "background": "#f7f4ee",
+        "radius": 8,
+        "spacing": 32
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": 1,
+      "siteId": 1,
+      "title": "홈",
+      "slug": "home",
+      "pageType": "HOME",
+      "publicPage": true,
+      "navVisible": true,
+      "sortOrder": 0
+    }
+  ]
+}
+```
+
+### Site Settings
+
+- `PATCH /builder/site`
+
+```json
+{
+  "slug": "my-portfolio",
+  "title": "나의 포트폴리오",
+  "description": "작업과 과정을 보여주는 포트폴리오입니다.",
+  "profileImageUrl": "",
+  "published": true,
+  "themeId": 1
+}
+```
+
+### Pages
+
+- `GET /builder/pages`
+- `POST /builder/pages`
+- `GET /builder/pages/{pageId}`
+- `PATCH /builder/pages/{pageId}`
+- `DELETE /builder/pages/{pageId}`
+- `PATCH /builder/pages/reorder`
+
+Page payload:
+
+```json
+{
+  "title": "프로젝트",
+  "slug": "projects",
+  "pageType": "PROJECTS",
+  "publicPage": true,
+  "navVisible": true,
+  "sortOrder": 1,
+  "seoTitle": "프로젝트 | 나의 포트폴리오",
+  "seoDescription": "대표 프로젝트 모음"
+}
+```
+
+Reorder payload:
+
+```json
+{
+  "ids": [3, 1, 2]
+}
+```
+
+### Blocks
+
+- `GET /builder/pages/{pageId}/blocks`
+- `POST /builder/pages/{pageId}/blocks`
+- `PATCH /builder/pages/{pageId}/blocks/{blockId}`
+- `DELETE /builder/pages/{pageId}/blocks/{blockId}`
+- `PATCH /builder/pages/{pageId}/blocks/reorder`
+
+Block payload:
+
+```json
+{
+  "blockType": "PROJECT_CARD",
+  "content": {
+    "title": "Portfolio Builder",
+    "description": "페이지와 블록 기반 포트폴리오 제작 플랫폼",
+    "imageUrl": "https://example.com/cover.jpg",
+    "href": "https://example.com"
+  },
+  "sortOrder": 2
+}
+```
+
+MVP block types:
+
+- `HEADING`
+- `TEXT`
+- `IMAGE`
+- `DIVIDER`
+- `QUOTE`
+- `CALLOUT`
+- `BUTTON`
+- `PROJECT_CARD`
+
+The schema also reserves enum values for later blocks:
+
+- `GALLERY`
+- `VIDEO_EMBED`
+- `CODE`
+- `LINK_CARD`
+- `TECH_STACK`
+- `COLUMNS`
+- `PROJECT_INFO`
+- `GITHUB_LINK`
+- `LIVE_LINK`
+
+### Public Block Site
+
+- `GET /public/site`
+- `GET /public/site/{slug}`
+
+Response:
+
+```json
+{
+  "site": {
+    "id": 1,
+    "slug": "my-portfolio",
+    "title": "나의 포트폴리오",
+    "published": true
+  },
+  "pages": [
+    {
+      "page": {
+        "id": 1,
+        "title": "홈",
+        "slug": "home",
+        "pageType": "HOME",
+        "publicPage": true,
+        "navVisible": true,
+        "sortOrder": 0
+      },
+      "blocks": [
+        {
+          "id": 1,
+          "pageId": 1,
+          "blockType": "TEXT",
+          "content": {
+            "text": "본문을 입력하세요."
+          },
+          "sortOrder": 0
+        }
+      ]
+    }
+  ]
+}
+```

@@ -25,7 +25,7 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const requestUrl = config.url ?? '';
-  if (requestUrl.startsWith('/auth/')) {
+  if (requestUrl.startsWith('/auth/') || requestUrl.startsWith('/builder') || requestUrl.startsWith('/public/')) {
     return config;
   }
 

@@ -49,6 +49,8 @@ Default URLs:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8080
 - Public portfolio: `http://localhost:5173/{portfolioSlug}`
+- Loginless block builder MVP: http://localhost:5173/builder
+- Block-site public preview: http://localhost:5173/site
 
 ## MVP Features
 
@@ -62,12 +64,17 @@ Default URLs:
 - 공개 포트폴리오 자동 생성
 - 카테고리 필터링
 - 반응형 그리드 UI
+- 로그인 없는 단일 사용자 블록 사이트 빌더(`/builder`)
+- 새 페이지 생성/수정/삭제
+- 텍스트, 이미지, 구분선, 인용, 콜아웃, 버튼, 프로젝트 카드 블록
+- 블록 기반 공개 사이트 자동 렌더링(`/site`)
 
 ## Future Extension Points
 
-- `ProjectBlock` 테이블을 추가하면 Notion식 블록 에디터로 확장할 수 있습니다.
-- `sortOrder` 필드는 드래그 정렬 API로 바로 연결할 수 있습니다.
-- `PortfolioProfile.theme`과 JSON template config를 추가하면 템플릿 기능으로 확장됩니다.
+- `blocks.content` JSONB에 블록별 속성을 저장하므로 갤러리, 영상, 코드, 링크 카드, 컬럼 레이아웃을 테이블 변경 없이 추가할 수 있습니다.
+- `sortOrder` 필드는 페이지/블록 드래그 정렬 API로 바로 연결할 수 있습니다.
+- `sites.user_id`를 인증 사용자와 연결하면 단일 사용자 MVP를 멀티 사용자 사이트 빌더로 확장할 수 있습니다.
+- `themes.settings`와 JSON template config를 조합하면 템플릿 기능으로 확장됩니다.
 - 공개 조회 API 앞단에 view logging을 추가하면 방문자 통계를 붙일 수 있습니다.
 
 More details:

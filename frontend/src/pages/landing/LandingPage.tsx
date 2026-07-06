@@ -30,8 +30,8 @@ export function LandingPage() {
           </Link>
           <div>
             <Link to="/login">로그인</Link>
-            <Link className="button button-primary" to="/signup">
-              시작하기
+            <Link className="button button-primary" to="/builder">
+              빌더 체험
             </Link>
           </div>
         </nav>
@@ -42,10 +42,10 @@ export function LandingPage() {
             프로젝트 갤러리, 템플릿, 실시간 미리보기, 디자인 설정을 한곳에서 관리하고 나만의 포트폴리오 사이트를 게시하세요.
           </p>
           <div className="action-row">
-            <Link className="button button-primary" to="/signup">
-              포트폴리오 만들기
+            <Link className="button button-primary" to="/builder">
+              블록 빌더 체험
             </Link>
-            <Link className="button button-secondary" to="/login">
+            <Link className="button button-secondary" to="/signup">
               스튜디오 열기
             </Link>
           </div>
@@ -104,7 +104,7 @@ export function LandingPage() {
       <section className="landing-cta">
         <p className="eyebrow">게시 준비 완료</p>
         <h2>내 프로젝트를 디자인된 포트폴리오 웹사이트로 바꿔보세요.</h2>
-        <Link className="button button-primary" to="/signup">
+        <Link className="button button-primary" to="/builder">
           내 사이트 만들기
         </Link>
       </section>
