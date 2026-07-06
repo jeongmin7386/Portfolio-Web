@@ -2,6 +2,7 @@ package com.example.portfolio.api.builder;
 
 import com.example.portfolio.api.builder.dto.BlockRequest;
 import com.example.portfolio.api.builder.dto.BlockResponse;
+import com.example.portfolio.api.builder.dto.BulkBlockRequest;
 import com.example.portfolio.api.builder.dto.BuilderProjectRequest;
 import com.example.portfolio.api.builder.dto.BuilderProjectResponse;
 import com.example.portfolio.api.builder.dto.BuilderProjectWithBlocksResponse;
@@ -232,7 +233,7 @@ public class SiteBuilderService {
         int sortOrder = request.sortOrder() == null ? (int) blockRepository.countByPageId(pageId) : request.sortOrder();
         Map<String, Object> content = normalizeContent(request.blockType(), request.content());
         Block block = new Block(page, request.blockType(), content, sortOrder);
-        block.update(request.blockType(), content, normalizeSettings(request.settings()), sortOrder, request.visible() == null || request.visible());
+        applyBlockRequest(block, request, sortOrder);
         return BlockResponse.from(blockRepository.save(block));
     }
 
@@ -242,14 +243,29 @@ public class SiteBuilderService {
         SitePage page = findPage(site.getId(), pageId);
         Block block = blockRepository.findByIdAndPageId(blockId, page.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
-        block.update(
-            request.blockType(),
-            normalizeContent(request.blockType(), request.content()),
-            normalizeSettings(request.settings()),
-            request.sortOrder() == null ? block.getSortOrder() : request.sortOrder(),
-            request.visible() == null || request.visible()
-        );
+        applyBlockRequest(block, request, request.sortOrder() == null ? block.getSortOrder() : request.sortOrder());
         return BlockResponse.from(block);
+    }
+
+    @Transactional
+    public List<BlockResponse> saveBlocks(Long pageId, BulkBlockRequest request) {
+        Site site = getOrCreateDefaultSite();
+        SitePage page = findPage(site.getId(), pageId);
+        int order = 0;
+        for (BlockRequest blockRequest : request.blocks()) {
+            int sortOrder = blockRequest.sortOrder() == null ? order : blockRequest.sortOrder();
+            Block block = blockRequest.id() == null
+                ? new Block(page, blockRequest.blockType(), normalizeContent(blockRequest.blockType(), blockRequest.content()), sortOrder)
+                : blockRepository.findByIdAndPageId(blockRequest.id(), page.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
+            applyBlockRequest(block, blockRequest, sortOrder);
+            blockRepository.save(block);
+            order++;
+        }
+        return blockRepository.findByPageIdOrderBySortOrderAscCreatedAtAsc(page.getId())
+            .stream()
+            .map(BlockResponse::from)
+            .toList();
     }
 
     @Transactional
@@ -290,7 +306,7 @@ public class SiteBuilderService {
         int sortOrder = request.sortOrder() == null ? (int) blockRepository.countByProjectId(projectId) : request.sortOrder();
         Map<String, Object> content = normalizeContent(request.blockType(), request.content());
         Block block = new Block(project, request.blockType(), content, sortOrder);
-        block.update(request.blockType(), content, normalizeSettings(request.settings()), sortOrder, request.visible() == null || request.visible());
+        applyBlockRequest(block, request, sortOrder);
         return BlockResponse.from(blockRepository.save(block));
     }
 
@@ -300,14 +316,29 @@ public class SiteBuilderService {
         BuilderProject project = findProject(site.getId(), projectId);
         Block block = blockRepository.findByIdAndProjectId(blockId, project.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
-        block.update(
-            request.blockType(),
-            normalizeContent(request.blockType(), request.content()),
-            normalizeSettings(request.settings()),
-            request.sortOrder() == null ? block.getSortOrder() : request.sortOrder(),
-            request.visible() == null || request.visible()
-        );
+        applyBlockRequest(block, request, request.sortOrder() == null ? block.getSortOrder() : request.sortOrder());
         return BlockResponse.from(block);
+    }
+
+    @Transactional
+    public List<BlockResponse> saveProjectBlocks(Long projectId, BulkBlockRequest request) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        int order = 0;
+        for (BlockRequest blockRequest : request.blocks()) {
+            int sortOrder = blockRequest.sortOrder() == null ? order : blockRequest.sortOrder();
+            Block block = blockRequest.id() == null
+                ? new Block(project, blockRequest.blockType(), normalizeContent(blockRequest.blockType(), blockRequest.content()), sortOrder)
+                : blockRepository.findByIdAndProjectId(blockRequest.id(), project.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
+            applyBlockRequest(block, blockRequest, sortOrder);
+            blockRepository.save(block);
+            order++;
+        }
+        return blockRepository.findByProjectIdOrderBySortOrderAscCreatedAtAsc(project.getId())
+            .stream()
+            .map(BlockResponse::from)
+            .toList();
     }
 
     @Transactional
@@ -554,6 +585,53 @@ public class SiteBuilderService {
             return new LinkedHashMap<>(settings);
         }
         return mapOf("width", "normal", "align", "left", "paddingTop", 0, "paddingBottom", 0);
+    }
+
+    private Map<String, Object> normalizeStyles(Map<String, Object> styles, Map<String, Object> settings) {
+        if (styles != null && !styles.isEmpty()) {
+            return new LinkedHashMap<>(styles);
+        }
+        if (settings != null && !settings.isEmpty()) {
+            return new LinkedHashMap<>(settings);
+        }
+        return mapOf(
+            "fontSize", 18,
+            "fontWeight", 500,
+            "color", "#111111",
+            "backgroundColor", "transparent",
+            "borderRadius", 8,
+            "padding", 0,
+            "margin", 0,
+            "opacity", 1,
+            "textAlign", "left",
+            "borderWidth", 0,
+            "borderColor", "#111111"
+        );
+    }
+
+    private Map<String, Object> normalizeLayout(Map<String, Object> layout, int sortOrder) {
+        if (layout != null && !layout.isEmpty()) {
+            return new LinkedHashMap<>(layout);
+        }
+        int y = 40 + (sortOrder * 220);
+        return mapOf(
+            "desktop", mapOf("x", 80, "y", y, "width", 720, "height", 180, "zIndex", sortOrder + 1),
+            "tablet", mapOf("x", 40, "y", y, "width", 560, "height", 180, "zIndex", sortOrder + 1),
+            "mobile", mapOf("x", 20, "y", y, "width", 320, "height", 180, "zIndex", sortOrder + 1)
+        );
+    }
+
+    private void applyBlockRequest(Block block, BlockRequest request, int sortOrder) {
+        block.update(
+            request.blockType(),
+            normalizeContent(request.blockType(), request.content()),
+            normalizeSettings(request.settings()),
+            normalizeStyles(request.styles(), request.settings()),
+            normalizeLayout(request.layout(), sortOrder),
+            clean(request.sectionId()),
+            sortOrder,
+            request.visible() == null || request.visible()
+        );
     }
 
     private Map<String, Object> defaultContent(BlockType blockType) {

@@ -100,6 +100,13 @@ export async function updateBlock(pageId: number, blockId: number, payload: Bloc
   return data;
 }
 
+export async function savePageBlocks(pageId: number, blocks: BlockPayload[]) {
+  logRequest('savePageBlocks', { pageId, blocks });
+  const { data } = await apiClient.put<SiteBlock[]>(`/builder/pages/${pageId}/blocks`, { blocks });
+  logResponse('savePageBlocks', data);
+  return data;
+}
+
 export async function deleteBlock(pageId: number, blockId: number) {
   await apiClient.delete(`/builder/pages/${pageId}/blocks/${blockId}`);
 }
@@ -120,6 +127,13 @@ export async function updateProjectBlock(projectId: number, blockId: number, pay
   logRequest('updateProjectBlock', { projectId, blockId, payload });
   const { data } = await apiClient.patch<SiteBlock>(`/builder/projects/${projectId}/blocks/${blockId}`, payload);
   logResponse('updateProjectBlock', data);
+  return data;
+}
+
+export async function saveProjectBlocks(projectId: number, blocks: BlockPayload[]) {
+  logRequest('saveProjectBlocks', { projectId, blocks });
+  const { data } = await apiClient.put<SiteBlock[]>(`/builder/projects/${projectId}/blocks`, { blocks });
+  logResponse('saveProjectBlocks', data);
   return data;
 }
 

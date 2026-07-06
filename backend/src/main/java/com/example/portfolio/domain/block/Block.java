@@ -39,6 +39,9 @@ public class Block extends BaseTimeEntity {
     @Column(name = "block_type", nullable = false, length = 60)
     private BlockType blockType;
 
+    @Column(name = "section_id", length = 120)
+    private String sectionId;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> content = new LinkedHashMap<>();
@@ -46,6 +49,14 @@ public class Block extends BaseTimeEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> settings = new LinkedHashMap<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private Map<String, Object> styles = new LinkedHashMap<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private Map<String, Object> layout = new LinkedHashMap<>();
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
@@ -70,10 +81,22 @@ public class Block extends BaseTimeEntity {
         this.sortOrder = sortOrder;
     }
 
-    public void update(BlockType blockType, Map<String, Object> content, Map<String, Object> settings, int sortOrder, boolean visible) {
+    public void update(
+        BlockType blockType,
+        Map<String, Object> content,
+        Map<String, Object> settings,
+        Map<String, Object> styles,
+        Map<String, Object> layout,
+        String sectionId,
+        int sortOrder,
+        boolean visible
+    ) {
         this.blockType = blockType == null ? BlockType.TEXT : blockType;
         this.content = content == null ? new LinkedHashMap<>() : new LinkedHashMap<>(content);
         this.settings = settings == null ? new LinkedHashMap<>() : new LinkedHashMap<>(settings);
+        this.styles = styles == null ? new LinkedHashMap<>() : new LinkedHashMap<>(styles);
+        this.layout = layout == null ? new LinkedHashMap<>() : new LinkedHashMap<>(layout);
+        this.sectionId = sectionId;
         this.sortOrder = sortOrder;
         this.visible = visible;
     }
@@ -98,12 +121,24 @@ public class Block extends BaseTimeEntity {
         return blockType;
     }
 
+    public String getSectionId() {
+        return sectionId;
+    }
+
     public Map<String, Object> getContent() {
         return new LinkedHashMap<>(content);
     }
 
     public Map<String, Object> getSettings() {
         return new LinkedHashMap<>(settings);
+    }
+
+    public Map<String, Object> getStyles() {
+        return new LinkedHashMap<>(styles);
+    }
+
+    public Map<String, Object> getLayout() {
+        return new LinkedHashMap<>(layout);
     }
 
     public int getSortOrder() {

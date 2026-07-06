@@ -5,6 +5,7 @@ import com.example.portfolio.api.builder.dto.BlockResponse;
 import com.example.portfolio.api.builder.dto.BuilderProjectRequest;
 import com.example.portfolio.api.builder.dto.BuilderProjectResponse;
 import com.example.portfolio.api.builder.dto.BuilderProjectWithBlocksResponse;
+import com.example.portfolio.api.builder.dto.BulkBlockRequest;
 import com.example.portfolio.api.builder.dto.BuilderStateResponse;
 import com.example.portfolio.api.builder.dto.PageRequest;
 import com.example.portfolio.api.builder.dto.PageResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -127,6 +129,11 @@ public class SiteBuilderController {
         return builderService.updateBlock(pageId, blockId, request);
     }
 
+    @PutMapping("/pages/{pageId}/blocks")
+    List<BlockResponse> saveBlocks(@PathVariable Long pageId, @Valid @RequestBody BulkBlockRequest request) {
+        return builderService.saveBlocks(pageId, request);
+    }
+
     @DeleteMapping("/pages/{pageId}/blocks/{blockId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteBlock(@PathVariable Long pageId, @PathVariable Long blockId) {
@@ -153,6 +160,11 @@ public class SiteBuilderController {
     @PatchMapping("/projects/{projectId}/blocks/{blockId}")
     BlockResponse updateProjectBlock(@PathVariable Long projectId, @PathVariable Long blockId, @Valid @RequestBody BlockRequest request) {
         return builderService.updateProjectBlock(projectId, blockId, request);
+    }
+
+    @PutMapping("/projects/{projectId}/blocks")
+    List<BlockResponse> saveProjectBlocks(@PathVariable Long projectId, @Valid @RequestBody BulkBlockRequest request) {
+        return builderService.saveProjectBlocks(projectId, request);
     }
 
     @DeleteMapping("/projects/{projectId}/blocks/{blockId}")

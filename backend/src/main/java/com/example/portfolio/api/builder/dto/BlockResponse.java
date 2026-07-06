@@ -9,8 +9,11 @@ public record BlockResponse(
     Long pageId,
     Long projectId,
     BlockType blockType,
+    String sectionId,
     Map<String, Object> content,
     Map<String, Object> settings,
+    Map<String, Object> styles,
+    Map<String, Object> layout,
     int sortOrder,
     boolean visible
 ) {
@@ -20,8 +23,11 @@ public record BlockResponse(
             block.getPage() == null ? null : block.getPage().getId(),
             block.getProject() == null ? null : block.getProject().getId(),
             block.getBlockType(),
+            block.getSectionId(),
             block.getContent(),
             block.getSettings(),
+            block.getStyles(),
+            block.getLayout(),
             block.getSortOrder(),
             block.isVisible()
         );

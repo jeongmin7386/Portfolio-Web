@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { BlockRenderer } from '../../features/site-builder/components/BlockRenderer';
+import { PublicBlockCanvas } from '../../features/site-builder/components/PublicBlockCanvas';
 import { getPublicBuilderProject } from '../../features/site-builder/siteBuilderApi';
 import { assetUrl, getApiErrorMessage } from '../../lib/apiClient';
 
@@ -90,13 +90,7 @@ export function SiteBuilderProjectDetailPage() {
 
       <section className="site-public-section project-public-block-section">
         {project.description ? <p className="builder-project-description">{project.description}</p> : null}
-        <div className="site-public-blocks">
-          {blocks
-            .filter((block) => block.visible)
-            .map((block) => (
-              <BlockRenderer key={block.id} block={block} />
-            ))}
-        </div>
+        <PublicBlockCanvas blocks={blocks} />
       </section>
     </main>
   );

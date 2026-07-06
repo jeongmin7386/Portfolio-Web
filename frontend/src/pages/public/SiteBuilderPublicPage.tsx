@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { BlockRenderer } from '../../features/site-builder/components/BlockRenderer';
+import { PublicBlockCanvas } from '../../features/site-builder/components/PublicBlockCanvas';
 import { getPublicSite } from '../../features/site-builder/siteBuilderApi';
 import type { PageType } from '../../features/site-builder/types';
 import { assetUrl, getApiErrorMessage } from '../../lib/apiClient';
@@ -82,11 +82,7 @@ export function SiteBuilderPublicPage() {
             <p className="eyebrow">{pageTypeLabels[page.pageType]}</p>
             <h2>{page.title}</h2>
           </div>
-          <div className="site-public-blocks">
-            {blocks.map((block) => (
-              <BlockRenderer key={block.id} block={block} />
-            ))}
-          </div>
+          <PublicBlockCanvas blocks={blocks} />
         </section>
       ))}
 

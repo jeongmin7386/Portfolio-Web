@@ -2,10 +2,10 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { queryClient } from '../../app/queryClient';
-import { blockLabel, defaultBlockContent } from '../../features/site-builder/blockCatalog';
-import { BlockEditorCard } from '../../features/site-builder/components/BlockEditorCard';
-import { BlockPalette } from '../../features/site-builder/components/BlockPalette';
-import { EditableBlockCanvas } from '../../features/site-builder/components/EditableBlockCanvas';
+import { blockLabel, defaultBlockContent, defaultBlockLayout, defaultBlockStyles } from '../../features/site-builder/blockCatalog';
+import { AddBlockModal } from '../../features/site-builder/components/AddBlockModal';
+import { EditorCanvas } from '../../features/site-builder/components/EditorCanvas';
+import { RightInspectorPanel } from '../../features/site-builder/components/RightInspectorPanel';
 import {
   createBlock,
   createBuilderProject,
@@ -18,14 +18,24 @@ import {
   getBuilderState,
   getPageWithBlocks,
   getProjectWithBlocks,
-  updateBlock,
+  savePageBlocks,
+  saveProjectBlocks,
   updateBuilderProject,
   updatePage,
-  updateProjectBlock,
   updateSite
 } from '../../features/site-builder/siteBuilderApi';
-import type { BlockType, BuilderProject, BuilderProjectPayload, PagePayload, SiteBlock, SitePage } from '../../features/site-builder/types';
-import { assetUrl, getApiErrorMessage } from '../../lib/apiClient';
+import type {
+  BlockLayout,
+  BlockPayload,
+  BlockType,
+  BuilderProject,
+  BuilderProjectPayload,
+  DeviceMode,
+  PagePayload,
+  SiteBlock,
+  SitePage
+} from '../../features/site-builder/types';
+import { getApiErrorMessage } from '../../lib/apiClient';
 
 type SelectedTarget = {
   type: 'page' | 'project';
@@ -34,12 +44,20 @@ type SelectedTarget = {
 
 type BlockDraftMap = Record<number, SiteBlock>;
 
+type CreateBlockInput = {
+  type: BlockType;
+  source?: SiteBlock;
+};
+
 const defaultBlockSettings = {
   width: 'normal',
   align: 'left',
   paddingTop: 0,
-  paddingBottom: 0
+  paddingBottom: 0,
+  locked: false
 };
+
+const devices: DeviceMode[] = ['desktop', 'tablet', 'mobile'];
 
 export function BuilderMvpPage() {
   const [selectedTarget, setSelectedTarget] = useState<SelectedTarget>({ type: 'page', id: null });
@@ -51,6 +69,9 @@ export function BuilderMvpPage() {
   const [blockDrafts, setBlockDrafts] = useState<BlockDraftMap>({});
   const [siteTitle, setSiteTitle] = useState('');
   const [siteDescription, setSiteDescription] = useState('');
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [addBlockOpen, setAddBlockOpen] = useState(false);
 
   const stateQuery = useQuery({ queryKey: ['builderState'], queryFn: getBuilderState });
   const pages = stateQuery.data?.pages ?? [];
@@ -76,12 +97,20 @@ export function BuilderMvpPage() {
     [pageQuery.data, projectQuery.data, selectedTarget.type]
   );
 
-  const draftBlocks = useMemo(
-    () => serverBlocks.map((block) => blockDrafts[block.id] ?? block).sort((first, second) => first.sortOrder - second.sortOrder),
-    [serverBlocks, blockDrafts]
-  );
+  const draftBlocks = useMemo(() => {
+    const merged = new Map<number, SiteBlock>();
+    serverBlocks.forEach((block) => merged.set(block.id, block));
+    Object.values(blockDrafts).forEach((block) => merged.set(block.id, block));
+    return [...merged.values()]
+      .filter((block) =>
+        selectedTarget.type === 'project'
+          ? block.projectId === selectedProject?.id
+          : block.pageId === selectedPage?.id
+      )
+      .sort((first, second) => first.sortOrder - second.sortOrder);
+  }, [blockDrafts, selectedPage?.id, selectedProject?.id, selectedTarget.type, serverBlocks]);
 
-  const selectedBlock = selectedBlockId ? draftBlocks.find((block) => block.id === selectedBlockId) : draftBlocks[0];
+  const selectedBlock = selectedBlockId ? draftBlocks.find((block) => block.id === selectedBlockId) ?? null : null;
   const previewProject = selectedProject && projectDraft ? projectFromDraft(selectedProject, projectDraft) : selectedProject;
   const previewPage = selectedPage && pageDraft ? pageFromDraft(selectedPage, pageDraft) : selectedPage;
   const previewPages = pages.map((page) => (previewPage?.id === page.id ? previewPage : page));
@@ -113,12 +142,12 @@ export function BuilderMvpPage() {
 
   useEffect(() => {
     const nextDrafts = serverBlocks.reduce<BlockDraftMap>((drafts, block) => {
-      drafts[block.id] = block;
+      drafts[block.id] = withRenderableDefaults(block);
       return drafts;
     }, {});
     setBlockDrafts(nextDrafts);
     setSelectedBlockId((current) => (current && serverBlocks.some((block) => block.id === current) ? current : serverBlocks[0]?.id ?? null));
-  }, [serverBlocks]);
+  }, [selectedTarget.type, selectedPage?.id, selectedProject?.id, serverBlocks]);
 
   const createPageMutation = useMutation({
     mutationFn: createPage,
@@ -159,6 +188,62 @@ export function BuilderMvpPage() {
     }
   });
 
+  const updateSiteMutation = useMutation({
+    mutationFn: updateSite,
+    onSuccess: (site) => {
+      console.log('[builder:update-site-success]', site);
+      setSiteTitle(site.title);
+      setSiteDescription(site.description ?? '');
+      queryClient.invalidateQueries({ queryKey: ['builderState'] });
+    }
+  });
+
+  const createBlockMutation = useMutation({
+    mutationFn: ({ type, source }: CreateBlockInput) => {
+      const payload = createBlockPayload(type, draftBlocks.length, source);
+      console.log('[builder:create-freeform-block-request]', payload);
+      if (selectedTarget.type === 'project' && selectedProject) {
+        return createProjectBlock(selectedProject.id, payload);
+      }
+      if (selectedPage) {
+        return createBlock(selectedPage.id, payload);
+      }
+      throw new Error('No selected target');
+    },
+    onSuccess: (block) => {
+      const next = withRenderableDefaults(block);
+      console.log('[builder:create-freeform-block-success]', next);
+      setSelectedBlockId(next.id);
+      setBlockDrafts((current) => ({ ...current, [next.id]: next }));
+      invalidateSelectedTarget(selectedTarget);
+    }
+  });
+
+  const saveBlocksMutation = useMutation({
+    mutationFn: ({ target, pageId, projectId, blocks }: { target: SelectedTarget; pageId?: number; projectId?: number; blocks: SiteBlock[] }) => {
+      const payload = blocks.map((block, index) => blockToPayload({ ...block, sortOrder: index }));
+      console.log('[builder:save-blocks-request]', { target, pageId, projectId, payload });
+      if (target.type === 'project') {
+        if (!projectId) {
+          throw new Error('No selected project');
+        }
+        return saveProjectBlocks(projectId, payload);
+      }
+      if (!pageId) {
+        throw new Error('No selected page');
+      }
+      return savePageBlocks(pageId, payload);
+    },
+    onSuccess: (blocks) => {
+      console.log('[builder:save-blocks-success]', blocks);
+      setBlockDrafts(blocks.reduce<BlockDraftMap>((drafts, block) => {
+        drafts[block.id] = withRenderableDefaults(block);
+        return drafts;
+      }, {}));
+      invalidateSelectedTarget(selectedTarget);
+    }
+  });
+
   const deletePageMutation = useMutation({
     mutationFn: deletePage,
     onSuccess: () => {
@@ -177,54 +262,10 @@ export function BuilderMvpPage() {
     }
   });
 
-  const updateSiteMutation = useMutation({
-    mutationFn: updateSite,
-    onSuccess: (site) => {
-      console.log('[builder:update-site-success]', site);
-      setSiteTitle(site.title);
-      setSiteDescription(site.description ?? '');
-      queryClient.invalidateQueries({ queryKey: ['builderState'] });
-    }
-  });
-
-  const createBlockMutation = useMutation({
-    mutationFn: ({ type }: { type: BlockType }) => {
-      const payload = { blockType: type, content: defaultBlockContent(type), settings: defaultBlockSettings, visible: true };
-      if (selectedTarget.type === 'project' && selectedProject) {
-        return createProjectBlock(selectedProject.id, payload);
-      }
-      if (selectedPage) {
-        return createBlock(selectedPage.id, payload);
-      }
-      throw new Error('No selected target');
-    },
-    onSuccess: (block) => {
-      console.log('[builder:create-block-success]', block);
-      setSelectedBlockId(block.id);
-      setBlockDrafts((current) => ({ ...current, [block.id]: block }));
-      invalidateSelectedTarget(selectedTarget);
-    }
-  });
-
-  const updateBlockMutation = useMutation({
-    mutationFn: ({ block, content, settings, visible }: { block: SiteBlock; content: Record<string, unknown>; settings: Record<string, unknown>; visible: boolean }) => {
-      const payload = { blockType: block.blockType, content, settings, visible, sortOrder: block.sortOrder };
-      console.log('[builder:block-save-request]', { blockId: block.id, payload });
-      if (block.projectId) {
-        return updateProjectBlock(block.projectId, block.id, payload);
-      }
-      return updateBlock(block.pageId!, block.id, payload);
-    },
-    onSuccess: (block) => {
-      console.log('[builder:block-save-success]', block);
-      setBlockDrafts((current) => ({ ...current, [block.id]: block }));
-      invalidateSelectedTarget(selectedTarget);
-    }
-  });
-
   const deleteBlockMutation = useMutation({
     mutationFn: (block: SiteBlock) => (block.projectId ? deleteProjectBlock(block.projectId, block.id) : deleteBlock(block.pageId!, block.id)),
     onSuccess: (_, block) => {
+      console.log('[builder:delete-block-success]', block.id);
       setBlockDrafts((current) => {
         const next = { ...current };
         delete next[block.id];
@@ -268,16 +309,11 @@ export function BuilderMvpPage() {
     });
   }
 
-  function patchBlock(block: SiteBlock, content: Record<string, unknown>, settings: Record<string, unknown>, visible: boolean) {
-    const nextBlock = { ...block, content, settings, visible };
-    console.log('[builder:preview-block-draft]', nextBlock);
-    setBlockDrafts((current) => ({ ...current, [block.id]: nextBlock }));
-  }
-
   function replaceBlockDraft(block: SiteBlock) {
-    console.log('[builder:canvas-block-draft]', block);
-    setSelectedBlockId(block.id);
-    setBlockDrafts((current) => ({ ...current, [block.id]: block }));
+    const next = withRenderableDefaults(block);
+    console.log('[builder:block-draft-change]', next);
+    setSelectedBlockId(next.id);
+    setBlockDrafts((current) => ({ ...current, [next.id]: next }));
   }
 
   function handleCreatePage(event: FormEvent<HTMLFormElement>) {
@@ -345,12 +381,12 @@ export function BuilderMvpPage() {
     updateProjectMutation.mutate({ projectId: selectedProject.id, payload: projectDraft });
   }
 
-  function handleSaveBlock(block: SiteBlock) {
-    updateBlockMutation.mutate({
-      block,
-      content: block.content ?? {},
-      settings: block.settings ?? {},
-      visible: block.visible
+  function handleSaveBlocks() {
+    saveBlocksMutation.mutate({
+      target: selectedTarget,
+      pageId: selectedPage?.id,
+      projectId: selectedProject?.id,
+      blocks: draftBlocks
     });
   }
 
@@ -360,7 +396,7 @@ export function BuilderMvpPage() {
       site: { title: siteTitle, description: siteDescription },
       pageDraft,
       projectDraft,
-      selectedBlock
+      blocks: draftBlocks
     });
     handleSaveSite();
     if (selectedTarget.type === 'page') {
@@ -369,9 +405,19 @@ export function BuilderMvpPage() {
     if (selectedTarget.type === 'project') {
       handleSaveProject();
     }
-    if (selectedBlock) {
-      handleSaveBlock(selectedBlock);
-    }
+    handleSaveBlocks();
+  }
+
+  function handleBringForward(block: SiteBlock) {
+    replaceBlockDraft(updateFrame(block, deviceMode, (frame) => ({ ...frame, zIndex: frame.zIndex + 1 })));
+  }
+
+  function handleSendBackward(block: SiteBlock) {
+    replaceBlockDraft(updateFrame(block, deviceMode, (frame) => ({ ...frame, zIndex: Math.max(0, frame.zIndex - 1) })));
+  }
+
+  function handleToggleLock(block: SiteBlock) {
+    replaceBlockDraft({ ...block, settings: { ...(block.settings ?? {}), locked: !block.settings?.locked } });
   }
 
   if (stateQuery.isLoading) {
@@ -385,212 +431,222 @@ export function BuilderMvpPage() {
   const previewTitle = previewProject?.title ?? previewPage?.title ?? '페이지';
   const publicPreviewUrl = selectedProject ? `/site/projects/${selectedProject.slug}` : '/site';
   const isSavingCurrent =
-    updateSiteMutation.isPending || updatePageMutation.isPending || updateProjectMutation.isPending || updateBlockMutation.isPending;
+    updateSiteMutation.isPending || updatePageMutation.isPending || updateProjectMutation.isPending || saveBlocksMutation.isPending;
 
   return (
-    <main className="builder-mvp-page">
-      <aside className="builder-page-panel">
-        <div className="builder-brand">
-          <p className="eyebrow">블록 사이트 빌더</p>
-          <h1>캔버스폴리오</h1>
-          <span>페이지와 프로젝트 상세 페이지를 블록 단위로 편집하세요.</span>
-        </div>
-
-        <form className="builder-new-page" onSubmit={handleCreatePage}>
-          <label className="field">
-            <span>새 페이지</span>
-            <input value={newPageTitle} onChange={(event) => setNewPageTitle(event.target.value)} placeholder="예: About, Contact" />
-          </label>
-          <button className="button button-primary" type="submit" disabled={createPageMutation.isPending}>
-            페이지 만들기
-          </button>
-        </form>
-
-        <div className="builder-panel-section">
-          <p className="panel-label">페이지</p>
-          <div className="builder-page-list">
-            {previewPages.map((page) => (
-              <button
-                key={page.id}
-                type="button"
-                className={selectedTarget.type === 'page' && selectedPage?.id === page.id ? 'active' : ''}
-                onClick={() => setSelectedTarget({ type: 'page', id: page.id })}
-              >
-                <span>{page.title}</span>
-                <small>{page.publicPage ? '공개' : '비공개'} · {page.navVisible ? '메뉴 표시' : '메뉴 숨김'}</small>
-              </button>
-            ))}
+    <>
+      <main className="builder-mvp-page">
+        <aside className="builder-page-panel">
+          <div className="builder-brand">
+            <p className="eyebrow">Freeform site builder</p>
+            <h1>캔버스폴리오</h1>
+            <span>모든 블록을 선택, 이동, 크기 조절, 편집할 수 있는 포트폴리오 빌더입니다.</span>
           </div>
-        </div>
 
-        <form className="builder-new-page" onSubmit={handleCreateProject}>
-          <label className="field">
-            <span>새 프로젝트</span>
-            <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} placeholder="예: Portfolio Builder" />
-          </label>
-          <button className="button button-primary" type="submit" disabled={createProjectMutation.isPending}>
-            프로젝트 만들기
-          </button>
-        </form>
-
-        <div className="builder-panel-section">
-          <p className="panel-label">프로젝트</p>
-          <div className="builder-page-list">
-            {projects.map((project) => {
-              const item = previewProject?.id === project.id ? previewProject : project;
-              return (
-                <button
-                  key={project.id}
-                  type="button"
-                  className={selectedTarget.type === 'project' && selectedProject?.id === project.id ? 'active' : ''}
-                  onClick={() => setSelectedTarget({ type: 'project', id: project.id })}
-                >
-                  <span>{item.title}</span>
-                  <small>{item.visibility === 'PUBLIC' ? '공개' : item.visibility === 'PRIVATE' ? '비공개' : '초안'} · {item.category || '카테고리 없음'}</small>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </aside>
-
-      <section className="builder-canvas-panel">
-        <header className="builder-toolbar">
-          <div>
-            <p className="eyebrow">{selectedTarget.type === 'project' ? '프로젝트 상세 미리보기' : '페이지 미리보기'}</p>
-            <h2>{previewTitle}</h2>
-          </div>
-          <div className="action-row">
-            <Link className="button button-secondary" to={publicPreviewUrl} target="_blank">
-              공개 페이지 보기
-            </Link>
-            <button className="button button-primary" type="button" onClick={handleSaveCurrentDrafts} disabled={isSavingCurrent}>
-              {isSavingCurrent ? '저장 중...' : '저장 / 게시'}
+          <form className="builder-new-page" onSubmit={handleCreatePage}>
+            <label className="field">
+              <span>새 페이지</span>
+              <input value={newPageTitle} onChange={(event) => setNewPageTitle(event.target.value)} placeholder="예: About, Contact" />
+            </label>
+            <button className="button button-primary" type="submit" disabled={createPageMutation.isPending}>
+              페이지 만들기
             </button>
-          </div>
-        </header>
+          </form>
 
-        <article className="builder-site-preview">
-          <nav className="builder-preview-nav">
-            <strong>{siteTitle || stateQuery.data.site.title}</strong>
+          <div className="builder-panel-section">
+            <p className="panel-label">페이지</p>
+            <div className="builder-page-list">
+              {previewPages.map((page) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  className={selectedTarget.type === 'page' && selectedPage?.id === page.id ? 'active' : ''}
+                  onClick={() => setSelectedTarget({ type: 'page', id: page.id })}
+                >
+                  <span>{page.title}</span>
+                  <small>{page.publicPage ? '공개' : '비공개'} · {page.navVisible ? '메뉴 표시' : '메뉴 숨김'}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form className="builder-new-page" onSubmit={handleCreateProject}>
+            <label className="field">
+              <span>새 프로젝트</span>
+              <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} placeholder="예: Portfolio Builder" />
+            </label>
+            <button className="button button-primary" type="submit" disabled={createProjectMutation.isPending}>
+              프로젝트 만들기
+            </button>
+          </form>
+
+          <div className="builder-panel-section">
+            <p className="panel-label">프로젝트</p>
+            <div className="builder-page-list">
+              {projects.map((project) => {
+                const item = previewProject?.id === project.id ? previewProject : project;
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    className={selectedTarget.type === 'project' && selectedProject?.id === project.id ? 'active' : ''}
+                    onClick={() => setSelectedTarget({ type: 'project', id: project.id })}
+                  >
+                    <span>{item.title}</span>
+                    <small>{item.visibility === 'PUBLIC' ? '공개' : item.visibility === 'PRIVATE' ? '비공개' : '초안'} · {item.category || '카테고리 없음'}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+        <section className="builder-canvas-panel">
+          <header className="builder-toolbar">
             <div>
-              {previewPages
-                .filter((page) => page.navVisible)
-                .map((page) => (
-                  <button key={page.id} type="button" onClick={() => setSelectedTarget({ type: 'page', id: page.id })}>
-                    {page.title}
+              <p className="eyebrow">{selectedTarget.type === 'project' ? '프로젝트 상세 캔버스' : '페이지 캔버스'}</p>
+              <h2>{previewTitle}</h2>
+            </div>
+            <div className="action-row">
+              <div className="device-switcher" aria-label="디바이스 미리보기">
+                {devices.map((device) => (
+                  <button key={device} type="button" className={deviceMode === device ? 'active' : ''} onClick={() => setDeviceMode(device)}>
+                    {device}
                   </button>
                 ))}
-            </div>
-          </nav>
-          <div className="builder-preview-body">
-            {previewProject ? <ProjectPreviewHero project={previewProject} onPatch={patchProject} /> : null}
-            {draftBlocks.length ? (
-              draftBlocks
-                .filter((block) => block.visible)
-                .map((block) => (
-                  <EditableBlockCanvas
-                    key={block.id}
-                    block={block}
-                    selected={selectedBlock?.id === block.id}
-                    onSelect={() => setSelectedBlockId(block.id)}
-                    onChange={replaceBlockDraft}
-                  />
-                ))
-            ) : (
-              <div className="builder-empty-preview">
-                <p className="eyebrow">빈 페이지</p>
-                <h3>오른쪽 패널에서 블록을 추가하세요.</h3>
               </div>
-            )}
-          </div>
-        </article>
-      </section>
-
-      <aside className="builder-inspector-panel">
-        <section className="inspector-section">
-          <p className="panel-label">사이트 설정</p>
-          <label className="field">
-            <span>사이트 제목</span>
-            <input value={siteTitle} onChange={(event) => patchSite('title', event.target.value)} />
-          </label>
-          <label className="field">
-            <span>사이트 소개</span>
-            <textarea value={siteDescription} onChange={(event) => patchSite('description', event.target.value)} />
-          </label>
-        </section>
-
-        {selectedPage && pageDraft ? (
-          <PageSettingsPanel
-            page={previewPage ?? selectedPage}
-            draft={pageDraft}
-            isSaving={updatePageMutation.isPending}
-            onPatch={patchPage}
-            onSave={handleSavePage}
-            onDelete={() => deletePageMutation.mutate(selectedPage.id)}
-          />
-        ) : null}
-
-        {selectedProject && projectDraft ? (
-          <ProjectSettingsPanel
-            project={previewProject ?? selectedProject}
-            draft={projectDraft}
-            isSaving={updateProjectMutation.isPending}
-            onPatch={patchProject}
-            onSave={handleSaveProject}
-            onDelete={() => deleteProjectMutation.mutate(selectedProject.id)}
-          />
-        ) : null}
-
-        {selectedPage || selectedProject ? (
-          <section className="inspector-section">
-            <p className="panel-label">블록 추가</p>
-            <BlockPalette isAdding={createBlockMutation.isPending} onAdd={(type) => createBlockMutation.mutate({ type })} />
-          </section>
-        ) : null}
-
-        <section className="inspector-section">
-          <p className="panel-label">블록 목록</p>
-          {pageQuery.isLoading || projectQuery.isLoading ? <p className="muted">블록을 불러오는 중입니다...</p> : null}
-          <div className="builder-block-picker">
-            {draftBlocks.map((block) => (
-              <button
-                key={block.id}
-                type="button"
-                className={selectedBlock?.id === block.id ? 'active' : ''}
-                onClick={() => setSelectedBlockId(block.id)}
-              >
-                <span>{blockLabel(block.blockType)}</span>
-                <small>{block.visible ? '공개' : '비공개'} · 순서 {block.sortOrder + 1}</small>
+              <label className={`toggle ${snapToGrid ? 'toggle-on' : ''}`}>
+                <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
+                <span className="toggle-track"><span className="toggle-thumb" /></span>
+                그리드 스냅
+              </label>
+              <button className="button button-secondary" type="button" onClick={() => setAddBlockOpen(true)}>
+                + 블록
               </button>
-            ))}
-          </div>
-          {!draftBlocks.length && !pageQuery.isLoading && !projectQuery.isLoading ? (
-            <p className="muted">아직 블록이 없습니다. 제목이나 프로젝트 정보 블록을 추가해보세요.</p>
-          ) : null}
+              <Link className="button button-secondary" to={publicPreviewUrl} target="_blank">
+                공개 페이지 보기
+              </Link>
+              <button className="button button-primary" type="button" onClick={handleSaveCurrentDrafts} disabled={isSavingCurrent}>
+                {isSavingCurrent ? '저장 중...' : '저장 / 게시'}
+              </button>
+            </div>
+          </header>
+
+          <article className="builder-site-preview freeform-preview-shell">
+            <nav className="builder-preview-nav">
+              <strong>{siteTitle || stateQuery.data.site.title}</strong>
+              <div>
+                {previewPages
+                  .filter((page) => page.navVisible)
+                  .map((page) => (
+                    <button key={page.id} type="button" onClick={() => setSelectedTarget({ type: 'page', id: page.id })}>
+                      {page.title}
+                    </button>
+                  ))}
+              </div>
+            </nav>
+            <EditorCanvas
+              blocks={draftBlocks}
+              selectedBlockId={selectedBlockId}
+              device={deviceMode}
+              snapToGrid={snapToGrid}
+              onSelect={setSelectedBlockId}
+              onChange={replaceBlockDraft}
+              onDuplicate={(block) => createBlockMutation.mutate({ type: block.blockType, source: block })}
+              onDelete={(block) => deleteBlockMutation.mutate(block)}
+              onBringForward={handleBringForward}
+              onSendBackward={handleSendBackward}
+              onToggleLock={handleToggleLock}
+              onOpenAddBlock={() => setAddBlockOpen(true)}
+            />
+          </article>
         </section>
 
-        {selectedBlock ? (
+        <aside className="builder-inspector-panel">
           <section className="inspector-section">
-            <BlockEditorCard
-              key={selectedBlock.id}
-              block={selectedBlock}
-              isSaving={updateBlockMutation.isPending}
-              onChange={(content, settings, visible) => patchBlock(selectedBlock, content, settings, visible)}
-              onSave={(content, settings, visible) => updateBlockMutation.mutate({ block: selectedBlock, content, settings, visible })}
-              onDelete={() => deleteBlockMutation.mutate(selectedBlock)}
-            />
+            <p className="panel-label">사이트 설정</p>
+            <label className="field">
+              <span>사이트 제목</span>
+              <input value={siteTitle} onChange={(event) => patchSite('title', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>사이트 소개</span>
+              <textarea value={siteDescription} onChange={(event) => patchSite('description', event.target.value)} />
+            </label>
           </section>
-        ) : null}
 
-        {(createPageMutation.isError ||
-          updatePageMutation.isError ||
-          createProjectMutation.isError ||
-          updateProjectMutation.isError ||
-          createBlockMutation.isError ||
-          updateBlockMutation.isError) && <p className="form-error">요청을 저장하지 못했습니다. 입력값을 확인해주세요.</p>}
-      </aside>
-    </main>
+          {selectedPage && pageDraft ? (
+            <PageSettingsPanel
+              page={previewPage ?? selectedPage}
+              draft={pageDraft}
+              isSaving={updatePageMutation.isPending}
+              onPatch={patchPage}
+              onSave={handleSavePage}
+              onDelete={() => deletePageMutation.mutate(selectedPage.id)}
+            />
+          ) : null}
+
+          {selectedProject && projectDraft ? (
+            <ProjectSettingsPanel
+              project={previewProject ?? selectedProject}
+              draft={projectDraft}
+              isSaving={updateProjectMutation.isPending}
+              onPatch={patchProject}
+              onSave={handleSaveProject}
+              onDelete={() => deleteProjectMutation.mutate(selectedProject.id)}
+            />
+          ) : null}
+
+          <section className="inspector-section">
+            <div className="block-editor-card-header">
+              <div>
+                <p className="panel-label">블록 목록</p>
+                <h3>{draftBlocks.length}개 객체</h3>
+              </div>
+              <button className="button button-ghost" type="button" onClick={() => setAddBlockOpen(true)}>
+                추가
+              </button>
+            </div>
+            {pageQuery.isLoading || projectQuery.isLoading ? <p className="muted">블록을 불러오는 중입니다...</p> : null}
+            <div className="builder-block-picker">
+              {draftBlocks.map((block) => (
+                <button
+                  key={block.id}
+                  type="button"
+                  className={selectedBlock?.id === block.id ? 'active' : ''}
+                  onClick={() => setSelectedBlockId(block.id)}
+                >
+                  <span>{blockLabel(block.blockType)}</span>
+                  <small>{block.visible ? '공개' : '비공개'} · z {block.layout?.[deviceMode]?.zIndex ?? block.sortOrder + 1}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <RightInspectorPanel
+            block={selectedBlock}
+            device={deviceMode}
+            isSaving={saveBlocksMutation.isPending}
+            onChange={replaceBlockDraft}
+            onSave={handleSaveBlocks}
+            onDelete={(block) => deleteBlockMutation.mutate(block)}
+          />
+
+          {(createPageMutation.isError ||
+            updatePageMutation.isError ||
+            createProjectMutation.isError ||
+            updateProjectMutation.isError ||
+            createBlockMutation.isError ||
+            saveBlocksMutation.isError) && <p className="form-error">요청을 저장하지 못했습니다. 입력값을 확인해주세요.</p>}
+        </aside>
+      </main>
+      <AddBlockModal
+        open={addBlockOpen}
+        isAdding={createBlockMutation.isPending}
+        onClose={() => setAddBlockOpen(false)}
+        onAdd={(type) => createBlockMutation.mutate({ type })}
+      />
+    </>
   );
 }
 
@@ -664,89 +720,6 @@ function projectFromDraft(project: BuilderProject, draft: BuilderProjectPayload)
     seoTitle: draft.seoTitle,
     seoDescription: draft.seoDescription
   };
-}
-
-function ProjectPreviewHero({
-  project,
-  onPatch
-}: {
-  project: BuilderProject;
-  onPatch: <K extends keyof BuilderProjectPayload>(field: K, value: BuilderProjectPayload[K]) => void;
-}) {
-  const metaItems = [
-    project.period,
-    project.role,
-    project.contribution,
-    project.category
-  ].filter(Boolean);
-
-  return (
-    <header className="builder-project-hero canvas-editable-object selected">
-      <span className="canvas-object-label">PROJECT HERO</span>
-      <div className="builder-project-hero-grid">
-        <div className="canvas-object-fields canvas-hero-fields">
-          <input
-            className="canvas-kicker-input"
-            value={project.category ?? ''}
-            onChange={(event) => onPatch('category', event.target.value)}
-            placeholder="카테고리"
-          />
-          <textarea
-            className="canvas-title-input"
-            value={project.title}
-            onChange={(event) => onPatch('title', event.target.value)}
-            placeholder="프로젝트 제목"
-          />
-          <input
-            className="canvas-subtitle-input"
-            value={project.subtitle ?? ''}
-            onChange={(event) => onPatch('subtitle', event.target.value)}
-            placeholder="짧은 부제목"
-          />
-          <textarea
-            className="canvas-summary-input"
-            value={project.summary ?? ''}
-            onChange={(event) => onPatch('summary', event.target.value)}
-            placeholder="짧은 설명"
-          />
-          {metaItems.length ? (
-            <div className="builder-project-meta">
-              {metaItems.map((item) => (item ? <span key={item}>{item}</span> : null))}
-            </div>
-          ) : null}
-          <div className="compact-field-grid">
-            <input value={project.period ?? ''} onChange={(event) => onPatch('period', event.target.value)} placeholder="기간" />
-            <input value={project.role ?? ''} onChange={(event) => onPatch('role', event.target.value)} placeholder="역할" />
-            <input value={project.contribution ?? ''} onChange={(event) => onPatch('contribution', event.target.value)} placeholder="기여도" />
-            <input value={project.techStacks.join(', ')} onChange={(event) => onPatch('techStacks', csvToArray(event.target.value))} placeholder="기술 스택" />
-          </div>
-          <div className="compact-field-grid">
-            <input value={project.githubUrl ?? ''} onChange={(event) => onPatch('githubUrl', event.target.value)} placeholder="GitHub 링크" />
-            <input value={project.liveUrl ?? ''} onChange={(event) => onPatch('liveUrl', event.target.value)} placeholder="배포 링크" />
-          </div>
-          <div className="builder-tech-stack">
-            {project.techStacks.map((tech) => (
-              <span key={tech}>{tech}</span>
-            ))}
-          </div>
-        </div>
-        <figure className="builder-project-cover canvas-object-fields">
-          {project.thumbnailUrl ? (
-            <img src={assetUrl(project.thumbnailUrl)} alt={project.title} />
-          ) : (
-            <div className="image-placeholder">썸네일 이미지 URL을 입력하세요</div>
-          )}
-          <input value={project.thumbnailUrl ?? ''} onChange={(event) => onPatch('thumbnailUrl', event.target.value)} placeholder="썸네일 이미지 URL" />
-        </figure>
-      </div>
-      <textarea
-        className="canvas-inline-input canvas-text-input builder-project-description"
-        value={project.description ?? ''}
-        onChange={(event) => onPatch('description', event.target.value)}
-        placeholder="케이스 스터디 본문을 입력하세요"
-      />
-    </header>
-  );
 }
 
 function PageSettingsPanel({
@@ -921,6 +894,91 @@ function ProjectSettingsPanel({
       </button>
     </section>
   );
+}
+
+function blockToPayload(block: SiteBlock): BlockPayload {
+  return {
+    id: block.id,
+    blockType: block.blockType,
+    sectionId: block.sectionId ?? null,
+    content: block.content ?? {},
+    settings: block.settings ?? {},
+    styles: block.styles ?? {},
+    layout: block.layout ?? {},
+    visible: block.visible,
+    sortOrder: block.sortOrder
+  };
+}
+
+function createBlockPayload(type: BlockType, index: number, source?: SiteBlock): BlockPayload {
+  const payload: BlockPayload = source
+    ? {
+        blockType: source.blockType,
+        sectionId: source.sectionId,
+        content: cloneRecord(source.content),
+        settings: { ...defaultBlockSettings, ...(source.settings ?? {}) },
+        styles: { ...defaultBlockStyles(source.blockType), ...(source.styles ?? {}) },
+        layout: offsetLayout(source.layout ?? defaultBlockLayout(source.blockType, index), index),
+        visible: source.visible,
+        sortOrder: index
+      }
+    : {
+        blockType: type,
+        content: defaultBlockContent(type),
+        settings: defaultBlockSettings,
+        styles: defaultBlockStyles(type),
+        layout: defaultBlockLayout(type, index),
+        visible: true,
+        sortOrder: index
+      };
+  return payload;
+}
+
+function withRenderableDefaults(block: SiteBlock): SiteBlock {
+  return {
+    ...block,
+    settings: { ...defaultBlockSettings, ...(block.settings ?? {}) },
+    styles: { ...defaultBlockStyles(block.blockType), ...(block.styles ?? {}) },
+    layout: normalizeLayout(block.blockType, block.sortOrder, block.layout)
+  };
+}
+
+function normalizeLayout(type: BlockType, index: number, layout?: BlockLayout): BlockLayout {
+  const fallback = defaultBlockLayout(type, index);
+  return {
+    desktop: { ...fallback.desktop!, ...(layout?.desktop ?? {}) },
+    tablet: { ...fallback.tablet!, ...(layout?.tablet ?? {}) },
+    mobile: { ...fallback.mobile!, ...(layout?.mobile ?? {}) }
+  };
+}
+
+function updateFrame(block: SiteBlock, device: DeviceMode, updater: (frame: NonNullable<BlockLayout[DeviceMode]>) => NonNullable<BlockLayout[DeviceMode]>): SiteBlock {
+  const layout = normalizeLayout(block.blockType, block.sortOrder, block.layout);
+  return {
+    ...block,
+    layout: {
+      ...layout,
+      [device]: updater(layout[device]!)
+    }
+  };
+}
+
+function offsetLayout(layout: BlockLayout, index: number): BlockLayout {
+  const fallback = defaultBlockLayout('TEXT', index);
+  return devices.reduce<BlockLayout>((next, device) => {
+    const frame = layout[device] ?? fallback[device]!;
+    next[device] = {
+      ...frame,
+      x: frame.x + 32,
+      y: frame.y + 32,
+      zIndex: index + 1
+    };
+    return next;
+  }, {});
+}
+
+function cloneRecord(value: Record<string, unknown> | undefined) {
+  return JSON.parse(JSON.stringify(value ?? {})) as Record<string, unknown>;
 }
 
 function csvToArray(value: string) {

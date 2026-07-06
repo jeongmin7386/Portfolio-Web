@@ -2,15 +2,24 @@ export type PageType = 'HOME' | 'PROJECTS' | 'PROJECT_DETAIL' | 'ABOUT' | 'CONTA
 
 export type BlockType =
   | 'HEADING'
+  | 'SUBHEADING'
   | 'TEXT'
   | 'IMAGE'
   | 'PHOTO_GRID'
   | 'GALLERY'
+  | 'SLIDER'
   | 'VIDEO_EMBED'
+  | 'WIDE_EMBED'
+  | 'YOUTUBE_EMBED'
+  | 'FIGMA_EMBED'
   | 'DIVIDER'
   | 'QUOTE'
   | 'CALLOUT'
+  | 'LIST'
+  | 'CHECKLIST'
   | 'CODE'
+  | 'TABLE'
+  | 'SPACER'
   | 'LINK_CARD'
   | 'BUTTON'
   | 'TECH_STACK'
@@ -18,9 +27,48 @@ export type BlockType =
   | 'PROJECT_INFO'
   | 'GITHUB_LINK'
   | 'LIVE_LINK'
+  | 'GITHUB_CARD'
+  | 'RENDER_LINK_CARD'
+  | 'NOTION_LINK_CARD'
   | 'PROJECT_CARD'
   | 'TABS'
-  | 'TWO_COLUMN';
+  | 'ACCORDION'
+  | 'TWO_COLUMN'
+  | 'BEFORE_AFTER'
+  | 'TIMELINE'
+  | 'CTA'
+  | 'CONTACT_FORM'
+  | 'SOCIAL_ICONS'
+  | 'FAQ'
+  | 'STAT_CARD'
+  | 'SKILL_BAR';
+
+export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
+
+export type BlockLayoutFrame = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+};
+
+export type BlockLayout = Partial<Record<DeviceMode, BlockLayoutFrame>>;
+
+export type BlockStyles = {
+  fontSize?: number;
+  fontWeight?: number;
+  color?: string;
+  backgroundColor?: string;
+  borderRadius?: number;
+  padding?: number;
+  margin?: number;
+  opacity?: number;
+  textAlign?: 'left' | 'center' | 'right';
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: string;
+};
 
 export type BuilderProjectVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
 
@@ -58,8 +106,11 @@ export type SiteBlock = {
   pageId?: number | null;
   projectId?: number | null;
   blockType: BlockType;
+  sectionId?: string | null;
   content: Record<string, unknown>;
   settings?: Record<string, unknown>;
+  styles?: BlockStyles;
+  layout?: BlockLayout;
   sortOrder: number;
   visible: boolean;
 };
@@ -120,9 +171,13 @@ export type PagePayload = {
 };
 
 export type BlockPayload = {
+  id?: number;
   blockType: BlockType;
+  sectionId?: string | null;
   content?: Record<string, unknown>;
   settings?: Record<string, unknown>;
+  styles?: BlockStyles;
+  layout?: BlockLayout;
   visible?: boolean;
   sortOrder?: number;
 };
