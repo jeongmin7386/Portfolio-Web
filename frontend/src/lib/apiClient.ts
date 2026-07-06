@@ -50,3 +50,15 @@ export function assetUrl(path?: string) {
   }
   return `${FILE_BASE_URL}${path}`;
 }
+
+export function getApiErrorMessage(error: unknown, fallback: string) {
+  if (!axios.isAxiosError(error)) {
+    return fallback;
+  }
+
+  const data = error.response?.data as { message?: string; details?: string[] } | undefined;
+  if (data?.details?.length) {
+    return data.details.join(', ');
+  }
+  return data?.message || fallback;
+}

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { login } from '../../features/auth/authApi';
+import { getApiErrorMessage } from '../../lib/apiClient';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export function LoginPage() {
         <form onSubmit={handleSubmit} className="stack">
           <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           <Input label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          {mutation.isError && <p className="form-error">Check your login information.</p>}
+          {mutation.isError && <p className="form-error">{getApiErrorMessage(mutation.error, 'Check your login information.')}</p>}
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? 'Logging in...' : 'Log in'}
           </Button>

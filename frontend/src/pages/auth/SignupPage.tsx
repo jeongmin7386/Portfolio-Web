@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { signup } from '../../features/auth/authApi';
+import { getApiErrorMessage } from '../../lib/apiClient';
 
 function slugify(value: string) {
   return value
@@ -51,7 +52,11 @@ export function SignupPage() {
             placeholder={suggestedSlug || 'my-portfolio'}
             required={!suggestedSlug}
           />
-          {mutation.isError && <p className="form-error">Could not create the account. Check the email or public URL.</p>}
+          {mutation.isError && (
+            <p className="form-error">
+              {getApiErrorMessage(mutation.error, 'Could not create the account. Check the email or public URL.')}
+            </p>
+          )}
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? 'Creating...' : 'Start building'}
           </Button>
