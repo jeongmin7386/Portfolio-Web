@@ -47,6 +47,9 @@ public class Project extends BaseTimeEntity {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Column(name = "case_study", columnDefinition = "text")
+    private String caseStudy;
+
     @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
@@ -77,12 +80,13 @@ public class Project extends BaseTimeEntity {
         this.slug = slug;
     }
 
-    public void update(Category category, String title, String slug, String description, String[] techStacks, String githubUrl,
-                       String liveUrl, ProjectVisibility visibility, int sortOrder) {
+    public void update(Category category, String title, String slug, String description, String caseStudy, String[] techStacks,
+                       String githubUrl, String liveUrl, ProjectVisibility visibility, int sortOrder) {
         this.category = category;
         this.title = title;
         this.slug = slug;
         this.description = description;
+        this.caseStudy = caseStudy;
         this.techStacks = techStacks == null ? new String[0] : techStacks;
         this.githubUrl = githubUrl;
         this.liveUrl = liveUrl;
@@ -120,6 +124,10 @@ public class Project extends BaseTimeEntity {
 
     public String getDescription() {
         return description;
+    }
+
+    public String getCaseStudy() {
+        return caseStudy;
     }
 
     public String getThumbnailUrl() {

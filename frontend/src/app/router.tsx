@@ -7,13 +7,14 @@ import { ProjectListPage } from '../pages/dashboard/ProjectListPage';
 import { ProjectEditorPage } from '../pages/dashboard/ProjectEditorPage';
 import { CategoryPage } from '../pages/dashboard/CategoryPage';
 import { SettingsPage } from '../pages/dashboard/SettingsPage';
+import { LandingPage } from '../pages/landing/LandingPage';
 import { PortfolioPage } from '../pages/public/PortfolioPage';
 import { ProjectDetailPage } from '../pages/public/ProjectDetailPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/dashboard/projects" replace />
+    element: <LandingPage />
   },
   {
     path: '/login',

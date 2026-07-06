@@ -8,6 +8,7 @@ import java.util.List;
 public record ProjectRequest(
     @NotBlank @Size(max = 200) String title,
     String description,
+    String caseStudy,
     Long categoryId,
     List<@Size(max = 40) String> techStacks,
     @Size(max = 500) String githubUrl,

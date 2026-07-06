@@ -31,40 +31,42 @@ export function CategoryPage() {
   }
 
   return (
-    <section className="page-section narrow-section">
-      <div className="page-heading">
+    <section className="settings-page">
+      <div className="section-heading">
         <div>
-          <p className="eyebrow">Dashboard</p>
-          <h1>Categories</h1>
+          <p className="eyebrow">Project filters</p>
+          <h1>Organize the gallery navigation.</h1>
         </div>
       </div>
 
-      <form className="inline-form" onSubmit={handleSubmit}>
-        <Input label="새 카테고리" value={name} onChange={(event) => setName(event.target.value)} required />
-        <Button type="submit" disabled={createMutation.isPending}>
-          추가
-        </Button>
-      </form>
+      <section className="dashboard-band narrow-band">
+        <form className="inline-form" onSubmit={handleSubmit}>
+          <Input label="New category" value={name} onChange={(event) => setName(event.target.value)} required />
+          <Button type="submit" disabled={createMutation.isPending}>
+            Add
+          </Button>
+        </form>
 
-      <div className="list-panel">
-        {categoriesQuery.data?.map((category) => (
-          <div key={category.id} className="editable-row">
-            <input
-              defaultValue={category.name}
-              onBlur={(event) => {
-                const nextName = event.target.value.trim();
-                if (nextName && nextName !== category.name) {
-                  updateMutation.mutate({ id: category.id, nextName, sortOrder: category.sortOrder });
-                }
-              }}
-            />
-            <span>{category.slug}</span>
-            <Button variant="ghost" onClick={() => deleteMutation.mutate(category.id)}>
-              삭제
-            </Button>
-          </div>
-        ))}
-      </div>
+        <div className="list-panel">
+          {categoriesQuery.data?.map((category) => (
+            <div key={category.id} className="editable-row">
+              <input
+                defaultValue={category.name}
+                onBlur={(event) => {
+                  const nextName = event.target.value.trim();
+                  if (nextName && nextName !== category.name) {
+                    updateMutation.mutate({ id: category.id, nextName, sortOrder: category.sortOrder });
+                  }
+                }}
+              />
+              <span>/{category.slug}</span>
+              <Button variant="ghost" onClick={() => deleteMutation.mutate(category.id)}>
+                Delete
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }

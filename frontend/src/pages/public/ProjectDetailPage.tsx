@@ -12,11 +12,11 @@ export function ProjectDetailPage() {
   });
 
   if (projectQuery.isLoading) {
-    return <div className="center-screen">프로젝트를 불러오는 중입니다.</div>;
+    return <div className="center-screen">Loading project...</div>;
   }
 
   if (!projectQuery.data || !portfolioSlug) {
-    return <div className="center-screen">프로젝트를 찾을 수 없습니다.</div>;
+    return <div className="center-screen">Project not found.</div>;
   }
 
   const project = projectQuery.data;
@@ -24,7 +24,7 @@ export function ProjectDetailPage() {
   return (
     <main className="project-detail-page">
       <Link className="back-link" to={`/${portfolioSlug}`}>
-        ← Portfolio
+        Back to portfolio
       </Link>
       <article className="project-detail">
         <div className="detail-hero">
@@ -49,12 +49,20 @@ export function ProjectDetailPage() {
             )}
             {project.liveUrl && (
               <a className="button button-primary" href={project.liveUrl} target="_blank" rel="noreferrer">
-                Live
+                Live site
               </a>
             )}
           </div>
         </div>
       </article>
+
+      {project.caseStudy && (
+        <section className="case-study-section">
+          <p className="eyebrow">Case Study</p>
+          <h2>Process, decisions, and outcome</h2>
+          <p>{project.caseStudy}</p>
+        </section>
+      )}
     </main>
   );
 }

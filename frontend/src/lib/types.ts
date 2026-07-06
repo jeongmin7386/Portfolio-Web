@@ -33,6 +33,7 @@ export type Project = {
   title: string;
   slug: string;
   description?: string;
+  caseStudy?: string;
   thumbnailUrl?: string;
   techStacks: string[];
   githubUrl?: string;
@@ -51,6 +52,7 @@ export type Project = {
 export type ProjectPayload = {
   title: string;
   description?: string;
+  caseStudy?: string;
   categoryId?: number | null;
   techStacks: string[];
   githubUrl?: string;
@@ -73,6 +75,7 @@ export type PublicPortfolio = {
     title: string;
     slug: string;
     description?: string;
+    caseStudy?: string;
     thumbnailUrl?: string;
     techStacks: string[];
     githubUrl?: string;

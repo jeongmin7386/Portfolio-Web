@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { getPublicPortfolio } from '../../features/projects/publicApi';
 import { assetUrl } from '../../lib/apiClient';
+import { findPortfolioTemplate } from '../../templates/portfolioTemplates';
 
 export function PortfolioPage() {
   const { portfolioSlug } = useParams();
@@ -16,27 +17,45 @@ export function PortfolioPage() {
   const projects = useMemo(() => portfolioQuery.data?.projects ?? [], [portfolioQuery.data]);
 
   if (portfolioQuery.isLoading) {
-    return <div className="center-screen">포트폴리오를 불러오는 중입니다.</div>;
+    return <div className="center-screen">Loading portfolio...</div>;
   }
 
   if (!portfolioQuery.data) {
-    return <div className="center-screen">공개 포트폴리오를 찾을 수 없습니다.</div>;
+    return <div className="center-screen">Portfolio not found.</div>;
   }
 
   const { profile, categories } = portfolioQuery.data;
+  const template = findPortfolioTemplate(profile.theme);
+  const heroProject = projects[0];
 
   return (
     <main className="public-page">
       <header className="public-header">
-        <div>
-          <p className="eyebrow">Portfolio</p>
+        <div className="public-header-copy">
+          <p className="eyebrow" style={{ color: template.accent }}>
+            {template.name}
+          </p>
           <h1>{profile.displayName}</h1>
           {profile.bio && <p>{profile.bio}</p>}
+          <div className="public-header-actions">
+            <a className="button button-primary" href="#work">
+              View work
+            </a>
+            <a className="button button-secondary" href="mailto:hello@example.com">
+              Contact
+            </a>
+          </div>
         </div>
-        {profile.profileImageUrl && <img src={assetUrl(profile.profileImageUrl)} alt="" />}
+        <div className="public-hero-media">
+          {heroProject?.thumbnailUrl ? (
+            <img src={assetUrl(heroProject.thumbnailUrl)} alt="" />
+          ) : (
+            <img src={profile.profileImageUrl ? assetUrl(profile.profileImageUrl) : template.imageUrl} alt="" />
+          )}
+        </div>
       </header>
 
-      <div className="filter-bar" aria-label="카테고리 필터">
+      <div className="filter-bar" aria-label="Project category filter">
         <button className={!activeCategory ? 'active' : ''} onClick={() => setActiveCategory(null)}>
           All
         </button>
@@ -51,9 +70,9 @@ export function PortfolioPage() {
         ))}
       </div>
 
-      <section className="public-grid">
-        {projects.map((project) => (
-          <Link key={project.id} to={`/${profile.slug}/projects/${project.slug}`} className="public-card">
+      <section id="work" className="public-grid">
+        {projects.map((project, index) => (
+          <Link key={project.id} to={`/${profile.slug}/projects/${project.slug}`} className={index === 0 ? 'public-card featured' : 'public-card'}>
             <div className="public-thumb">
               {project.thumbnailUrl ? <img src={assetUrl(project.thumbnailUrl)} alt="" /> : <span>{project.title}</span>}
             </div>

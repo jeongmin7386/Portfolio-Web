@@ -1,9 +1,9 @@
 import { FormEvent, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { login } from '../../features/auth/authApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { login } from '../../features/auth/authApi';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -22,18 +22,18 @@ export function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel">
-        <p className="eyebrow">Portfolio Publisher</p>
-        <h1>다시 작업을 이어가세요</h1>
+        <p className="eyebrow">Canvasfolio Studio</p>
+        <h1>Open your portfolio builder.</h1>
         <form onSubmit={handleSubmit} className="stack">
-          <Input label="이메일" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          <Input label="비밀번호" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          {mutation.isError && <p className="form-error">로그인 정보를 확인해주세요.</p>}
+          <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <Input label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          {mutation.isError && <p className="form-error">Check your login information.</p>}
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? '로그인 중' : '로그인'}
+            {mutation.isPending ? 'Logging in...' : 'Log in'}
           </Button>
         </form>
         <p className="muted">
-          계정이 없다면 <Link to="/signup">회원가입</Link>
+          No account yet? <Link to="/signup">Create one</Link>
         </p>
       </section>
     </main>

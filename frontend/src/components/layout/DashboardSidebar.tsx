@@ -13,16 +13,16 @@ export function DashboardSidebar() {
   return (
     <aside className="dashboard-sidebar">
       <div>
-        <p className="eyebrow">Publisher</p>
-        <h2>Portfolio</h2>
+        <p className="eyebrow">Builder</p>
+        <h2>Canvasfolio</h2>
       </div>
       <nav>
-        <NavLink to="/dashboard/projects">Projects</NavLink>
+        <NavLink to="/dashboard/projects">Portfolio Studio</NavLink>
         <NavLink to="/dashboard/categories">Categories</NavLink>
-        <NavLink to="/dashboard/settings">Settings</NavLink>
+        <NavLink to="/dashboard/settings">Templates & Theme</NavLink>
       </nav>
       <Button variant="ghost" onClick={handleLogout}>
-        로그아웃
+        Log out
       </Button>
     </aside>
   );
