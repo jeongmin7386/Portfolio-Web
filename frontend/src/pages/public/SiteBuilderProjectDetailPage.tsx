@@ -52,7 +52,7 @@ export function SiteBuilderProjectDetailPage() {
 
         <div className="project-public-hero-grid">
           <div>
-            <p className="eyebrow">프로젝트 상세</p>
+            {project.category ? <p className="eyebrow">{project.category}</p> : null}
             <h1>{project.title}</h1>
             {project.subtitle ? <h2>{project.subtitle}</h2> : null}
             {project.summary ? <p>{project.summary}</p> : null}
@@ -66,6 +66,10 @@ export function SiteBuilderProjectDetailPage() {
                 <dd>{project.role || '-'}</dd>
               </div>
               <div>
+                <dt>카테고리</dt>
+                <dd>{project.category || '-'}</dd>
+              </div>
+              <div>
                 <dt>기여도</dt>
                 <dd>{project.contribution || '-'}</dd>
               </div>
@@ -77,7 +81,7 @@ export function SiteBuilderProjectDetailPage() {
             ) : (
               <div>
                 <strong>{project.title}</strong>
-                <span>{project.techStacks.join(' · ') || 'Project detail'}</span>
+                <span>{project.techStacks.join(' · ')}</span>
               </div>
             )}
           </div>
@@ -85,10 +89,7 @@ export function SiteBuilderProjectDetailPage() {
       </header>
 
       <section className="site-public-section project-public-block-section">
-        <div className="site-public-section-heading">
-          <p className="eyebrow">Case Study</p>
-          <h2>과정과 결과</h2>
-        </div>
+        {project.description ? <p className="builder-project-description">{project.description}</p> : null}
         <div className="site-public-blocks">
           {blocks
             .filter((block) => block.visible)

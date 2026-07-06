@@ -387,6 +387,7 @@ public class SiteBuilderService {
             clean(request.period()),
             clean(request.role()),
             clean(request.contribution()),
+            clean(request.category()),
             clean(request.thumbnailUrl()),
             cleanTechStacks(request.techStacks()),
             clean(request.githubUrl()),
@@ -421,6 +422,7 @@ public class SiteBuilderService {
                 "2026.06 - 2026.07",
                 "Full-stack Developer",
                 "100%",
+                "Web Platform",
                 "",
                 new String[] {"React", "Spring Boot", "PostgreSQL"},
                 "https://github.com/jeongmin7386/Portfolio-Web",
@@ -474,6 +476,7 @@ public class SiteBuilderService {
             "2026.06 - 2026.07",
             "Full-stack Developer",
             "100%",
+            "Web Platform",
             "",
             new String[] {"React", "Spring Boot", "PostgreSQL"},
             "https://github.com/jeongmin7386/Portfolio-Web",
@@ -526,6 +529,7 @@ public class SiteBuilderService {
             "period", project.getPeriod(),
             "role", project.getRole(),
             "contribution", project.getContribution(),
+            "category", project.getCategory(),
             "techStacks", Arrays.asList(project.getTechStacks())
         ), 2));
         blockRepository.save(new Block(project, BlockType.CALLOUT, mapOf(
@@ -569,7 +573,7 @@ public class SiteBuilderService {
             case CALLOUT -> mapOf("icon", "idea", "title", "핵심 포인트", "text", "강조하고 싶은 내용을 입력하세요.");
             case BUTTON -> mapOf("label", "버튼", "url", "#", "target", "_blank");
             case PROJECT_CARD -> mapOf("title", "새 프로젝트", "description", "프로젝트 설명을 입력하세요.", "imageUrl", "", "href", "#");
-            case PROJECT_INFO -> mapOf("period", "2026.06 - 2026.07", "role", "역할", "contribution", "100%", "techStacks", List.of("React"));
+            case PROJECT_INFO -> mapOf("period", "2026.06 - 2026.07", "role", "역할", "contribution", "100%", "category", "Portfolio", "techStacks", List.of("React"));
             case TABS -> mapOf(
                 "tabs",
                 List.of(

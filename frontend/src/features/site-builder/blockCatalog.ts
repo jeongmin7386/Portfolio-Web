@@ -36,9 +36,9 @@ export function defaultBlockContent(type: BlockType): Record<string, unknown> {
     case 'BUTTON':
       return { label: '버튼', url: '#', target: '_blank' };
     case 'PROJECT_CARD':
-      return { title: '새 프로젝트', description: '프로젝트 설명을 입력하세요.', imageUrl: '', href: '#' };
+      return { title: '새 프로젝트', category: 'Portfolio', description: '프로젝트 설명을 입력하세요.', imageUrl: '', href: '#' };
     case 'PROJECT_INFO':
-      return { period: '2026.06 - 2026.07', role: '역할', contribution: '100%', techStacks: ['React'] };
+      return { period: '2026.06 - 2026.07', role: '역할', contribution: '100%', category: 'Portfolio', techStacks: ['React'] };
     case 'TABS':
       return {
         tabs: [

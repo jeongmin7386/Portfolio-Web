@@ -75,6 +75,7 @@ export type BuilderProject = {
   period?: string;
   role?: string;
   contribution?: string;
+  category?: string;
   thumbnailUrl?: string;
   techStacks: string[];
   githubUrl?: string;
@@ -135,6 +136,7 @@ export type BuilderProjectPayload = {
   period?: string;
   role?: string;
   contribution?: string;
+  category?: string;
   thumbnailUrl?: string;
   techStacks?: string[];
   githubUrl?: string;

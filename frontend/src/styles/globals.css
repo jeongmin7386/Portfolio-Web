@@ -277,7 +277,13 @@ img {
   gap: 10px;
 }
 
+.builder-block-picker {
+  display: grid;
+  gap: 8px;
+}
+
 .builder-page-list button,
+.builder-block-picker button,
 .block-palette button {
   width: 100%;
   border: 1px solid #ded6ca;
@@ -287,18 +293,21 @@ img {
   text-align: left;
 }
 
-.builder-page-list button {
+.builder-page-list button,
+.builder-block-picker button {
   display: grid;
   gap: 4px;
   padding: 14px;
 }
 
-.builder-page-list button.active {
+.builder-page-list button.active,
+.builder-block-picker button.active {
   border-color: #111111;
   box-shadow: inset 3px 0 0 #111111;
 }
 
 .builder-page-list small,
+.builder-block-picker small,
 .block-palette span,
 .site-project-card-body span {
   color: #706960;
@@ -362,6 +371,10 @@ img {
   display: grid;
   gap: 26px;
   padding: clamp(24px, 5vw, 64px);
+}
+
+.site-block-shell {
+  border-radius: 8px;
 }
 
 .builder-empty-preview {
@@ -797,6 +810,13 @@ img {
   border-bottom: 1px solid #ebe3d7;
 }
 
+.builder-project-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: clamp(20px, 4vw, 48px);
+  align-items: start;
+}
+
 .builder-project-hero h1 {
   margin: 0;
   font-size: clamp(42px, 6vw, 76px);
@@ -815,6 +835,39 @@ img {
   color: #504a43;
   font-size: 18px;
   line-height: 1.7;
+}
+
+.builder-project-cover {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #ebe3d7;
+}
+
+.builder-project-cover img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.builder-tech-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.builder-tech-stack span {
+  padding: 7px 10px;
+  border: 1px solid #ded6ca;
+  border-radius: 999px;
+  background: #fffaf2;
+  color: #3e3831;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.builder-project-description {
+  white-space: pre-line;
 }
 
 .builder-project-meta,
@@ -982,6 +1035,7 @@ img {
   .site-tabs-block,
   .site-two-column,
   .site-public-project-grid,
+  .builder-project-hero-grid,
   .project-public-hero-grid {
     grid-template-columns: 1fr;
   }

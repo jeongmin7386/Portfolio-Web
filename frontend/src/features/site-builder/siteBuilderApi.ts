@@ -13,6 +13,14 @@ import type {
   SiteResponse
 } from './types';
 
+function logRequest(label: string, payload: unknown) {
+  console.log(`[builder:request] ${label}`, payload);
+}
+
+function logResponse(label: string, payload: unknown) {
+  console.log(`[builder:response] ${label}`, payload);
+}
+
 export async function getBuilderState() {
   const { data } = await apiClient.get<BuilderState>('/builder');
   return data;
@@ -26,17 +34,23 @@ export async function updateSite(payload: {
   published?: boolean;
   themeId?: number;
 }) {
+  logRequest('updateSite', payload);
   const { data } = await apiClient.patch<SiteResponse>('/builder/site', payload);
+  logResponse('updateSite', data);
   return data;
 }
 
 export async function createPage(payload: PagePayload) {
+  logRequest('createPage', payload);
   const { data } = await apiClient.post<SitePage>('/builder/pages', payload);
+  logResponse('createPage', data);
   return data;
 }
 
 export async function updatePage(pageId: number, payload: PagePayload) {
+  logRequest('updatePage', { pageId, payload });
   const { data } = await apiClient.patch<SitePage>(`/builder/pages/${pageId}`, payload);
+  logResponse('updatePage', data);
   return data;
 }
 
@@ -50,12 +64,16 @@ export async function listBuilderProjects() {
 }
 
 export async function createBuilderProject(payload: BuilderProjectPayload) {
+  logRequest('createBuilderProject', payload);
   const { data } = await apiClient.post<BuilderProject>('/builder/projects', payload);
+  logResponse('createBuilderProject', data);
   return data;
 }
 
 export async function updateBuilderProject(projectId: number, payload: BuilderProjectPayload) {
+  logRequest('updateBuilderProject', { projectId, payload });
   const { data } = await apiClient.patch<BuilderProject>(`/builder/projects/${projectId}`, payload);
+  logResponse('updateBuilderProject', data);
   return data;
 }
 
@@ -69,12 +87,16 @@ export async function getPageWithBlocks(pageId: number) {
 }
 
 export async function createBlock(pageId: number, payload: BlockPayload) {
+  logRequest('createBlock', { pageId, payload });
   const { data } = await apiClient.post<SiteBlock>(`/builder/pages/${pageId}/blocks`, payload);
+  logResponse('createBlock', data);
   return data;
 }
 
 export async function updateBlock(pageId: number, blockId: number, payload: BlockPayload) {
+  logRequest('updateBlock', { pageId, blockId, payload });
   const { data } = await apiClient.patch<SiteBlock>(`/builder/pages/${pageId}/blocks/${blockId}`, payload);
+  logResponse('updateBlock', data);
   return data;
 }
 
@@ -88,12 +110,16 @@ export async function getProjectWithBlocks(projectId: number) {
 }
 
 export async function createProjectBlock(projectId: number, payload: BlockPayload) {
+  logRequest('createProjectBlock', { projectId, payload });
   const { data } = await apiClient.post<SiteBlock>(`/builder/projects/${projectId}/blocks`, payload);
+  logResponse('createProjectBlock', data);
   return data;
 }
 
 export async function updateProjectBlock(projectId: number, blockId: number, payload: BlockPayload) {
+  logRequest('updateProjectBlock', { projectId, blockId, payload });
   const { data } = await apiClient.patch<SiteBlock>(`/builder/projects/${projectId}/blocks/${blockId}`, payload);
+  logResponse('updateProjectBlock', data);
   return data;
 }
 

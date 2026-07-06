@@ -57,6 +57,9 @@ public class BuilderProject extends BaseTimeEntity {
     @Column(length = 120)
     private String contribution;
 
+    @Column(length = 120)
+    private String category;
+
     @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
@@ -102,6 +105,7 @@ public class BuilderProject extends BaseTimeEntity {
         String period,
         String role,
         String contribution,
+        String category,
         String thumbnailUrl,
         String[] techStacks,
         String githubUrl,
@@ -119,6 +123,7 @@ public class BuilderProject extends BaseTimeEntity {
         this.period = period;
         this.role = role;
         this.contribution = contribution;
+        this.category = category;
         this.thumbnailUrl = thumbnailUrl;
         this.techStacks = techStacks == null ? new String[0] : Arrays.copyOf(techStacks, techStacks.length);
         this.githubUrl = githubUrl;
@@ -171,6 +176,10 @@ public class BuilderProject extends BaseTimeEntity {
 
     public String getContribution() {
         return contribution;
+    }
+
+    public String getCategory() {
+        return category;
     }
 
     public String getThumbnailUrl() {

@@ -14,6 +14,7 @@ public record BuilderProjectRequest(
     String period,
     String role,
     String contribution,
+    String category,
     String thumbnailUrl,
     List<String> techStacks,
     String githubUrl,

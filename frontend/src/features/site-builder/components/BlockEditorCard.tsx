@@ -5,6 +5,7 @@ import type { SiteBlock } from '../types';
 type BlockEditorCardProps = {
   block: SiteBlock;
   isSaving: boolean;
+  onChange: (content: Record<string, unknown>, settings: Record<string, unknown>, visible: boolean) => void;
   onSave: (content: Record<string, unknown>, settings: Record<string, unknown>, visible: boolean) => void;
   onDelete: () => void;
 };
@@ -13,7 +14,11 @@ function stringValue(value: unknown) {
   return typeof value === 'string' ? value : '';
 }
 
-export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEditorCardProps) {
+function numberValue(value: unknown, fallback = 0) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+export function BlockEditorCard({ block, isSaving, onChange, onSave, onDelete }: BlockEditorCardProps) {
   const [content, setContent] = useState<Record<string, unknown>>(block.content ?? {});
   const [settings, setSettings] = useState<Record<string, unknown>>(block.settings ?? {});
   const [visible, setVisible] = useState(block.visible);
@@ -24,12 +29,47 @@ export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEdit
     setVisible(block.visible);
   }, [block.id, block.content, block.settings, block.visible]);
 
+  function emitChange(nextContent = content, nextSettings = settings, nextVisible = visible) {
+    console.log('[builder:block-change]', {
+      blockId: block.id,
+      blockType: block.blockType,
+      content: nextContent,
+      settings: nextSettings,
+      visible: nextVisible
+    });
+    onChange(nextContent, nextSettings, nextVisible);
+  }
+
   function patch(key: string, value: unknown) {
-    setContent((current) => ({ ...current, [key]: value }));
+    setContent((current) => {
+      const next = { ...current, [key]: value };
+      emitChange(next, settings, visible);
+      return next;
+    });
   }
 
   function patchSettings(key: string, value: string | number) {
-    setSettings((current) => ({ ...current, [key]: value }));
+    setSettings((current) => {
+      const next = { ...current, [key]: value };
+      emitChange(content, next, visible);
+      return next;
+    });
+  }
+
+  function patchVisible(nextVisible: boolean) {
+    setVisible(nextVisible);
+    emitChange(content, settings, nextVisible);
+  }
+
+  function handleSave() {
+    console.log('[builder:block-save-click]', {
+      blockId: block.id,
+      blockType: block.blockType,
+      content,
+      settings,
+      visible
+    });
+    onSave(content, settings, visible);
   }
 
   return (
@@ -37,7 +77,7 @@ export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEdit
       <div className="block-editor-card-header">
         <div>
           <p className="panel-label">{blockLabel(block.blockType)}</p>
-          <h3>블록 설정</h3>
+          <h3>선택한 블록 설정</h3>
         </div>
         <button className="button button-ghost" type="button" onClick={onDelete}>
           삭제
@@ -46,7 +86,7 @@ export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEdit
 
       <div className="block-common-settings">
         <label>
-          <input type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} />
+          <input type="checkbox" checked={visible} onChange={(event) => patchVisible(event.target.checked)} />
           공개
         </label>
         <label className="field">
@@ -66,11 +106,27 @@ export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEdit
             <option value="right">오른쪽</option>
           </select>
         </label>
+        <label className="field">
+          <span>배경색</span>
+          <input placeholder="#ffffff" value={stringValue(settings.backgroundColor)} onChange={(event) => patchSettings('backgroundColor', event.target.value)} />
+        </label>
+        <label className="field">
+          <span>글자 크기</span>
+          <input type="number" min={12} max={96} value={numberValue(settings.fontSize, 0)} onChange={(event) => patchSettings('fontSize', Number(event.target.value))} />
+        </label>
+        <label className="field">
+          <span>위 여백</span>
+          <input type="number" min={0} max={160} value={numberValue(settings.paddingTop, 0)} onChange={(event) => patchSettings('paddingTop', Number(event.target.value))} />
+        </label>
+        <label className="field">
+          <span>아래 여백</span>
+          <input type="number" min={0} max={160} value={numberValue(settings.paddingBottom, 0)} onChange={(event) => patchSettings('paddingBottom', Number(event.target.value))} />
+        </label>
       </div>
 
       <div className="block-fields">{renderFields(block, content, patch)}</div>
 
-      <button className="button button-primary" type="button" disabled={isSaving} onClick={() => onSave(content, settings, visible)}>
+      <button className="button button-primary" type="button" disabled={isSaving} onClick={handleSave}>
         {isSaving ? '저장 중...' : '블록 저장'}
       </button>
     </article>
@@ -89,7 +145,7 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
           <label className="field">
             <span>제목 크기</span>
             <select value={String(content.level ?? 2)} onChange={(event) => patch('level', Number(event.target.value))}>
-              <option value="1">히어로 제목</option>
+              <option value="1">큰 제목</option>
               <option value="2">섹션 제목</option>
             </select>
           </label>
@@ -117,20 +173,21 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
         <>
           <label className="field">
             <span>이미지 목록</span>
-            <textarea
-              value={photoGridToText(content.images)}
-              onChange={(event) => patch('images', photoGridFromText(event.target.value))}
-            />
+            <textarea value={photoGridToText(content.images)} onChange={(event) => patch('images', photoGridFromText(event.target.value))} />
           </label>
           <p className="field-hint">한 줄에 하나씩 입력하세요. 형식: 이미지 URL | 설명 | 캡션</p>
           <label className="field">
             <span>열 개수</span>
             <input type="number" min={1} max={4} value={Number(content.columns ?? 3)} onChange={(event) => patch('columns', Number(event.target.value))} />
           </label>
+          <label className="field">
+            <span>간격</span>
+            <input type="number" min={0} max={80} value={Number(content.gap ?? 16)} onChange={(event) => patch('gap', Number(event.target.value))} />
+          </label>
         </>
       );
     case 'DIVIDER':
-      return <p className="muted">구분선은 별도 입력 없이 콘텐츠 사이를 나눕니다.</p>;
+      return <p className="muted">구분선은 공통 여백과 너비 설정만 사용합니다.</p>;
     case 'QUOTE':
       return (
         <>
@@ -147,6 +204,10 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
     case 'CALLOUT':
       return (
         <>
+          <label className="field">
+            <span>아이콘/라벨</span>
+            <input value={stringValue(content.icon)} onChange={(event) => patch('icon', event.target.value)} />
+          </label>
           <label className="field">
             <span>제목</span>
             <input value={stringValue(content.title)} onChange={(event) => patch('title', event.target.value)} />
@@ -168,6 +229,13 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
             <span>링크</span>
             <input placeholder="https://..." value={stringValue(content.url || content.href)} onChange={(event) => patch('url', event.target.value)} />
           </label>
+          <label className="field">
+            <span>열기 방식</span>
+            <select value={stringValue(content.target) || '_blank'} onChange={(event) => patch('target', event.target.value)}>
+              <option value="_blank">새 탭</option>
+              <option value="_self">현재 탭</option>
+            </select>
+          </label>
         </>
       );
     case 'PROJECT_INFO':
@@ -184,6 +252,10 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
           <label className="field">
             <span>기여도</span>
             <input value={stringValue(content.contribution)} onChange={(event) => patch('contribution', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>카테고리</span>
+            <input value={stringValue(content.category)} onChange={(event) => patch('category', event.target.value)} />
           </label>
           <label className="field">
             <span>기술 스택</span>
