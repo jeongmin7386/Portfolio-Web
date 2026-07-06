@@ -37,7 +37,7 @@ export function SiteBuilderPublicPage() {
     return <div className="center-screen">{getApiErrorMessage(siteQuery.error, '공개 포트폴리오를 찾을 수 없습니다.')}</div>;
   }
 
-  const { site, pages } = siteQuery.data;
+  const { site, pages, projects } = siteQuery.data;
   const navPages = pages.filter(({ page }) => page.navVisible);
   const heroPage = pages[0];
 
@@ -89,6 +89,27 @@ export function SiteBuilderPublicPage() {
           </div>
         </section>
       ))}
+
+      <section id="projects" className="site-public-section">
+        <div className="site-public-section-heading">
+          <p className="eyebrow">프로젝트</p>
+          <h2>프로젝트 상세 페이지</h2>
+        </div>
+        <div className="site-public-project-grid">
+          {projects.map((project) => (
+            <Link key={project.id} to={`/site/projects/${project.slug}`} className="site-public-project-card">
+              <div className="site-public-project-thumb">
+                {project.thumbnailUrl ? <img src={assetUrl(project.thumbnailUrl)} alt="" /> : <span>{project.title}</span>}
+              </div>
+              <div>
+                <p>{project.period || '프로젝트'}</p>
+                <h3>{project.title}</h3>
+                {project.summary ? <span>{project.summary}</span> : null}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

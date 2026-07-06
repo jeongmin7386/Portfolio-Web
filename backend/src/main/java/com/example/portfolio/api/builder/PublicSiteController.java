@@ -1,5 +1,6 @@
 package com.example.portfolio.api.builder;
 
+import com.example.portfolio.api.builder.dto.BuilderProjectWithBlocksResponse;
 import com.example.portfolio.api.builder.dto.SiteRenderResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,5 +25,15 @@ public class PublicSiteController {
     @GetMapping("/{slug}")
     SiteRenderResponse getSite(@PathVariable String slug) {
         return builderService.getPublicSite(slug);
+    }
+
+    @GetMapping("/projects/{projectSlug}")
+    BuilderProjectWithBlocksResponse getDefaultProject(@PathVariable String projectSlug) {
+        return builderService.getPublicProject(null, projectSlug);
+    }
+
+    @GetMapping("/{slug}/projects/{projectSlug}")
+    BuilderProjectWithBlocksResponse getProject(@PathVariable String slug, @PathVariable String projectSlug) {
+        return builderService.getPublicProject(slug, projectSlug);
     }
 }

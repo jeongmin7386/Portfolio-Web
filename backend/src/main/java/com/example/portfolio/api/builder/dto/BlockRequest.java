@@ -7,6 +7,8 @@ import java.util.Map;
 public record BlockRequest(
     @NotNull BlockType blockType,
     Map<String, Object> content,
+    Map<String, Object> settings,
+    Boolean visible,
     Integer sortOrder
 ) {
 }

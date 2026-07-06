@@ -11,6 +11,7 @@ import { SettingsPage } from '../pages/dashboard/SettingsPage';
 import { LandingPage } from '../pages/landing/LandingPage';
 import { PortfolioPage } from '../pages/public/PortfolioPage';
 import { ProjectDetailPage } from '../pages/public/ProjectDetailPage';
+import { SiteBuilderProjectDetailPage } from '../pages/public/SiteBuilderProjectDetailPage';
 import { SiteBuilderPublicPage } from '../pages/public/SiteBuilderPublicPage';
 
 export const router = createBrowserRouter([
@@ -68,6 +69,14 @@ export const router = createBrowserRouter([
   {
     path: '/site',
     element: <SiteBuilderPublicPage />
+  },
+  {
+    path: '/site/projects/:projectSlug',
+    element: <SiteBuilderProjectDetailPage />
+  },
+  {
+    path: '/site/:siteSlug/projects/:projectSlug',
+    element: <SiteBuilderProjectDetailPage />
   },
   {
     path: '/site/:siteSlug',

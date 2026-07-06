@@ -4,6 +4,7 @@ public enum BlockType {
     HEADING,
     TEXT,
     IMAGE,
+    PHOTO_GRID,
     GALLERY,
     VIDEO_EMBED,
     DIVIDER,
@@ -17,5 +18,7 @@ public enum BlockType {
     PROJECT_INFO,
     GITHUB_LINK,
     LIVE_LINK,
-    PROJECT_CARD
+    PROJECT_CARD,
+    TABS,
+    TWO_COLUMN
 }

@@ -2,6 +2,9 @@ package com.example.portfolio.api.builder;
 
 import com.example.portfolio.api.builder.dto.BlockRequest;
 import com.example.portfolio.api.builder.dto.BlockResponse;
+import com.example.portfolio.api.builder.dto.BuilderProjectRequest;
+import com.example.portfolio.api.builder.dto.BuilderProjectResponse;
+import com.example.portfolio.api.builder.dto.BuilderProjectWithBlocksResponse;
 import com.example.portfolio.api.builder.dto.BuilderStateResponse;
 import com.example.portfolio.api.builder.dto.PageRequest;
 import com.example.portfolio.api.builder.dto.PageResponse;
@@ -14,6 +17,9 @@ import com.example.portfolio.common.util.SlugGenerator;
 import com.example.portfolio.domain.block.Block;
 import com.example.portfolio.domain.block.BlockRepository;
 import com.example.portfolio.domain.block.BlockType;
+import com.example.portfolio.domain.builderproject.BuilderProject;
+import com.example.portfolio.domain.builderproject.BuilderProjectRepository;
+import com.example.portfolio.domain.builderproject.BuilderProjectVisibility;
 import com.example.portfolio.domain.page.PageType;
 import com.example.portfolio.domain.page.SitePage;
 import com.example.portfolio.domain.page.SitePageRepository;
@@ -21,9 +27,11 @@ import com.example.portfolio.domain.site.Site;
 import com.example.portfolio.domain.site.SiteRepository;
 import com.example.portfolio.domain.theme.Theme;
 import com.example.portfolio.domain.theme.ThemeRepository;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +44,7 @@ public class SiteBuilderService {
     private final SiteRepository siteRepository;
     private final SitePageRepository pageRepository;
     private final BlockRepository blockRepository;
+    private final BuilderProjectRepository projectRepository;
     private final ThemeRepository themeRepository;
     private final SlugGenerator slugGenerator;
 
@@ -43,12 +52,14 @@ public class SiteBuilderService {
         SiteRepository siteRepository,
         SitePageRepository pageRepository,
         BlockRepository blockRepository,
+        BuilderProjectRepository projectRepository,
         ThemeRepository themeRepository,
         SlugGenerator slugGenerator
     ) {
         this.siteRepository = siteRepository;
         this.pageRepository = pageRepository;
         this.blockRepository = blockRepository;
+        this.projectRepository = projectRepository;
         this.themeRepository = themeRepository;
         this.slugGenerator = slugGenerator;
     }
@@ -56,7 +67,7 @@ public class SiteBuilderService {
     @Transactional
     public BuilderStateResponse getState() {
         Site site = getOrCreateDefaultSite();
-        return new BuilderStateResponse(SiteResponse.from(site), listPageResponses(site.getId()));
+        return new BuilderStateResponse(SiteResponse.from(site), listPageResponses(site.getId()), listProjectResponses(site.getId()));
     }
 
     @Transactional
@@ -144,6 +155,60 @@ public class SiteBuilderService {
     }
 
     @Transactional(readOnly = true)
+    public List<BuilderProjectResponse> listProjects() {
+        Site site = getExistingSite();
+        return listProjectResponses(site.getId());
+    }
+
+    @Transactional
+    public BuilderProjectResponse createProject(BuilderProjectRequest request) {
+        Site site = getOrCreateDefaultSite();
+        String slug = uniqueProjectSlug(site.getId(), StringUtils.hasText(request.slug()) ? request.slug() : request.title());
+        int sortOrder = request.sortOrder() == null ? (int) projectRepository.countBySiteId(site.getId()) : request.sortOrder();
+        BuilderProject project = new BuilderProject(site, request.title().trim(), slug, sortOrder);
+        updateProjectFields(project, slug, request, sortOrder);
+        BuilderProject savedProject = projectRepository.save(project);
+        seedProjectBlocks(savedProject);
+        return BuilderProjectResponse.from(savedProject);
+    }
+
+    @Transactional(readOnly = true)
+    public BuilderProjectWithBlocksResponse getProject(Long projectId) {
+        Site site = getExistingSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        return BuilderProjectWithBlocksResponse.from(project, blockRepository.findByProjectIdOrderBySortOrderAscCreatedAtAsc(project.getId()));
+    }
+
+    @Transactional
+    public BuilderProjectResponse updateProject(Long projectId, BuilderProjectRequest request) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        String rawSlug = StringUtils.hasText(request.slug()) ? request.slug() : request.title();
+        String slug = slugGenerator.from(rawSlug);
+        if (projectRepository.existsBySiteIdAndSlugAndIdNot(site.getId(), slug, projectId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Project slug already exists");
+        }
+        updateProjectFields(project, slug, request, request.sortOrder() == null ? project.getSortOrder() : request.sortOrder());
+        return BuilderProjectResponse.from(project);
+    }
+
+    @Transactional
+    public void deleteProject(Long projectId) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        projectRepository.delete(project);
+    }
+
+    @Transactional
+    public void reorderProjects(ReorderItemsRequest request) {
+        Site site = getOrCreateDefaultSite();
+        int order = 0;
+        for (Long projectId : request.ids()) {
+            findProject(site.getId(), projectId).updateSortOrder(order++);
+        }
+    }
+
+    @Transactional(readOnly = true)
     public PageWithBlocksResponse getPage(Long pageId) {
         Site site = getExistingSite();
         SitePage page = findPage(site.getId(), pageId);
@@ -167,6 +232,7 @@ public class SiteBuilderService {
         int sortOrder = request.sortOrder() == null ? (int) blockRepository.countByPageId(pageId) : request.sortOrder();
         Map<String, Object> content = normalizeContent(request.blockType(), request.content());
         Block block = new Block(page, request.blockType(), content, sortOrder);
+        block.update(request.blockType(), content, normalizeSettings(request.settings()), sortOrder, request.visible() == null || request.visible());
         return BlockResponse.from(blockRepository.save(block));
     }
 
@@ -179,7 +245,9 @@ public class SiteBuilderService {
         block.update(
             request.blockType(),
             normalizeContent(request.blockType(), request.content()),
-            request.sortOrder() == null ? block.getSortOrder() : request.sortOrder()
+            normalizeSettings(request.settings()),
+            request.sortOrder() == null ? block.getSortOrder() : request.sortOrder(),
+            request.visible() == null || request.visible()
         );
         return BlockResponse.from(block);
     }
@@ -205,6 +273,64 @@ public class SiteBuilderService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<BlockResponse> listProjectBlocks(Long projectId) {
+        Site site = getExistingSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        return blockRepository.findByProjectIdOrderBySortOrderAscCreatedAtAsc(project.getId())
+            .stream()
+            .map(BlockResponse::from)
+            .toList();
+    }
+
+    @Transactional
+    public BlockResponse createProjectBlock(Long projectId, BlockRequest request) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        int sortOrder = request.sortOrder() == null ? (int) blockRepository.countByProjectId(projectId) : request.sortOrder();
+        Map<String, Object> content = normalizeContent(request.blockType(), request.content());
+        Block block = new Block(project, request.blockType(), content, sortOrder);
+        block.update(request.blockType(), content, normalizeSettings(request.settings()), sortOrder, request.visible() == null || request.visible());
+        return BlockResponse.from(blockRepository.save(block));
+    }
+
+    @Transactional
+    public BlockResponse updateProjectBlock(Long projectId, Long blockId, BlockRequest request) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        Block block = blockRepository.findByIdAndProjectId(blockId, project.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
+        block.update(
+            request.blockType(),
+            normalizeContent(request.blockType(), request.content()),
+            normalizeSettings(request.settings()),
+            request.sortOrder() == null ? block.getSortOrder() : request.sortOrder(),
+            request.visible() == null || request.visible()
+        );
+        return BlockResponse.from(block);
+    }
+
+    @Transactional
+    public void deleteProjectBlock(Long projectId, Long blockId) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        Block block = blockRepository.findByIdAndProjectId(blockId, project.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"));
+        blockRepository.delete(block);
+    }
+
+    @Transactional
+    public void reorderProjectBlocks(Long projectId, ReorderItemsRequest request) {
+        Site site = getOrCreateDefaultSite();
+        BuilderProject project = findProject(site.getId(), projectId);
+        int order = 0;
+        for (Long blockId : request.ids()) {
+            blockRepository.findByIdAndProjectId(blockId, project.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Block not found"))
+                .updateSortOrder(order++);
+        }
+    }
+
     @Transactional
     public SiteRenderResponse getPublicSite(String slug) {
         Site site = StringUtils.hasText(slug)
@@ -217,7 +343,24 @@ public class SiteBuilderService {
             .stream()
             .map(page -> PageWithBlocksResponse.from(page, blockRepository.findByPageIdOrderBySortOrderAscCreatedAtAsc(page.getId())))
             .toList();
-        return new SiteRenderResponse(SiteResponse.from(site), pages);
+        List<BuilderProjectResponse> projects = projectRepository.findBySiteIdAndVisibilityOrderBySortOrderAscCreatedAtAsc(
+                site.getId(),
+                BuilderProjectVisibility.PUBLIC
+            )
+            .stream()
+            .map(BuilderProjectResponse::from)
+            .toList();
+        return new SiteRenderResponse(SiteResponse.from(site), pages, projects);
+    }
+
+    @Transactional
+    public BuilderProjectWithBlocksResponse getPublicProject(String siteSlug, String projectSlug) {
+        Site site = StringUtils.hasText(siteSlug)
+            ? siteRepository.findBySlugAndPublishedTrue(siteSlug).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Site not found"))
+            : getOrCreateDefaultSite();
+        BuilderProject project = projectRepository.findBySiteIdAndSlugAndVisibility(site.getId(), projectSlug, BuilderProjectVisibility.PUBLIC)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        return BuilderProjectWithBlocksResponse.from(project, blockRepository.findByProjectIdOrderBySortOrderAscCreatedAtAsc(project.getId()));
     }
 
     private List<PageResponse> listPageResponses(Long siteId) {
@@ -227,13 +370,68 @@ public class SiteBuilderService {
             .toList();
     }
 
+    private List<BuilderProjectResponse> listProjectResponses(Long siteId) {
+        return projectRepository.findBySiteIdOrderBySortOrderAscCreatedAtAsc(siteId)
+            .stream()
+            .map(BuilderProjectResponse::from)
+            .toList();
+    }
+
+    private void updateProjectFields(BuilderProject project, String slug, BuilderProjectRequest request, int sortOrder) {
+        project.update(
+            request.title().trim(),
+            slug,
+            clean(request.subtitle()),
+            clean(request.summary()),
+            clean(request.description()),
+            clean(request.period()),
+            clean(request.role()),
+            clean(request.contribution()),
+            clean(request.thumbnailUrl()),
+            cleanTechStacks(request.techStacks()),
+            clean(request.githubUrl()),
+            clean(request.liveUrl()),
+            request.visibility(),
+            sortOrder,
+            clean(request.seoTitle()),
+            clean(request.seoDescription())
+        );
+    }
+
     private Site getExistingSite() {
         return siteRepository.findFirstByOrderByIdAsc()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Site not found"));
     }
 
     private Site getOrCreateDefaultSite() {
-        return siteRepository.findFirstByOrderByIdAsc().orElseGet(this::createDefaultSite);
+        Site site = siteRepository.findFirstByOrderByIdAsc().orElseGet(this::createDefaultSite);
+        ensureDefaultProject(site);
+        return site;
+    }
+
+    private void ensureDefaultProject(Site site) {
+        if (projectRepository.countBySiteId(site.getId()) == 0) {
+            BuilderProject project = new BuilderProject(site, "포트폴리오 빌더", "portfolio-builder", 0);
+            project.update(
+                "포트폴리오 빌더",
+                "portfolio-builder",
+                "블록 기반 포트폴리오 제작 플랫폼",
+                "프로젝트 상세 페이지 안의 모든 텍스트와 섹션을 직접 편집할 수 있는 MVP입니다.",
+                "React, Spring Boot, PostgreSQL 기반으로 만든 포트폴리오 웹 게시 플랫폼입니다.",
+                "2026.06 - 2026.07",
+                "Full-stack Developer",
+                "100%",
+                "",
+                new String[] {"React", "Spring Boot", "PostgreSQL"},
+                "https://github.com/jeongmin7386/Portfolio-Web",
+                "",
+                BuilderProjectVisibility.PUBLIC,
+                0,
+                "포트폴리오 빌더",
+                "블록 기반 포트폴리오 제작 플랫폼"
+            );
+            seedProjectBlocks(projectRepository.save(project));
+        }
     }
 
     private Site createDefaultSite() {
@@ -265,12 +463,38 @@ public class SiteBuilderService {
 
         SitePage contact = pageRepository.save(new SitePage(site, "연락", "contact", PageType.CONTACT, 2));
         blockRepository.save(new Block(contact, BlockType.BUTTON, mapOf("label", "이메일 보내기", "href", "mailto:hello@example.com"), 0));
+
+        BuilderProject project = new BuilderProject(site, "포트폴리오 빌더", "portfolio-builder", 0);
+        project.update(
+            "포트폴리오 빌더",
+            "portfolio-builder",
+            "블록 기반 포트폴리오 제작 플랫폼",
+            "프로젝트 상세 페이지 안의 모든 텍스트와 섹션을 직접 편집할 수 있는 MVP입니다.",
+            "React, Spring Boot, PostgreSQL 기반으로 만든 포트폴리오 웹 게시 플랫폼입니다.",
+            "2026.06 - 2026.07",
+            "Full-stack Developer",
+            "100%",
+            "",
+            new String[] {"React", "Spring Boot", "PostgreSQL"},
+            "https://github.com/jeongmin7386/Portfolio-Web",
+            "",
+            BuilderProjectVisibility.PUBLIC,
+            0,
+            "포트폴리오 빌더",
+            "블록 기반 포트폴리오 제작 플랫폼"
+        );
+        seedProjectBlocks(projectRepository.save(project));
         return site;
     }
 
     private SitePage findPage(Long siteId, Long pageId) {
         return pageRepository.findByIdAndSiteId(pageId, siteId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Page not found"));
+    }
+
+    private BuilderProject findProject(Long siteId, Long projectId) {
+        return projectRepository.findByIdAndSiteId(projectId, siteId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
     private String uniquePageSlug(Long siteId, String value) {
@@ -284,6 +508,36 @@ public class SiteBuilderService {
         return candidate;
     }
 
+    private String uniqueProjectSlug(Long siteId, String value) {
+        String base = slugGenerator.from(value);
+        String candidate = base;
+        int suffix = 2;
+        while (projectRepository.existsBySiteIdAndSlug(siteId, candidate)) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private void seedProjectBlocks(BuilderProject project) {
+        blockRepository.save(new Block(project, BlockType.HEADING, mapOf("text", project.getTitle(), "level", 1), 0));
+        blockRepository.save(new Block(project, BlockType.TEXT, mapOf("text", project.getSummary()), 1));
+        blockRepository.save(new Block(project, BlockType.PROJECT_INFO, mapOf(
+            "period", project.getPeriod(),
+            "role", project.getRole(),
+            "contribution", project.getContribution(),
+            "techStacks", Arrays.asList(project.getTechStacks())
+        ), 2));
+        blockRepository.save(new Block(project, BlockType.CALLOUT, mapOf(
+            "title", "문제 정의",
+            "text", "포트폴리오 상세 페이지의 모든 텍스트와 섹션을 사용자가 직접 수정할 수 있어야 했습니다."
+        ), 3));
+        blockRepository.save(new Block(project, BlockType.QUOTE, mapOf(
+            "text", "좋은 프로젝트 페이지는 결과뿐 아니라 판단 과정과 배운 점까지 보여줍니다.",
+            "cite", "프로젝트 회고"
+        ), 4));
+    }
+
     private Map<String, Object> normalizeContent(BlockType blockType, Map<String, Object> content) {
         if (content != null && !content.isEmpty()) {
             return new LinkedHashMap<>(content);
@@ -291,15 +545,40 @@ public class SiteBuilderService {
         return defaultContent(blockType);
     }
 
+    private Map<String, Object> normalizeSettings(Map<String, Object> settings) {
+        if (settings != null && !settings.isEmpty()) {
+            return new LinkedHashMap<>(settings);
+        }
+        return mapOf("width", "normal", "align", "left", "paddingTop", 0, "paddingBottom", 0);
+    }
+
     private Map<String, Object> defaultContent(BlockType blockType) {
         return switch (blockType) {
             case HEADING -> mapOf("text", "새 제목", "level", 2);
             case IMAGE -> mapOf("imageUrl", "", "alt", "포트폴리오 이미지", "caption", "");
+            case PHOTO_GRID -> mapOf(
+                "images",
+                List.of(mapOf("url", "", "alt", "이미지 설명", "caption", "캡션")),
+                "columns",
+                3,
+                "gap",
+                16
+            );
             case DIVIDER -> mapOf("style", "line");
             case QUOTE -> mapOf("text", "인용문을 입력하세요.", "cite", "");
-            case CALLOUT -> mapOf("tone", "neutral", "text", "강조하고 싶은 내용을 입력하세요.");
-            case BUTTON -> mapOf("label", "버튼", "href", "#");
+            case CALLOUT -> mapOf("icon", "idea", "title", "핵심 포인트", "text", "강조하고 싶은 내용을 입력하세요.");
+            case BUTTON -> mapOf("label", "버튼", "url", "#", "target", "_blank");
             case PROJECT_CARD -> mapOf("title", "새 프로젝트", "description", "프로젝트 설명을 입력하세요.", "imageUrl", "", "href", "#");
+            case PROJECT_INFO -> mapOf("period", "2026.06 - 2026.07", "role", "역할", "contribution", "100%", "techStacks", List.of("React"));
+            case TABS -> mapOf(
+                "tabs",
+                List.of(
+                    mapOf("title", "기획", "content", "기획 과정 설명"),
+                    mapOf("title", "디자인", "content", "디자인 과정 설명"),
+                    mapOf("title", "개발", "content", "개발 과정 설명")
+                )
+            );
+            case TWO_COLUMN -> mapOf("leftTitle", "문제", "leftText", "문제 설명", "rightTitle", "해결", "rightText", "해결 과정 설명");
             default -> mapOf("text", "새 블록 내용을 입력하세요.");
         };
     }
@@ -320,6 +599,18 @@ public class SiteBuilderService {
             map.put(String.valueOf(values[index]), values[index + 1]);
         }
         return map;
+    }
+
+    private String[] cleanTechStacks(List<String> techStacks) {
+        if (techStacks == null) {
+            return new String[0];
+        }
+        return techStacks.stream()
+            .filter(Objects::nonNull)
+            .map(String::trim)
+            .filter(StringUtils::hasText)
+            .distinct()
+            .toArray(String[]::new);
     }
 
     private String clean(String value) {

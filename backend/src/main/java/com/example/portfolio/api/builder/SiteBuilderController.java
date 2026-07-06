@@ -2,6 +2,9 @@ package com.example.portfolio.api.builder;
 
 import com.example.portfolio.api.builder.dto.BlockRequest;
 import com.example.portfolio.api.builder.dto.BlockResponse;
+import com.example.portfolio.api.builder.dto.BuilderProjectRequest;
+import com.example.portfolio.api.builder.dto.BuilderProjectResponse;
+import com.example.portfolio.api.builder.dto.BuilderProjectWithBlocksResponse;
 import com.example.portfolio.api.builder.dto.BuilderStateResponse;
 import com.example.portfolio.api.builder.dto.PageRequest;
 import com.example.portfolio.api.builder.dto.PageResponse;
@@ -75,6 +78,39 @@ public class SiteBuilderController {
         builderService.reorderPages(request);
     }
 
+    @GetMapping("/projects")
+    List<BuilderProjectResponse> listProjects() {
+        return builderService.listProjects();
+    }
+
+    @PostMapping("/projects")
+    @ResponseStatus(HttpStatus.CREATED)
+    BuilderProjectResponse createProject(@Valid @RequestBody BuilderProjectRequest request) {
+        return builderService.createProject(request);
+    }
+
+    @GetMapping("/projects/{projectId}")
+    BuilderProjectWithBlocksResponse getProject(@PathVariable Long projectId) {
+        return builderService.getProject(projectId);
+    }
+
+    @PatchMapping("/projects/{projectId}")
+    BuilderProjectResponse updateProject(@PathVariable Long projectId, @Valid @RequestBody BuilderProjectRequest request) {
+        return builderService.updateProject(projectId, request);
+    }
+
+    @DeleteMapping("/projects/{projectId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteProject(@PathVariable Long projectId) {
+        builderService.deleteProject(projectId);
+    }
+
+    @PatchMapping("/projects/reorder")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reorderProjects(@Valid @RequestBody ReorderItemsRequest request) {
+        builderService.reorderProjects(request);
+    }
+
     @GetMapping("/pages/{pageId}/blocks")
     List<BlockResponse> listBlocks(@PathVariable Long pageId) {
         return builderService.listBlocks(pageId);
@@ -101,5 +137,33 @@ public class SiteBuilderController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void reorderBlocks(@PathVariable Long pageId, @Valid @RequestBody ReorderItemsRequest request) {
         builderService.reorderBlocks(pageId, request);
+    }
+
+    @GetMapping("/projects/{projectId}/blocks")
+    List<BlockResponse> listProjectBlocks(@PathVariable Long projectId) {
+        return builderService.listProjectBlocks(projectId);
+    }
+
+    @PostMapping("/projects/{projectId}/blocks")
+    @ResponseStatus(HttpStatus.CREATED)
+    BlockResponse createProjectBlock(@PathVariable Long projectId, @Valid @RequestBody BlockRequest request) {
+        return builderService.createProjectBlock(projectId, request);
+    }
+
+    @PatchMapping("/projects/{projectId}/blocks/{blockId}")
+    BlockResponse updateProjectBlock(@PathVariable Long projectId, @PathVariable Long blockId, @Valid @RequestBody BlockRequest request) {
+        return builderService.updateProjectBlock(projectId, blockId, request);
+    }
+
+    @DeleteMapping("/projects/{projectId}/blocks/{blockId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteProjectBlock(@PathVariable Long projectId, @PathVariable Long blockId) {
+        builderService.deleteProjectBlock(projectId, blockId);
+    }
+
+    @PatchMapping("/projects/{projectId}/blocks/reorder")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reorderProjectBlocks(@PathVariable Long projectId, @Valid @RequestBody ReorderItemsRequest request) {
+        builderService.reorderProjectBlocks(projectId, request);
     }
 }

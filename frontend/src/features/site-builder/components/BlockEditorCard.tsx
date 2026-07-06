@@ -5,7 +5,7 @@ import type { SiteBlock } from '../types';
 type BlockEditorCardProps = {
   block: SiteBlock;
   isSaving: boolean;
-  onSave: (content: Record<string, unknown>) => void;
+  onSave: (content: Record<string, unknown>, settings: Record<string, unknown>, visible: boolean) => void;
   onDelete: () => void;
 };
 
@@ -15,13 +15,21 @@ function stringValue(value: unknown) {
 
 export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEditorCardProps) {
   const [content, setContent] = useState<Record<string, unknown>>(block.content ?? {});
+  const [settings, setSettings] = useState<Record<string, unknown>>(block.settings ?? {});
+  const [visible, setVisible] = useState(block.visible);
 
   useEffect(() => {
     setContent(block.content ?? {});
-  }, [block.id, block.content]);
+    setSettings(block.settings ?? {});
+    setVisible(block.visible);
+  }, [block.id, block.content, block.settings, block.visible]);
 
-  function patch(key: string, value: string | number) {
+  function patch(key: string, value: unknown) {
     setContent((current) => ({ ...current, [key]: value }));
+  }
+
+  function patchSettings(key: string, value: string | number) {
+    setSettings((current) => ({ ...current, [key]: value }));
   }
 
   return (
@@ -36,16 +44,40 @@ export function BlockEditorCard({ block, isSaving, onSave, onDelete }: BlockEdit
         </button>
       </div>
 
+      <div className="block-common-settings">
+        <label>
+          <input type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} />
+          공개
+        </label>
+        <label className="field">
+          <span>너비</span>
+          <select value={stringValue(settings.width) || 'normal'} onChange={(event) => patchSettings('width', event.target.value)}>
+            <option value="narrow">좁게</option>
+            <option value="normal">기본</option>
+            <option value="wide">넓게</option>
+            <option value="full">전체 폭</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>정렬</span>
+          <select value={stringValue(settings.align) || 'left'} onChange={(event) => patchSettings('align', event.target.value)}>
+            <option value="left">왼쪽</option>
+            <option value="center">가운데</option>
+            <option value="right">오른쪽</option>
+          </select>
+        </label>
+      </div>
+
       <div className="block-fields">{renderFields(block, content, patch)}</div>
 
-      <button className="button button-primary" type="button" disabled={isSaving} onClick={() => onSave(content)}>
+      <button className="button button-primary" type="button" disabled={isSaving} onClick={() => onSave(content, settings, visible)}>
         {isSaving ? '저장 중...' : '블록 저장'}
       </button>
     </article>
   );
 }
 
-function renderFields(block: SiteBlock, content: Record<string, unknown>, patch: (key: string, value: string | number) => void) {
+function renderFields(block: SiteBlock, content: Record<string, unknown>, patch: (key: string, value: unknown) => void) {
   switch (block.blockType) {
     case 'HEADING':
       return (
@@ -80,6 +112,23 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
           </label>
         </>
       );
+    case 'PHOTO_GRID':
+      return (
+        <>
+          <label className="field">
+            <span>이미지 목록</span>
+            <textarea
+              value={photoGridToText(content.images)}
+              onChange={(event) => patch('images', photoGridFromText(event.target.value))}
+            />
+          </label>
+          <p className="field-hint">한 줄에 하나씩 입력하세요. 형식: 이미지 URL | 설명 | 캡션</p>
+          <label className="field">
+            <span>열 개수</span>
+            <input type="number" min={1} max={4} value={Number(content.columns ?? 3)} onChange={(event) => patch('columns', Number(event.target.value))} />
+          </label>
+        </>
+      );
     case 'DIVIDER':
       return <p className="muted">구분선은 별도 입력 없이 콘텐츠 사이를 나눕니다.</p>;
     case 'QUOTE':
@@ -97,10 +146,16 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
       );
     case 'CALLOUT':
       return (
-        <label className="field">
-          <span>강조 내용</span>
-          <textarea value={stringValue(content.text)} onChange={(event) => patch('text', event.target.value)} />
-        </label>
+        <>
+          <label className="field">
+            <span>제목</span>
+            <input value={stringValue(content.title)} onChange={(event) => patch('title', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>강조 내용</span>
+            <textarea value={stringValue(content.text)} onChange={(event) => patch('text', event.target.value)} />
+          </label>
+        </>
       );
     case 'BUTTON':
       return (
@@ -111,7 +166,59 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
           </label>
           <label className="field">
             <span>링크</span>
-            <input placeholder="https://..." value={stringValue(content.href)} onChange={(event) => patch('href', event.target.value)} />
+            <input placeholder="https://..." value={stringValue(content.url || content.href)} onChange={(event) => patch('url', event.target.value)} />
+          </label>
+        </>
+      );
+    case 'PROJECT_INFO':
+      return (
+        <>
+          <label className="field">
+            <span>기간</span>
+            <input value={stringValue(content.period)} onChange={(event) => patch('period', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>역할</span>
+            <input value={stringValue(content.role)} onChange={(event) => patch('role', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>기여도</span>
+            <input value={stringValue(content.contribution)} onChange={(event) => patch('contribution', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>기술 스택</span>
+            <input value={arrayToCsv(content.techStacks)} onChange={(event) => patch('techStacks', csvToArray(event.target.value))} />
+          </label>
+        </>
+      );
+    case 'TABS':
+      return (
+        <>
+          <label className="field">
+            <span>탭 내용</span>
+            <textarea value={tabsToText(content.tabs)} onChange={(event) => patch('tabs', tabsFromText(event.target.value))} />
+          </label>
+          <p className="field-hint">한 줄에 하나씩 입력하세요. 형식: 탭 제목 | 내용</p>
+        </>
+      );
+    case 'TWO_COLUMN':
+      return (
+        <>
+          <label className="field">
+            <span>왼쪽 제목</span>
+            <input value={stringValue(content.leftTitle)} onChange={(event) => patch('leftTitle', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>왼쪽 본문</span>
+            <textarea value={stringValue(content.leftText)} onChange={(event) => patch('leftText', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>오른쪽 제목</span>
+            <input value={stringValue(content.rightTitle)} onChange={(event) => patch('rightTitle', event.target.value)} />
+          </label>
+          <label className="field">
+            <span>오른쪽 본문</span>
+            <textarea value={stringValue(content.rightText)} onChange={(event) => patch('rightText', event.target.value)} />
           </label>
         </>
       );
@@ -145,4 +252,65 @@ function renderFields(block: SiteBlock, content: Record<string, unknown>, patch:
         </label>
       );
   }
+}
+
+function arrayToCsv(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').join(', ') : '';
+}
+
+function csvToArray(value: string) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function photoGridToText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return '';
+  }
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return '';
+      }
+      const image = item as Record<string, unknown>;
+      return [stringValue(image.url), stringValue(image.alt), stringValue(image.caption)].join(' | ');
+    })
+    .join('\n');
+}
+
+function photoGridFromText(value: string) {
+  return value
+    .split('\n')
+    .map((line) => {
+      const [url = '', alt = '', caption = ''] = line.split('|').map((item) => item.trim());
+      return { url, alt, caption };
+    })
+    .filter((image) => image.url || image.alt || image.caption);
+}
+
+function tabsToText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return '';
+  }
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return '';
+      }
+      const tab = item as Record<string, unknown>;
+      return [stringValue(tab.title), stringValue(tab.content)].join(' | ');
+    })
+    .join('\n');
+}
+
+function tabsFromText(value: string) {
+  return value
+    .split('\n')
+    .map((line) => {
+      const [title = '', content = ''] = line.split('|').map((item) => item.trim());
+      return { title, content };
+    })
+    .filter((tab) => tab.title || tab.content);
 }

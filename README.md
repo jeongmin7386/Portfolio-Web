@@ -81,6 +81,7 @@ More details:
 
 - API: `docs/API.md`
 - Architecture: `docs/ARCHITECTURE.md`
+- Project detail block editor spec: `docs/PROJECT_DETAIL_BLOCK_EDITOR_SPEC.md`
 
 ## Render Deploy
 

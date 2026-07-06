@@ -7,17 +7,23 @@ import java.util.Map;
 public record BlockResponse(
     Long id,
     Long pageId,
+    Long projectId,
     BlockType blockType,
     Map<String, Object> content,
-    int sortOrder
+    Map<String, Object> settings,
+    int sortOrder,
+    boolean visible
 ) {
     public static BlockResponse from(Block block) {
         return new BlockResponse(
             block.getId(),
-            block.getPage().getId(),
+            block.getPage() == null ? null : block.getPage().getId(),
+            block.getProject() == null ? null : block.getProject().getId(),
             block.getBlockType(),
             block.getContent(),
-            block.getSortOrder()
+            block.getSettings(),
+            block.getSortOrder(),
+            block.isVisible()
         );
     }
 }

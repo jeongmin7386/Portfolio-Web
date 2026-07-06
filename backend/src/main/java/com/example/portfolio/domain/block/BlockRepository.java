@@ -13,4 +13,10 @@ public interface BlockRepository extends JpaRepository<Block, Long> {
     Optional<Block> findByIdAndPageId(Long id, Long pageId);
 
     long countByPageId(Long pageId);
+
+    List<Block> findByProjectIdOrderBySortOrderAscCreatedAtAsc(Long projectId);
+
+    Optional<Block> findByIdAndProjectId(Long id, Long projectId);
+
+    long countByProjectId(Long projectId);
 }

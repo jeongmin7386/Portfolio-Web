@@ -4,6 +4,7 @@ export type BlockType =
   | 'HEADING'
   | 'TEXT'
   | 'IMAGE'
+  | 'PHOTO_GRID'
   | 'GALLERY'
   | 'VIDEO_EMBED'
   | 'DIVIDER'
@@ -17,7 +18,11 @@ export type BlockType =
   | 'PROJECT_INFO'
   | 'GITHUB_LINK'
   | 'LIVE_LINK'
-  | 'PROJECT_CARD';
+  | 'PROJECT_CARD'
+  | 'TABS'
+  | 'TWO_COLUMN';
+
+export type BuilderProjectVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
 
 export type ThemeResponse = {
   id: number;
@@ -50,10 +55,34 @@ export type SitePage = {
 
 export type SiteBlock = {
   id: number;
-  pageId: number;
+  pageId?: number | null;
+  projectId?: number | null;
   blockType: BlockType;
   content: Record<string, unknown>;
+  settings?: Record<string, unknown>;
   sortOrder: number;
+  visible: boolean;
+};
+
+export type BuilderProject = {
+  id: number;
+  siteId: number;
+  title: string;
+  slug: string;
+  subtitle?: string;
+  summary?: string;
+  description?: string;
+  period?: string;
+  role?: string;
+  contribution?: string;
+  thumbnailUrl?: string;
+  techStacks: string[];
+  githubUrl?: string;
+  liveUrl?: string;
+  visibility: BuilderProjectVisibility;
+  sortOrder: number;
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 export type PageWithBlocks = {
@@ -61,14 +90,21 @@ export type PageWithBlocks = {
   blocks: SiteBlock[];
 };
 
+export type ProjectWithBlocks = {
+  project: BuilderProject;
+  blocks: SiteBlock[];
+};
+
 export type BuilderState = {
   site: SiteResponse;
   pages: SitePage[];
+  projects: BuilderProject[];
 };
 
 export type SiteRender = {
   site: SiteResponse;
   pages: PageWithBlocks[];
+  projects: BuilderProject[];
 };
 
 export type PagePayload = {
@@ -85,5 +121,26 @@ export type PagePayload = {
 export type BlockPayload = {
   blockType: BlockType;
   content?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
+  visible?: boolean;
   sortOrder?: number;
+};
+
+export type BuilderProjectPayload = {
+  title: string;
+  slug?: string;
+  subtitle?: string;
+  summary?: string;
+  description?: string;
+  period?: string;
+  role?: string;
+  contribution?: string;
+  thumbnailUrl?: string;
+  techStacks?: string[];
+  githubUrl?: string;
+  liveUrl?: string;
+  visibility?: BuilderProjectVisibility;
+  sortOrder?: number;
+  seoTitle?: string;
+  seoDescription?: string;
 };

@@ -4,6 +4,7 @@ import java.util.List;
 
 public record BuilderStateResponse(
     SiteResponse site,
-    List<PageResponse> pages
+    List<PageResponse> pages,
+    List<BuilderProjectResponse> projects
 ) {
 }
