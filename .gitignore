@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+target/
+work/
+.idea/
+.vscode/
+.DS_Store
+*.log
+*.tsbuildinfo
+
+backend/uploads/
+backend/.env
+frontend/.env.local
