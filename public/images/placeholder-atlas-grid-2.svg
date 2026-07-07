@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Atlas signage mockup</title>
+  <rect width="1200" height="1200" fill="#1f4d45"/>
+  <rect x="170" y="190" width="860" height="700" fill="#f8f6ef"/>
+  <path d="M300 300H900M300 470H900M300 640H900" stroke="#1f4d45" stroke-width="16"/>
+  <rect x="300" y="760" width="250" height="70" fill="#bf6b45"/>
+</svg>

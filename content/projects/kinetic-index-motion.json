@@ -1,0 +1,71 @@
+{
+  "slug": "kinetic-index-motion",
+  "title": "Kinetic Index Motion",
+  "subtitle": "Motion language for a digital culture festival.",
+  "year": "2025",
+  "period": "May - Jul 2025",
+  "role": "Motion Direction",
+  "client": "Kinetic Index",
+  "category": "Motion",
+  "tags": ["Motion", "Festival", "Identity", "Social"],
+  "coverImage": "/images/placeholder-kinetic.svg",
+  "description": "A motion toolkit translating the festival identity into title cards, venue screens, social loops, and speaker transitions.",
+  "tools": ["After Effects", "Illustrator", "Figma"],
+  "deliverables": ["Motion rules", "Title cards", "Social templates", "Export guide"],
+  "featured": true,
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "A Moving Index",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "text": "The festival needed motion assets that could feel alive while remaining easy for a small production team to update during programming changes."
+    },
+    {
+      "type": "image",
+      "src": "/images/placeholder-kinetic-detail.svg",
+      "alt": "Kinetic Index motion storyboard frames",
+      "caption": "Storyboard frames for transitions and speaker cards.",
+      "aspectRatio": "wide"
+    },
+    {
+      "type": "process",
+      "steps": [
+        {
+          "title": "Motion Principles",
+          "description": "Defined timing, easing, and repeatable transition moves tied to the core identity grid."
+        },
+        {
+          "title": "Template Build",
+          "description": "Created editable compositions for speaker names, dates, venue screens, and social loops."
+        },
+        {
+          "title": "Production Guide",
+          "description": "Documented export settings and replacement rules for fast event-week changes."
+        }
+      ]
+    },
+    {
+      "type": "stats",
+      "items": [
+        {
+          "label": "Motion templates",
+          "value": "24",
+          "description": "Reusable compositions for live and social formats."
+        },
+        {
+          "label": "Aspect ratios",
+          "value": "5",
+          "description": "Venue screens, reels, stories, web banners, and square posts."
+        },
+        {
+          "label": "Loop duration",
+          "value": "08s",
+          "description": "Default pace for ambient venue assets."
+        }
+      ]
+    }
+  ]
+}

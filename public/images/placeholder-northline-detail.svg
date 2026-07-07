@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">Northline lookbook board</title>
+  <rect width="1600" height="900" fill="#eef1ec"/>
+  <rect x="110" y="100" width="420" height="620" fill="#536b5c"/>
+  <rect x="590" y="100" width="420" height="300" fill="#a7875b"/>
+  <rect x="590" y="460" width="420" height="260" fill="#ffffff"/>
+  <rect x="1070" y="100" width="420" height="620" fill="#2f3a35"/>
+  <path d="M160 790H1440" stroke="#1f2937" stroke-width="12"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Northline product detail composition</title>
+  <rect width="1200" height="1200" fill="#eef1ec"/>
+  <rect x="210" y="170" width="780" height="520" fill="#a7875b"/>
+  <rect x="330" y="280" width="540" height="300" fill="#2f3a35"/>
+  <path d="M210 820H990M210 910H760" stroke="#536b5c" stroke-width="18"/>
+</svg>

@@ -1,0 +1,126 @@
+{
+  "slug": "atlas-brand-system",
+  "title": "Atlas Brand System",
+  "subtitle": "A flexible identity for a spatial design studio.",
+  "year": "2026",
+  "period": "Jan - Mar 2026",
+  "role": "Brand Designer, Art Direction",
+  "client": "Atlas Studio",
+  "category": "Branding",
+  "tags": ["Identity", "Guidelines", "Print", "Spatial"],
+  "coverImage": "/images/placeholder-atlas.svg",
+  "description": "A brand system built around modular grids, precise typography, and a restrained palette for a studio working across architecture and interiors.",
+  "tools": ["Figma", "Illustrator", "InDesign"],
+  "deliverables": ["Brand strategy", "Visual identity", "Guidelines", "Stationery"],
+  "featured": true,
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "System First",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "text": "The identity needed to feel measured without becoming cold. We started with a typographic grid that could hold project imagery, client proposals, and site documentation in one consistent visual language."
+    },
+    {
+      "type": "image",
+      "src": "/images/placeholder-atlas-detail.svg",
+      "alt": "Atlas brand guideline spread with modular layout blocks",
+      "caption": "Guideline spread showing the spacing logic and image rhythm.",
+      "aspectRatio": "wide"
+    },
+    {
+      "type": "twoColumn",
+      "left": [
+        {
+          "type": "heading",
+          "text": "Challenge",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "The previous identity worked for small presentations but collapsed when the studio needed proposals, signage, and social assets at different speeds."
+        }
+      ],
+      "right": [
+        {
+          "type": "heading",
+          "text": "Approach",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "We created a flexible grid, a compact type scale, and image rules that let the team assemble new material without rebuilding layouts each time."
+        }
+      ]
+    },
+    {
+      "type": "process",
+      "steps": [
+        {
+          "title": "Audit",
+          "description": "Mapped existing proposal decks, invoices, moodboards, and presentation exports to find repeatable structure."
+        },
+        {
+          "title": "Identity Logic",
+          "description": "Defined mark usage, layout behavior, and an image treatment that could flex across print and digital formats."
+        },
+        {
+          "title": "Guideline Kit",
+          "description": "Delivered editable templates and a compact usage guide for internal project teams."
+        }
+      ]
+    },
+    {
+      "type": "imageGrid",
+      "columns": 3,
+      "images": [
+        {
+          "src": "/images/placeholder-atlas-grid-1.svg",
+          "alt": "Atlas stationery system mockup",
+          "caption": "Stationery"
+        },
+        {
+          "src": "/images/placeholder-atlas-grid-2.svg",
+          "alt": "Atlas signage layout mockup",
+          "caption": "Signage"
+        },
+        {
+          "src": "/images/placeholder-atlas-grid-3.svg",
+          "alt": "Atlas social media grid mockup",
+          "caption": "Digital"
+        }
+      ]
+    },
+    {
+      "type": "stats",
+      "items": [
+        {
+          "label": "Template formats",
+          "value": "18",
+          "description": "Proposal, case study, stationery, and social layouts."
+        },
+        {
+          "label": "Production time",
+          "value": "-35%",
+          "description": "Estimated reduction for recurring presentation work."
+        },
+        {
+          "label": "Core grid",
+          "value": "12 col",
+          "description": "One layout logic across most project documents."
+        }
+      ]
+    },
+    {
+      "type": "result",
+      "title": "Outcome",
+      "items": [
+        "A sharper studio presence across client-facing documents.",
+        "A practical template system for internal team use.",
+        "A visual foundation that can support future web and signage work."
+      ]
+    }
+  ]
+}

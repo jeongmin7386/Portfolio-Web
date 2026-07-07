@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="title">
+  <title id="title">Paper Field editorial cover</title>
+  <rect width="1600" height="1200" fill="#f5f1e8"/>
+  <rect x="180" y="140" width="560" height="920" fill="#ffffff"/>
+  <rect x="860" y="140" width="560" height="920" fill="#ffffff"/>
+  <path d="M260 260H620M260 360H620M260 460H520M940 260H1300M940 360H1300M940 460H1200" stroke="#202020" stroke-width="10"/>
+  <rect x="260" y="620" width="360" height="300" fill="#7e9f87"/>
+  <rect x="940" y="620" width="360" height="300" fill="#c8a46c"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Atlas stationery mockup</title>
+  <rect width="1200" height="1200" fill="#ede6d8"/>
+  <rect x="170" y="160" width="400" height="680" fill="#fffdf8"/>
+  <rect x="630" y="320" width="400" height="520" fill="#fffdf8"/>
+  <rect x="240" y="245" width="200" height="80" fill="#1f4d45"/>
+  <path d="M240 420H500M240 500H500M700 410H960M700 490H960" stroke="#cfc6b6" stroke-width="12"/>
+</svg>

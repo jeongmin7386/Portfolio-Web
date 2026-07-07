@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Atlas digital grid mockup</title>
+  <rect width="1200" height="1200" fill="#f8f6ef"/>
+  <rect x="120" y="120" width="420" height="420" fill="#1f4d45"/>
+  <rect x="660" y="120" width="420" height="420" fill="#d9b56f"/>
+  <rect x="120" y="660" width="420" height="420" fill="#bf6b45"/>
+  <rect x="660" y="660" width="420" height="420" fill="#e8e2d5"/>
+  <path d="M220 220H440M760 760H980" stroke="#fffdf8" stroke-width="16"/>
+</svg>

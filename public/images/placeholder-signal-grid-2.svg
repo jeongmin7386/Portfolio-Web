@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Signal component library sample</title>
+  <rect width="1200" height="1200" fill="#f8fafc"/>
+  <rect x="120" y="140" width="960" height="140" fill="#162033"/>
+  <rect x="120" y="360" width="280" height="220" fill="#dbeafe"/>
+  <rect x="460" y="360" width="280" height="220" fill="#dcfce7"/>
+  <rect x="800" y="360" width="280" height="220" fill="#ffe8b8"/>
+  <path d="M120 720H1080M120 830H1080M120 940H760" stroke="#94a3b8" stroke-width="18"/>
+</svg>

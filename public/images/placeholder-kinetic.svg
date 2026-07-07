@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="title">
+  <title id="title">Kinetic Index motion cover</title>
+  <rect width="1600" height="1200" fill="#12131a"/>
+  <rect x="160" y="170" width="1280" height="860" fill="#f3f4f6"/>
+  <path d="M250 330L620 210L990 330L1350 210" fill="none" stroke="#2563eb" stroke-width="48"/>
+  <path d="M250 610L620 490L990 610L1350 490" fill="none" stroke="#f97316" stroke-width="48"/>
+  <path d="M250 890L620 770L990 890L1350 770" fill="none" stroke="#16a34a" stroke-width="48"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">Kinetic Index motion storyboard</title>
+  <rect width="1600" height="900" fill="#111827"/>
+  <rect x="100" y="120" width="400" height="660" fill="#f9fafb"/>
+  <rect x="600" y="120" width="400" height="660" fill="#f9fafb"/>
+  <rect x="1100" y="120" width="400" height="660" fill="#f9fafb"/>
+  <path d="M170 430L430 300M670 300L930 560M1170 600L1430 330" stroke="#2563eb" stroke-width="34"/>
+  <rect x="160" y="650" width="260" height="40" fill="#f97316"/>
+  <rect x="660" y="650" width="260" height="40" fill="#16a34a"/>
+  <rect x="1160" y="650" width="260" height="40" fill="#f97316"/>
+</svg>

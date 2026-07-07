@@ -1,0 +1,88 @@
+{
+  "slug": "paper-field-editorial",
+  "title": "Paper Field Editorial",
+  "subtitle": "A publication system for material research essays.",
+  "year": "2025",
+  "period": "Sep - Nov 2025",
+  "role": "Editorial Designer",
+  "client": "Paper Field",
+  "category": "Editorial",
+  "tags": ["Publication", "Typography", "Art Book", "Print"],
+  "coverImage": "/images/placeholder-paper.svg",
+  "description": "A modular editorial direction for essays, field photographs, and material studies collected over a two-year research program.",
+  "tools": ["InDesign", "Photoshop", "Figma"],
+  "deliverables": ["Publication design", "Image system", "Print specifications"],
+  "featured": true,
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "Pages as Field Notes",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "text": "The book needed enough structure to hold dense research but enough openness to let images and annotations breathe. The final system uses restrained typography, alternating margins, and chapter-level image rules."
+    },
+    {
+      "type": "image",
+      "src": "/images/placeholder-paper-detail.svg",
+      "alt": "Paper Field editorial spread with photographs and annotation columns",
+      "caption": "Spread system for long-form research and image captions.",
+      "aspectRatio": "wide"
+    },
+    {
+      "type": "twoColumn",
+      "left": [
+        {
+          "type": "heading",
+          "text": "Type",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "A narrow serif face carries essays while a neutral sans organizes captions, notes, and recurring reference labels."
+        }
+      ],
+      "right": [
+        {
+          "type": "heading",
+          "text": "Image Rhythm",
+          "level": 3
+        },
+        {
+          "type": "paragraph",
+          "text": "Full-bleed chapter openings alternate with smaller image constellations to keep the pace of reading varied."
+        }
+      ]
+    },
+    {
+      "type": "imageGrid",
+      "columns": 3,
+      "images": [
+        {
+          "src": "/images/placeholder-paper-grid-1.svg",
+          "alt": "Paper Field chapter opener spread",
+          "caption": "Chapter opener"
+        },
+        {
+          "src": "/images/placeholder-paper-grid-2.svg",
+          "alt": "Paper Field caption system detail",
+          "caption": "Captions"
+        },
+        {
+          "src": "/images/placeholder-paper-grid-3.svg",
+          "alt": "Paper Field index layout",
+          "caption": "Index"
+        }
+      ]
+    },
+    {
+      "type": "result",
+      "title": "Outcome",
+      "items": [
+        "A consistent publication system for essays, notes, and image plates.",
+        "A print-ready archive that can continue as a recurring research series."
+      ]
+    }
+  ]
+}

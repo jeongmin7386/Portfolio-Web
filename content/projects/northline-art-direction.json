@@ -1,0 +1,64 @@
+{
+  "slug": "northline-art-direction",
+  "title": "Northline Art Direction",
+  "subtitle": "Image direction for an outdoor lifestyle launch.",
+  "year": "2024",
+  "period": "Aug - Oct 2024",
+  "role": "Art Director",
+  "client": "Northline",
+  "category": "Art Direction",
+  "tags": ["Campaign", "Photography", "Lookbook", "Launch"],
+  "coverImage": "/images/placeholder-northline.svg",
+  "description": "A restrained image direction system for a launch campaign balancing technical product information with quiet landscape-led storytelling.",
+  "tools": ["Figma", "Lightroom", "Photoshop"],
+  "deliverables": ["Art direction", "Shot list", "Lookbook layout", "Launch image kit"],
+  "featured": true,
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "Quiet Utility",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "text": "The campaign language needed to avoid exaggerated adventure tropes. We focused on texture, utility, and measured pacing across launch imagery."
+    },
+    {
+      "type": "image",
+      "src": "/images/placeholder-northline-detail.svg",
+      "alt": "Northline lookbook art direction board",
+      "caption": "Lookbook direction with product, landscape, and texture pairings.",
+      "aspectRatio": "wide"
+    },
+    {
+      "type": "imageGrid",
+      "columns": 2,
+      "images": [
+        {
+          "src": "/images/placeholder-northline-grid-1.svg",
+          "alt": "Northline product detail composition",
+          "caption": "Product detail"
+        },
+        {
+          "src": "/images/placeholder-northline-grid-2.svg",
+          "alt": "Northline landscape crop composition",
+          "caption": "Landscape crop"
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "quote": "Every frame should feel like a useful object in a real place.",
+      "cite": "Campaign direction"
+    },
+    {
+      "type": "result",
+      "title": "Outcome",
+      "items": [
+        "A launch image kit covering product pages, editorial features, and social teasers.",
+        "A simple art direction guide for future seasonal shoots.",
+        "A quieter campaign tone that still kept product function visible."
+      ]
+    }
+  ]
+}

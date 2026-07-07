@@ -1,0 +1,92 @@
+{
+  "slug": "signal-space-ui",
+  "title": "Signal Space UI",
+  "subtitle": "A dashboard experience for monitoring cultural programming.",
+  "year": "2026",
+  "period": "Apr - Jun 2026",
+  "role": "Product Designer",
+  "client": "Signal Space",
+  "category": "UI/UX",
+  "tags": ["Dashboard", "Design System", "Research", "Prototype"],
+  "coverImage": "/images/placeholder-signal.svg",
+  "description": "A quiet operational interface for teams managing event calendars, audience signals, and partner updates across multiple venues.",
+  "tools": ["Figma", "FigJam", "Notion"],
+  "deliverables": ["UX flows", "Component library", "Clickable prototype", "Handoff notes"],
+  "featured": true,
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "Less Noise, More Signal",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "text": "The product had to support daily scanning, quick status changes, and deeper review without turning every screen into a dense control room."
+    },
+    {
+      "type": "image",
+      "src": "/images/placeholder-signal-detail.svg",
+      "alt": "Signal Space dashboard overview with event columns and metrics",
+      "caption": "Dashboard overview with collapsible signal groups.",
+      "aspectRatio": "wide"
+    },
+    {
+      "type": "quote",
+      "quote": "The interface should feel like a reliable desk, not a command center.",
+      "cite": "Product principle"
+    },
+    {
+      "type": "process",
+      "steps": [
+        {
+          "title": "Workflow Mapping",
+          "description": "Separated daily scheduling tasks from weekly reporting moments to reduce competing priorities on the same view."
+        },
+        {
+          "title": "Component Pass",
+          "description": "Designed compact controls, table states, and semantic color use for clear repeated action."
+        },
+        {
+          "title": "Prototype Review",
+          "description": "Tested navigation and density with producers who moved between desktop planning and mobile checks."
+        }
+      ]
+    },
+    {
+      "type": "imageGrid",
+      "columns": 2,
+      "images": [
+        {
+          "src": "/images/placeholder-signal-grid-1.svg",
+          "alt": "Signal Space mobile schedule screen",
+          "caption": "Mobile schedule"
+        },
+        {
+          "src": "/images/placeholder-signal-grid-2.svg",
+          "alt": "Signal Space component library sample",
+          "caption": "Components"
+        }
+      ]
+    },
+    {
+      "type": "stats",
+      "items": [
+        {
+          "label": "Primary flows",
+          "value": "7",
+          "description": "Scheduling, review, publishing, reporting, and partner updates."
+        },
+        {
+          "label": "Reusable components",
+          "value": "42",
+          "description": "Controls, cells, cards, overlays, and empty states."
+        },
+        {
+          "label": "Prototype screens",
+          "value": "64",
+          "description": "Desktop and mobile states for stakeholder review."
+        }
+      ]
+    }
+  ]
+}

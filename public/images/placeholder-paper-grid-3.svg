@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title">
+  <title id="title">Paper Field index layout</title>
+  <rect width="1200" height="1200" fill="#ffffff"/>
+  <path d="M160 180H1040M160 300H1040M160 420H1040M160 540H1040M160 660H1040M160 780H1040M160 900H1040" stroke="#d6d3ca" stroke-width="8"/>
+  <path d="M230 180V940M560 180V940M890 180V940" stroke="#202020" stroke-width="10"/>
+  <rect x="230" y="960" width="330" height="70" fill="#7e9f87"/>
+</svg>

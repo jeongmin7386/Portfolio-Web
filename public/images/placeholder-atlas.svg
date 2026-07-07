@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="title">
+  <title id="title">Atlas brand system cover</title>
+  <rect width="1600" height="1200" fill="#e8e2d5"/>
+  <rect x="120" y="120" width="1360" height="960" fill="#f8f6ef"/>
+  <path d="M120 480H1480M120 720H1480M520 120V1080M1080 120V1080" stroke="#1f4d45" stroke-width="10"/>
+  <rect x="230" y="245" width="330" height="160" fill="#1f4d45"/>
+  <rect x="620" y="245" width="610" height="160" fill="#bf6b45"/>
+  <rect x="230" y="795" width="740" height="150" fill="#d9b56f"/>
+  <rect x="1040" y="795" width="230" height="150" fill="#1f4d45"/>
+</svg>

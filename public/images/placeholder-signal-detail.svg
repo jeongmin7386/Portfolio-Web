@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">Signal Space dashboard overview</title>
+  <rect width="1600" height="900" fill="#ecf2f9"/>
+  <rect x="90" y="70" width="1420" height="760" rx="16" fill="#ffffff"/>
+  <rect x="130" y="120" width="240" height="660" fill="#162033"/>
+  <rect x="420" y="130" width="310" height="260" fill="#dbeafe"/>
+  <rect x="770" y="130" width="310" height="260" fill="#dcfce7"/>
+  <rect x="1120" y="130" width="310" height="260" fill="#ffe8b8"/>
+  <path d="M450 490H1390M450 580H1390M450 670H1390" stroke="#cbd5e1" stroke-width="12"/>
+  <rect x="450" y="735" width="210" height="44" fill="#244f8f"/>
+</svg>

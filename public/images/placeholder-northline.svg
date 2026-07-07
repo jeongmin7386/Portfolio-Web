@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="title">
+  <title id="title">Northline art direction cover</title>
+  <rect width="1600" height="1200" fill="#d8ded6"/>
+  <rect x="160" y="150" width="1280" height="900" fill="#eef1ec"/>
+  <path d="M160 820L520 520L810 680L1110 400L1440 700V1050H160Z" fill="#536b5c"/>
+  <rect x="240" y="230" width="330" height="220" fill="#a7875b"/>
+  <rect x="650" y="230" width="330" height="220" fill="#2f3a35"/>
+  <rect x="1060" y="230" width="300" height="220" fill="#ffffff"/>
+</svg>
