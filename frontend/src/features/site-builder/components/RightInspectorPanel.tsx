@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { blockLabel, defaultBlockLayout, defaultBlockStyles } from '../blockCatalog';
+import { embedProviderOptions } from '../embedProviders';
 import type { BlockLayoutFrame, BlockStyles, DeviceMode, SiteBlock } from '../types';
 
 type RightInspectorPanelProps = {
@@ -9,6 +10,10 @@ type RightInspectorPanelProps = {
   onChange: (block: SiteBlock) => void;
   onSave: () => void;
   onDelete: (block: SiteBlock) => void;
+  onDuplicate: (block: SiteBlock) => void;
+  onBringForward: (block: SiteBlock) => void;
+  onSendBackward: (block: SiteBlock) => void;
+  onToggleLock: (block: SiteBlock) => void;
 };
 
 type JsonTextareaProps = {
@@ -74,7 +79,18 @@ function JsonTextarea({ value, onChange }: JsonTextareaProps) {
   );
 }
 
-export function RightInspectorPanel({ block, device, isSaving, onChange, onSave, onDelete }: RightInspectorPanelProps) {
+export function RightInspectorPanel({
+  block,
+  device,
+  isSaving,
+  onChange,
+  onSave,
+  onDelete,
+  onDuplicate,
+  onBringForward,
+  onSendBackward,
+  onToggleLock
+}: RightInspectorPanelProps) {
   if (!block) {
     return (
       <section className="inspector-section">
@@ -132,6 +148,26 @@ export function RightInspectorPanel({ block, device, isSaving, onChange, onSave,
         </button>
       </div>
 
+      <div className="inspector-action-grid">
+        <button className="button button-secondary" type="button" onClick={() => onDuplicate(selectedBlock)}>
+          복제
+        </button>
+        <button className="button button-secondary" type="button" onClick={() => onBringForward(selectedBlock)}>
+          앞으로
+        </button>
+        <button className="button button-secondary" type="button" onClick={() => onSendBackward(selectedBlock)}>
+          뒤로
+        </button>
+        <button className="button button-secondary" type="button" onClick={() => onToggleLock(selectedBlock)}>
+          {settings.locked ? '잠금 해제' : '잠금'}
+        </button>
+      </div>
+
+      <label className="field">
+        <span>블록 이름</span>
+        <input value={stringValue(settings.blockName)} onChange={(event) => patchSettings('blockName', event.target.value)} />
+      </label>
+
       <div className="builder-toggle-row">
         <label>
           <input type="checkbox" checked={selectedBlock.visible} onChange={(event) => patch({ visible: event.target.checked })} />
@@ -163,6 +199,10 @@ export function RightInspectorPanel({ block, device, isSaving, onChange, onSave,
       <div className="inspector-subsection">
         <h4>스타일</h4>
         <div className="compact-field-grid">
+          <label className="field">
+            <span>글꼴</span>
+            <input value={styles.fontFamily ?? ''} onChange={(event) => patchStyle('fontFamily', event.target.value)} />
+          </label>
           <label className="field">
             <span>글자 크기</span>
             <input type="number" value={numberValue(styles.fontSize, 18)} onChange={(event) => patchStyle('fontSize', Number(event.target.value))} />
@@ -196,6 +236,10 @@ export function RightInspectorPanel({ block, device, isSaving, onChange, onSave,
             <input type="number" min="0" max="1" step="0.05" value={numberValue(styles.opacity, 1)} onChange={(event) => patchStyle('opacity', Number(event.target.value))} />
           </label>
           <label className="field">
+            <span>줄 간격</span>
+            <input type="number" min="0.8" max="3" step="0.05" value={numberValue(styles.lineHeight, 1.6)} onChange={(event) => patchStyle('lineHeight', Number(event.target.value))} />
+          </label>
+          <label className="field">
             <span>테두리 두께</span>
             <input type="number" value={numberValue(styles.borderWidth, 0)} onChange={(event) => patchStyle('borderWidth', Number(event.target.value))} />
           </label>
@@ -204,6 +248,23 @@ export function RightInspectorPanel({ block, device, isSaving, onChange, onSave,
             <input type="color" value={styles.borderColor ?? '#111111'} onChange={(event) => patchStyle('borderColor', event.target.value)} />
           </label>
         </div>
+        <label className="field">
+          <span>테두리 CSS</span>
+          <input value={styles.border ?? 'none'} onChange={(event) => patchStyle('border', event.target.value)} placeholder="1px solid #111111" />
+        </label>
+        <label className="field">
+          <span>그림자 CSS</span>
+          <input value={styles.boxShadow ?? 'none'} onChange={(event) => patchStyle('boxShadow', event.target.value)} placeholder="0 16px 40px rgba(0,0,0,0.12)" />
+        </label>
+        <label className="field">
+          <span>버튼 스타일</span>
+          <select value={styles.buttonStyle ?? 'solid'} onChange={(event) => patchStyle('buttonStyle', event.target.value as BlockStyles['buttonStyle'])}>
+            <option value="solid">Solid</option>
+            <option value="outline">Outline</option>
+            <option value="ghost">Ghost</option>
+            <option value="pill">Pill</option>
+          </select>
+        </label>
         <label className="field">
           <span>정렬</span>
           <select value={styles.textAlign ?? 'left'} onChange={(event) => patchStyle('textAlign', event.target.value as BlockStyles['textAlign'])}>
@@ -248,6 +309,21 @@ export function RightInspectorPanel({ block, device, isSaving, onChange, onSave,
 }
 
 function ContentField({ fieldKey, value, onChange }: { fieldKey: string; value: unknown; onChange: (value: unknown) => void }) {
+  if (fieldKey === 'embedProvider') {
+    return (
+      <label className="field">
+        <span>{fieldKey}</span>
+        <select value={stringValue(value) || 'iframe'} onChange={(event) => onChange(event.target.value)}>
+          {embedProviderOptions.map((provider) => (
+            <option key={provider.key} value={provider.key}>
+              {provider.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
   if (typeof value === 'boolean') {
     return (
       <label className="builder-toggle-row">

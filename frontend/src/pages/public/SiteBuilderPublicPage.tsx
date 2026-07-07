@@ -3,18 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { PublicBlockCanvas } from '../../features/site-builder/components/PublicBlockCanvas';
 import { getPublicSite } from '../../features/site-builder/siteBuilderApi';
-import type { PageType } from '../../features/site-builder/types';
 import { assetUrl, getApiErrorMessage } from '../../lib/apiClient';
-
-const pageTypeLabels: Record<PageType, string> = {
-  HOME: '홈',
-  PROJECTS: '프로젝트',
-  PROJECT_DETAIL: '프로젝트 상세',
-  ABOUT: '소개',
-  CONTACT: '연락',
-  COLLECTION: '컬렉션',
-  CUSTOM: '페이지'
-};
 
 export function SiteBuilderPublicPage() {
   const { siteSlug } = useParams();
@@ -24,88 +13,80 @@ export function SiteBuilderPublicPage() {
   });
 
   useEffect(() => {
-    if (siteQuery.data?.site.title) {
-      document.title = `${siteQuery.data.site.title} | 포트폴리오`;
+    const firstPage = siteQuery.data?.pages[0]?.page;
+    if (firstPage?.seoTitle || siteQuery.data?.site.title) {
+      document.title = firstPage?.seoTitle || siteQuery.data!.site.title;
     }
-  }, [siteQuery.data?.site.title]);
+    setMeta('name', 'description', firstPage?.seoDescription ?? siteQuery.data?.site.description ?? '');
+    setMeta('property', 'og:image', firstPage?.seoOgImage ?? '');
+  }, [siteQuery.data]);
 
   if (siteQuery.isLoading) {
-    return <div className="center-screen">공개 포트폴리오를 불러오는 중입니다...</div>;
+    return <div className="center-screen">공개 사이트를 불러오는 중입니다...</div>;
   }
 
   if (siteQuery.isError || !siteQuery.data) {
-    return <div className="center-screen">{getApiErrorMessage(siteQuery.error, '공개 포트폴리오를 찾을 수 없습니다.')}</div>;
+    return <div className="center-screen">{getApiErrorMessage(siteQuery.error, '공개 사이트를 찾을 수 없습니다.')}</div>;
   }
 
   const { site, pages, projects } = siteQuery.data;
   const navPages = pages.filter(({ page }) => page.navVisible);
-  const heroPage = pages[0];
+  const projectBasePath = siteSlug ? `/site/${siteSlug}/projects` : '/site/projects';
 
   return (
     <main className="site-public-page">
-      <header className="site-public-hero">
-        <nav className="site-public-nav">
-          <Link to="/builder" className="site-public-brand">
-            {site.title}
-          </Link>
-          <div>
-            {navPages.map(({ page }) => (
-              <a key={page.id} href={`#${page.slug}`}>
-                {page.title}
-              </a>
-            ))}
-          </div>
+      <header className="site-public-minimal-header">
+        <Link to="/builder" className="site-public-brand">
+          {site.title}
+        </Link>
+        <nav>
+          {navPages.map(({ page }) => (
+            <a key={page.id} href={`#${page.slug}`}>
+              {page.title}
+            </a>
+          ))}
+          {projects.length ? <a href="#projects">Projects</a> : null}
         </nav>
-
-        <div className="site-public-hero-grid">
-          <div>
-            <p className="eyebrow">포트폴리오 웹사이트</p>
-            <h1>{site.title}</h1>
-            {site.description ? <p>{site.description}</p> : null}
-          </div>
-          <div className="site-public-cover">
-            {site.profileImageUrl ? (
-              <img src={assetUrl(site.profileImageUrl)} alt="" />
-            ) : (
-              <div>
-                <strong>{heroPage?.page.title ?? 'Portfolio'}</strong>
-                <span>Visual portfolio</span>
-              </div>
-            )}
-          </div>
-        </div>
       </header>
 
       {pages.map(({ page, blocks }) => (
-        <section key={page.id} id={page.slug} className="site-public-section">
-          <div className="site-public-section-heading">
-            <p className="eyebrow">{pageTypeLabels[page.pageType]}</p>
-            <h2>{page.title}</h2>
-          </div>
-          <PublicBlockCanvas blocks={blocks} />
+        <section key={page.id} id={page.slug} className="site-public-page-blocks">
+          <PublicBlockCanvas blocks={blocks} sections={page.sections} />
         </section>
       ))}
 
-      <section id="projects" className="site-public-section">
-        <div className="site-public-section-heading">
-          <p className="eyebrow">프로젝트</p>
-          <h2>프로젝트 상세 페이지</h2>
-        </div>
-        <div className="site-public-project-grid">
-          {projects.map((project) => (
-            <Link key={project.id} to={`/site/projects/${project.slug}`} className="site-public-project-card">
-              <div className="site-public-project-thumb">
-                {project.thumbnailUrl ? <img src={assetUrl(project.thumbnailUrl)} alt="" /> : <span>{project.title}</span>}
-              </div>
-              <div>
-                <p>{project.period || '프로젝트'}</p>
-                <h3>{project.title}</h3>
-                {project.summary ? <span>{project.summary}</span> : null}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {projects.length ? (
+        <section id="projects" className="site-public-project-section">
+          <div className="site-public-project-grid">
+            {projects.map((project) => (
+              <Link key={project.id} to={`${projectBasePath}/${project.slug}`} className="site-public-project-card">
+                <div className="site-public-project-thumb">
+                  {project.thumbnailUrl ? <img src={assetUrl(project.thumbnailUrl)} alt="" /> : <span>{project.title}</span>}
+                </div>
+                <div>
+                  {project.category ? <p>{project.category}</p> : null}
+                  <h3>{project.title}</h3>
+                  {project.summary ? <span>{project.summary}</span> : null}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
+}
+
+function setMeta(attribute: 'name' | 'property', key: string, value: string) {
+  let element = document.querySelector(`meta[${attribute}="${key}"]`) as HTMLMetaElement | null;
+  if (!value) {
+    element?.remove();
+    return;
+  }
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute(attribute, key);
+    document.head.appendChild(element);
+  }
+  element.content = value;
 }

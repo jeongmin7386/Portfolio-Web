@@ -2,6 +2,8 @@ package com.example.portfolio.api.builder.dto;
 
 import com.example.portfolio.domain.page.PageType;
 import com.example.portfolio.domain.page.SitePage;
+import java.util.List;
+import java.util.Map;
 
 public record PageResponse(
     Long id,
@@ -13,7 +15,9 @@ public record PageResponse(
     boolean navVisible,
     int sortOrder,
     String seoTitle,
-    String seoDescription
+    String seoDescription,
+    String seoOgImage,
+    List<Map<String, Object>> sections
 ) {
     public static PageResponse from(SitePage page) {
         return new PageResponse(
@@ -26,7 +30,9 @@ public record PageResponse(
             page.isNavVisible(),
             page.getSortOrder(),
             page.getSeoTitle(),
-            page.getSeoDescription()
+            page.getSeoDescription(),
+            page.getSeoOgImage(),
+            page.getSections()
         );
     }
 }

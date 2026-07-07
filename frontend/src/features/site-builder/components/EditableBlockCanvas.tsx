@@ -1,5 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react';
 import { assetUrl } from '../../../lib/apiClient';
+import { embedProviderOptions, parseGithubRepository, resolveEmbedProvider } from '../embedProviders';
 import type { SiteBlock } from '../types';
 
 type EditableBlockCanvasProps = {
@@ -40,8 +41,12 @@ function blockStyle(block: SiteBlock, fillFrame: boolean): CSSProperties {
     margin: numberValue(styles.margin),
     opacity: numberValue(styles.opacity),
     textAlign: textValue(styles.textAlign, 'left') as CSSProperties['textAlign'],
+    fontFamily: textValue(styles.fontFamily) || undefined,
     fontSize: numberValue(styles.fontSize),
     fontWeight: numberValue(styles.fontWeight) as CSSProperties['fontWeight'],
+    lineHeight: numberValue(styles.lineHeight),
+    border: textValue(styles.border) && textValue(styles.border) !== 'none' ? textValue(styles.border) : undefined,
+    boxShadow: textValue(styles.boxShadow) && textValue(styles.boxShadow) !== 'none' ? textValue(styles.boxShadow) : undefined,
     borderWidth: numberValue(styles.borderWidth),
     borderColor: textValue(styles.borderColor) || undefined,
     borderStyle: numberValue(styles.borderWidth, 0) ? textValue(styles.borderStyle, 'solid') : undefined
@@ -76,7 +81,7 @@ export function EditableBlockCanvas({ block, selected, onSelect, onChange, showC
       tabIndex={showChrome ? 0 : undefined}
     >
       {showChrome ? <span className="canvas-object-label">{block.blockType}</span> : null}
-      {selected ? renderEditableBlock(block, content, patchContent, patchBlock, stop) : renderReadonlyBlock(block, content)}
+      {selected && !block.settings?.locked ? renderEditableBlock(block, content, patchContent, patchBlock, stop) : renderReadonlyBlock(block, content)}
     </div>
   );
 }
@@ -102,6 +107,7 @@ function renderEditableBlock(
     case 'TEXT':
       return <textarea className="canvas-inline-input canvas-text-input" value={textValue(content.text)} onClick={stop} onChange={(event) => patch('text', event.target.value)} />;
     case 'IMAGE':
+    case 'FULL_WIDTH_IMAGE':
       return renderImageEditor(content, patch, stop);
     case 'PHOTO_GRID':
     case 'GALLERY':
@@ -135,10 +141,12 @@ function renderEditableBlock(
       return renderItemsEditor(content, 'items', '항목', patch, patchBlock, stop);
     case 'TWO_COLUMN':
     case 'COLUMNS':
+    case 'IMAGE_TEXT':
       return renderTwoColumnEditor(content, patch, stop);
     case 'PROJECT_CARD':
       return renderProjectCardEditor(content, patch, stop);
     case 'LIST':
+    case 'NUMBERED_LIST':
       return renderListEditor(content, patch, stop);
     case 'CHECKLIST':
       return renderChecklistEditor(content, patch, patchBlock, stop);
@@ -169,6 +177,11 @@ function renderEditableBlock(
     case 'VIDEO_EMBED':
     case 'YOUTUBE_EMBED':
     case 'FIGMA_EMBED':
+    case 'VIMEO_EMBED':
+    case 'PDF_EMBED':
+    case 'CODEPEN_EMBED':
+    case 'GOOGLE_DRIVE_EMBED':
+    case 'MAP_EMBED':
       return renderEmbedEditor(content, patch, stop);
     case 'LINK_CARD':
     case 'GITHUB_CARD':
@@ -239,6 +252,7 @@ function renderReadonlyBlock(block: SiteBlock, content: Record<string, unknown>)
       );
     }
     case 'IMAGE':
+    case 'FULL_WIDTH_IMAGE':
       return renderReadonlyImage(content);
     case 'PHOTO_GRID':
     case 'GALLERY':
@@ -275,11 +289,14 @@ function renderReadonlyBlock(block: SiteBlock, content: Record<string, unknown>)
       return renderReadonlyCards(listValue(content.items));
     case 'TWO_COLUMN':
     case 'COLUMNS':
+    case 'IMAGE_TEXT':
       return renderReadonlyTwoColumn(content);
     case 'PROJECT_CARD':
       return renderReadonlyProjectCard(content);
     case 'LIST':
       return <ul className="site-list-block">{stringList(content.items).map((item) => <li key={item}>{item}</li>)}</ul>;
+    case 'NUMBERED_LIST':
+      return <ol className="site-list-block">{stringList(content.items).map((item) => <li key={item}>{item}</li>)}</ol>;
     case 'CHECKLIST':
       return (
         <ul className="site-list-block checklist">
@@ -298,6 +315,11 @@ function renderReadonlyBlock(block: SiteBlock, content: Record<string, unknown>)
     case 'VIDEO_EMBED':
     case 'YOUTUBE_EMBED':
     case 'FIGMA_EMBED':
+    case 'VIMEO_EMBED':
+    case 'PDF_EMBED':
+    case 'CODEPEN_EMBED':
+    case 'GOOGLE_DRIVE_EMBED':
+    case 'MAP_EMBED':
       return renderReadonlyEmbed(content);
     case 'LINK_CARD':
     case 'GITHUB_CARD':
@@ -512,11 +534,24 @@ function renderChecklistEditor(
 }
 
 function renderEmbedEditor(content: Record<string, unknown>, patch: (key: string, value: unknown) => void, stop: (event: MouseEvent<HTMLElement>) => void) {
+  const rawUrl = textValue(content.embedUrl || content.url);
+  const provider = resolveEmbedProvider(content.embedProvider, rawUrl);
   return (
     <section className="site-embed-block canvas-object-fields" onClick={stop}>
       <input value={textValue(content.title)} onChange={(event) => patch('title', event.target.value)} placeholder="임베드 제목" />
-      <input value={textValue(content.embedUrl || content.url)} onChange={(event) => patch('embedUrl', event.target.value)} placeholder="임베드 URL" />
-      {textValue(content.embedUrl || content.url) ? <iframe title={textValue(content.title, 'Embed')} src={textValue(content.embedUrl || content.url)} /> : <div className="image-placeholder">임베드 URL을 입력하세요</div>}
+      <select value={provider.key} onChange={(event) => patch('embedProvider', event.target.value)}>
+        {embedProviderOptions.map((option) => (
+          <option key={option.key} value={option.key}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <input value={rawUrl} onChange={(event) => patch('embedUrl', event.target.value)} placeholder="임베드 URL" />
+      <label className="builder-toggle-row">
+        <span>넓은 임베드</span>
+        <input type="checkbox" checked={Boolean(content.wide)} onChange={(event) => patch('wide', event.target.checked)} />
+      </label>
+      {renderEmbedPreview(content)}
     </section>
   );
 }
@@ -591,10 +626,14 @@ function renderReadonlyImageCollection(content: Record<string, unknown>) {
 }
 
 function renderReadonlyButton(content: Record<string, unknown>) {
+  const label = textValue(content.label, textValue(content.buttonText));
+  if (!label) {
+    return null;
+  }
   return (
     <div className="site-block-button-row">
       <a className="button button-primary" href={textValue(content.url || content.href, '#')} target={textValue(content.target, '_self')} rel="noreferrer">
-        {textValue(content.label, textValue(content.buttonText, '열기'))}
+        {label}
       </a>
     </div>
   );
@@ -684,15 +723,78 @@ function renderReadonlyTable(rows: unknown) {
 
 function renderReadonlyEmbed(content: Record<string, unknown>) {
   const embedUrl = textValue(content.embedUrl || content.url);
+  const provider = resolveEmbedProvider(content.embedProvider, embedUrl);
+  const transformedUrl = embedUrl ? provider.transformUrl(embedUrl) : '';
+
+  if (provider.renderType === 'card') {
+    return renderEmbedCard(content, provider.label, embedUrl);
+  }
+
   return (
-    <section className="site-embed-block">
+    <section className={`site-embed-block ${content.wide ? 'site-embed-wide' : ''}`}>
       {content.title ? <h3>{textValue(content.title)}</h3> : null}
-      {embedUrl ? <iframe title={textValue(content.title, 'Embed')} src={embedUrl} /> : <div className="image-placeholder" />}
+      {transformedUrl ? (
+        <iframe
+          title={textValue(content.title, provider.label)}
+          src={transformedUrl}
+          sandbox={provider.sandbox}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          style={{ aspectRatio: provider.aspectRatio }}
+        />
+      ) : (
+        <div className="image-placeholder" />
+      )}
     </section>
   );
 }
 
+function renderEmbedPreview(content: Record<string, unknown>) {
+  const embedUrl = textValue(content.embedUrl || content.url);
+  const provider = resolveEmbedProvider(content.embedProvider, embedUrl);
+  const transformedUrl = embedUrl ? provider.transformUrl(embedUrl) : '';
+
+  if (!embedUrl) {
+    return <div className="image-placeholder">임베드 URL을 입력하세요</div>;
+  }
+
+  if (provider.renderType === 'card') {
+    return renderEmbedCard(content, provider.label, embedUrl);
+  }
+
+  return (
+    <iframe
+      title={textValue(content.title, provider.label)}
+      src={transformedUrl}
+      sandbox={provider.sandbox}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      style={{ aspectRatio: provider.aspectRatio }}
+    />
+  );
+}
+
+function renderEmbedCard(content: Record<string, unknown>, providerLabel: string, url: string) {
+  const repo = parseGithubRepository(url);
+  const title = textValue(content.title, repo?.label ?? providerLabel);
+  const description = textValue(content.description, repo ? 'GitHub repository' : textValue(content.url || content.embedUrl));
+
+  return (
+    <a className={`site-link-card site-embed-card ${repo ? 'github-repo-card' : ''}`} href={url || '#'} target="_blank" rel="noreferrer">
+      <small>{providerLabel}</small>
+      <strong>{title}</strong>
+      {description ? <span>{description}</span> : null}
+      {url ? <small>{url}</small> : null}
+    </a>
+  );
+}
+
 function renderReadonlyLinkCard(content: Record<string, unknown>) {
+  const url = textValue(content.url || content.embedUrl);
+  const provider = resolveEmbedProvider(content.embedProvider, url);
+  if (provider.key === 'github') {
+    return renderEmbedCard(content, provider.label, url);
+  }
   return (
     <a className="site-link-card" href={textValue(content.url, '#')} target="_blank" rel="noreferrer">
       <strong>{textValue(content.title)}</strong>

@@ -112,7 +112,9 @@ public class SiteBuilderService {
             request.navVisible() == null || request.navVisible(),
             sortOrder,
             clean(request.seoTitle()),
-            clean(request.seoDescription())
+            clean(request.seoDescription()),
+            clean(request.seoOgImage()),
+            normalizeSections(request.sections())
         );
         return PageResponse.from(pageRepository.save(page));
     }
@@ -134,7 +136,9 @@ public class SiteBuilderService {
             request.navVisible() == null || request.navVisible(),
             request.sortOrder() == null ? page.getSortOrder() : request.sortOrder(),
             clean(request.seoTitle()),
-            clean(request.seoDescription())
+            clean(request.seoDescription()),
+            clean(request.seoOgImage()),
+            normalizeSections(request.sections())
         );
         return PageResponse.from(page);
     }
@@ -587,6 +591,17 @@ public class SiteBuilderService {
         return mapOf("width", "normal", "align", "left", "paddingTop", 0, "paddingBottom", 0);
     }
 
+    private List<Map<String, Object>> normalizeSections(List<Map<String, Object>> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return List.of();
+        }
+        return sections.stream()
+            .filter(Objects::nonNull)
+            .map(section -> new LinkedHashMap<String, Object>(section))
+            .map(section -> (Map<String, Object>) section)
+            .toList();
+    }
+
     private Map<String, Object> normalizeStyles(Map<String, Object> styles, Map<String, Object> settings) {
         if (styles != null && !styles.isEmpty()) {
             return new LinkedHashMap<>(styles);
@@ -595,6 +610,7 @@ public class SiteBuilderService {
             return new LinkedHashMap<>(settings);
         }
         return mapOf(
+            "fontFamily", "Pretendard",
             "fontSize", 18,
             "fontWeight", 500,
             "color", "#111111",
@@ -604,8 +620,12 @@ public class SiteBuilderService {
             "margin", 0,
             "opacity", 1,
             "textAlign", "left",
+            "lineHeight", 1.6,
+            "border", "none",
             "borderWidth", 0,
-            "borderColor", "#111111"
+            "borderColor", "#111111",
+            "borderStyle", "solid",
+            "boxShadow", "none"
         );
     }
 
