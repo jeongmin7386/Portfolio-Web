@@ -39,6 +39,21 @@ services:
         source: /*
         destination: /index.html
 
+  - type: web
+    name: studio-archive
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: NODE_ENV
+        value: production
+
 databases:
   - name: portfolio-web-db
     plan: free
