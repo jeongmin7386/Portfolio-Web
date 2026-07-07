@@ -14,6 +14,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -55,6 +60,13 @@ public class SitePage extends BaseTimeEntity {
     @Column(name = "seo_description", length = 300)
     private String seoDescription;
 
+    @Column(name = "seo_og_image", length = 500)
+    private String seoOgImage;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private List<Map<String, Object>> sections = new ArrayList<>();
+
     protected SitePage() {
     }
 
@@ -68,6 +80,11 @@ public class SitePage extends BaseTimeEntity {
 
     public void update(String title, String slug, PageType pageType, boolean publicPage, boolean navVisible, int sortOrder,
                        String seoTitle, String seoDescription) {
+        update(title, slug, pageType, publicPage, navVisible, sortOrder, seoTitle, seoDescription, seoOgImage, sections);
+    }
+
+    public void update(String title, String slug, PageType pageType, boolean publicPage, boolean navVisible, int sortOrder,
+                       String seoTitle, String seoDescription, String seoOgImage, List<Map<String, Object>> sections) {
         this.title = title;
         this.slug = slug;
         this.pageType = pageType == null ? PageType.CUSTOM : pageType;
@@ -76,6 +93,8 @@ public class SitePage extends BaseTimeEntity {
         this.sortOrder = sortOrder;
         this.seoTitle = seoTitle;
         this.seoDescription = seoDescription;
+        this.seoOgImage = seoOgImage;
+        this.sections = sections == null ? new ArrayList<>() : new ArrayList<>(sections);
     }
 
     public void updateSortOrder(int sortOrder) {
@@ -120,5 +139,13 @@ public class SitePage extends BaseTimeEntity {
 
     public String getSeoDescription() {
         return seoDescription;
+    }
+
+    public String getSeoOgImage() {
+        return seoOgImage;
+    }
+
+    public List<Map<String, Object>> getSections() {
+        return new ArrayList<>(sections);
     }
 }

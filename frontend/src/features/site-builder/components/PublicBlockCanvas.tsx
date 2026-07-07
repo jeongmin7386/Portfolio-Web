@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { defaultBlockLayout, defaultBlockStyles } from '../blockCatalog';
-import type { DeviceMode, SiteBlock } from '../types';
+import { defaultBlockLayout, defaultBlockStyles, defaultSection } from '../blockCatalog';
+import type { DeviceMode, SiteBlock, SiteSection } from '../types';
 import { BlockRenderer } from './BlockRenderer';
 
 type PublicBlockCanvasProps = {
   blocks: SiteBlock[];
+  sections?: SiteSection[];
 };
 
 function currentDevice(): DeviceMode {
@@ -20,27 +21,31 @@ function currentDevice(): DeviceMode {
   return 'desktop';
 }
 
-export function PublicBlockCanvas({ blocks }: PublicBlockCanvasProps) {
+export function PublicBlockCanvas({ blocks, sections }: PublicBlockCanvasProps) {
   const [device, setDevice] = useState<DeviceMode>(() => currentDevice());
-  const visibleBlocks = blocks.filter((block) => block.visible);
-  const frames = useMemo(
+  const visibleBlocks = useMemo(() => blocks.filter((block) => block.visible), [blocks]);
+  const normalizedSections = useMemo(() => normalizeSections(sections, visibleBlocks), [sections, visibleBlocks]);
+  const sectionFrames = useMemo(
     () =>
-      visibleBlocks.map((block, index) => ({
-        block: {
-          ...block,
-          styles: {
-            ...defaultBlockStyles(block.blockType),
-            ...(block.styles ?? {})
+      normalizedSections.map((section) => {
+        const sectionBlocks = visibleBlocks.filter((block) => blockSectionId(block) === section.id);
+        const frames = sectionBlocks.map((block, index) => ({
+          block: {
+            ...block,
+            styles: {
+              ...defaultBlockStyles(block.blockType),
+              ...(block.styles ?? {})
+            }
+          },
+          frame: {
+            ...defaultBlockLayout(block.blockType, index)[device]!,
+            ...(block.layout?.[device] ?? {})
           }
-        },
-        frame: {
-          ...defaultBlockLayout(block.blockType, index)[device]!,
-          ...(block.layout?.[device] ?? {})
-        }
-      })),
-    [device, visibleBlocks]
+        }));
+        return { section, frames };
+      }),
+    [device, normalizedSections, visibleBlocks]
   );
-  const canvasHeight = Math.max(320, ...frames.map(({ frame }) => frame.y + frame.height + 96));
 
   useEffect(() => {
     function handleResize() {
@@ -50,27 +55,81 @@ export function PublicBlockCanvas({ blocks }: PublicBlockCanvasProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (!frames.length) {
+  if (!visibleBlocks.length) {
     return null;
   }
 
   return (
-    <div className={`public-freeform-canvas public-freeform-${device}`} style={{ minHeight: canvasHeight }}>
-      {frames.map(({ block, frame }) => (
-        <div
-          key={block.id}
-          className="public-freeform-frame"
-          style={{
-            left: frame.x,
-            top: frame.y,
-            width: frame.width,
-            minHeight: frame.height,
-            zIndex: frame.zIndex
-          }}
-        >
-          <BlockRenderer block={block} />
-        </div>
-      ))}
-    </div>
+    <>
+      {sectionFrames.map(({ section, frames }) => {
+        if (!frames.length) {
+          return null;
+        }
+        const canvasHeight = Math.max(section.styles?.minHeight ?? 320, ...frames.map(({ frame }) => frame.y + frame.height + 96));
+        return (
+          <section key={section.id} className="public-section-renderer" style={sectionStyle(section)}>
+            {section.styles?.overlayColor && section.styles.overlayColor !== 'rgba(0,0,0,0)' ? (
+              <div className="public-section-overlay" style={{ background: section.styles.overlayColor }} />
+            ) : null}
+            <div className={`public-freeform-canvas public-freeform-${device}`} style={{ minHeight: canvasHeight }}>
+              {frames.map(({ block, frame }) => (
+                <div
+                  key={block.id}
+                  className="public-freeform-frame"
+                  style={{
+                    left: frame.x,
+                    top: frame.y,
+                    width: frame.width,
+                    minHeight: frame.height,
+                    zIndex: frame.zIndex
+                  }}
+                >
+                  <BlockRenderer block={block} />
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </>
   );
+}
+
+function blockSectionId(block: SiteBlock) {
+  return block.sectionId || 'section-main';
+}
+
+function normalizeSections(sections: SiteSection[] | undefined, blocks: SiteBlock[]) {
+  const normalized = (sections?.length ? sections : [defaultSection('section-main', 'Main Section', 0)]).map((section, index) => ({
+    ...defaultSection(section.id || `section-${index + 1}`, section.name || `Section ${index + 1}`, section.sortOrder ?? index),
+    ...section,
+    styles: {
+      ...defaultSection().styles,
+      ...(section.styles ?? {})
+    }
+  }));
+  const seen = new Set(normalized.map((section) => section.id));
+  blocks.forEach((block) => {
+    const sectionId = blockSectionId(block);
+    if (!seen.has(sectionId)) {
+      seen.add(sectionId);
+      normalized.push(defaultSection(sectionId, sectionId, normalized.length));
+    }
+  });
+  return normalized.sort((first, second) => first.sortOrder - second.sortOrder);
+}
+
+function sectionStyle(section: SiteSection) {
+  const styles = {
+    ...defaultSection().styles,
+    ...(section.styles ?? {})
+  };
+  return {
+    backgroundColor: styles.backgroundColor,
+    backgroundImage: styles.backgroundImage ? `url("${styles.backgroundImage}")` : undefined,
+    backgroundSize: styles.backgroundSize,
+    backgroundPosition: styles.backgroundPosition,
+    minHeight: styles.minHeight,
+    padding: styles.padding
+  };
 }

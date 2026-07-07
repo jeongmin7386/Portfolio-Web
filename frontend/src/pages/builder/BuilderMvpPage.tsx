@@ -2,10 +2,17 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { queryClient } from '../../app/queryClient';
-import { blockLabel, defaultBlockContent, defaultBlockLayout, defaultBlockStyles } from '../../features/site-builder/blockCatalog';
+import {
+  blockLabel,
+  defaultBlockContent,
+  defaultBlockLayout,
+  defaultBlockStyles,
+  defaultSection
+} from '../../features/site-builder/blockCatalog';
 import { AddBlockModal } from '../../features/site-builder/components/AddBlockModal';
 import { EditorCanvas } from '../../features/site-builder/components/EditorCanvas';
 import { RightInspectorPanel } from '../../features/site-builder/components/RightInspectorPanel';
+import { SectionRenderer } from '../../features/site-builder/components/SectionRenderer';
 import {
   createBlock,
   createBuilderProject,
@@ -32,6 +39,7 @@ import type {
   BuilderProjectPayload,
   DeviceMode,
   PagePayload,
+  SiteSection,
   SiteBlock,
   SitePage
 } from '../../features/site-builder/types';
@@ -72,6 +80,7 @@ export function BuilderMvpPage() {
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [addBlockOpen, setAddBlockOpen] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState('section-main');
 
   const stateQuery = useQuery({ queryKey: ['builderState'], queryFn: getBuilderState });
   const pages = stateQuery.data?.pages ?? [];
@@ -111,6 +120,11 @@ export function BuilderMvpPage() {
   }, [blockDrafts, selectedPage?.id, selectedProject?.id, selectedTarget.type, serverBlocks]);
 
   const selectedBlock = selectedBlockId ? draftBlocks.find((block) => block.id === selectedBlockId) ?? null : null;
+  const editorSections = useMemo(
+    () => normalizeEditorSections(selectedTarget.type === 'page' ? pageDraft?.sections : undefined, draftBlocks, selectedPage?.id),
+    [draftBlocks, pageDraft?.sections, selectedPage?.id, selectedTarget.type]
+  );
+  const selectedSection = editorSections.find((section) => section.id === selectedSectionId) ?? editorSections[0];
   const previewProject = selectedProject && projectDraft ? projectFromDraft(selectedProject, projectDraft) : selectedProject;
   const previewPage = selectedPage && pageDraft ? pageFromDraft(selectedPage, pageDraft) : selectedPage;
   const previewPages = pages.map((page) => (previewPage?.id === page.id ? previewPage : page));
@@ -132,7 +146,18 @@ export function BuilderMvpPage() {
     if (selectedPage) {
       setPageDraft(pageToPayload(selectedPage));
     }
-  }, [selectedPage?.id, selectedPage?.title, selectedPage?.slug, selectedPage?.publicPage, selectedPage?.navVisible, selectedPage?.sortOrder]);
+  }, [
+    selectedPage?.id,
+    selectedPage?.title,
+    selectedPage?.slug,
+    selectedPage?.publicPage,
+    selectedPage?.navVisible,
+    selectedPage?.sortOrder,
+    selectedPage?.seoTitle,
+    selectedPage?.seoDescription,
+    selectedPage?.seoOgImage,
+    selectedPage?.sections
+  ]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -148,6 +173,12 @@ export function BuilderMvpPage() {
     setBlockDrafts(nextDrafts);
     setSelectedBlockId((current) => (current && serverBlocks.some((block) => block.id === current) ? current : serverBlocks[0]?.id ?? null));
   }, [selectedTarget.type, selectedPage?.id, selectedProject?.id, serverBlocks]);
+
+  useEffect(() => {
+    if (!editorSections.some((section) => section.id === selectedSectionId)) {
+      setSelectedSectionId(editorSections[0]?.id ?? 'section-main');
+    }
+  }, [editorSections, selectedSectionId]);
 
   const createPageMutation = useMutation({
     mutationFn: createPage,
@@ -200,7 +231,7 @@ export function BuilderMvpPage() {
 
   const createBlockMutation = useMutation({
     mutationFn: ({ type, source }: CreateBlockInput) => {
-      const payload = createBlockPayload(type, draftBlocks.length, source);
+      const payload = createBlockPayload(type, draftBlocks.length, selectedSectionId, source);
       console.log('[builder:create-freeform-block-request]', payload);
       if (selectedTarget.type === 'project' && selectedProject) {
         return createProjectBlock(selectedProject.id, payload);
@@ -327,7 +358,8 @@ export function BuilderMvpPage() {
       pageType: 'CUSTOM',
       publicPage: true,
       navVisible: true,
-      sortOrder: pages.length
+      sortOrder: pages.length,
+      sections: [defaultSection('section-main', 'Main Section', 0)]
     });
   }
 
@@ -418,6 +450,29 @@ export function BuilderMvpPage() {
 
   function handleToggleLock(block: SiteBlock) {
     replaceBlockDraft({ ...block, settings: { ...(block.settings ?? {}), locked: !block.settings?.locked } });
+  }
+
+  function handleAddSection() {
+    const nextSection = defaultSection(`section-${Date.now()}`, `Section ${editorSections.length + 1}`, editorSections.length);
+    setSelectedSectionId(nextSection.id);
+    if (selectedTarget.type === 'page') {
+      patchPage('sections', [...editorSections, nextSection]);
+    }
+  }
+
+  function patchSection(nextSection: SiteSection) {
+    setSelectedSectionId(nextSection.id);
+    if (selectedTarget.type !== 'page') {
+      return;
+    }
+    patchPage(
+      'sections',
+      editorSections.map((section) => (section.id === nextSection.id ? nextSection : section))
+    );
+  }
+
+  function blocksForSection(sectionId: string) {
+    return draftBlocks.filter((block) => blockSectionId(block) === sectionId);
   }
 
   if (stateQuery.isLoading) {
@@ -545,20 +600,41 @@ export function BuilderMvpPage() {
                   ))}
               </div>
             </nav>
-            <EditorCanvas
-              blocks={draftBlocks}
-              selectedBlockId={selectedBlockId}
-              device={deviceMode}
-              snapToGrid={snapToGrid}
-              onSelect={setSelectedBlockId}
-              onChange={replaceBlockDraft}
-              onDuplicate={(block) => createBlockMutation.mutate({ type: block.blockType, source: block })}
-              onDelete={(block) => deleteBlockMutation.mutate(block)}
-              onBringForward={handleBringForward}
-              onSendBackward={handleSendBackward}
-              onToggleLock={handleToggleLock}
-              onOpenAddBlock={() => setAddBlockOpen(true)}
-            />
+            {editorSections.map((section) => (
+              <SectionRenderer
+                key={section.id}
+                section={section}
+                selected={selectedSection?.id === section.id}
+                onSelect={(sectionId) => {
+                  setSelectedSectionId(sectionId);
+                  setSelectedBlockId(null);
+                }}
+              >
+                <EditorCanvas
+                  blocks={blocksForSection(section.id)}
+                  selectedBlockId={selectedBlockId}
+                  device={deviceMode}
+                  snapToGrid={snapToGrid}
+                  onSelect={(blockId) => {
+                    setSelectedSectionId(section.id);
+                    setSelectedBlockId(blockId);
+                  }}
+                  onChange={replaceBlockDraft}
+                  onDuplicate={(block) => createBlockMutation.mutate({ type: block.blockType, source: block })}
+                  onDelete={(block) => deleteBlockMutation.mutate(block)}
+                  onBringForward={handleBringForward}
+                  onSendBackward={handleSendBackward}
+                  onToggleLock={handleToggleLock}
+                  onOpenAddBlock={() => {
+                    setSelectedSectionId(section.id);
+                    setAddBlockOpen(true);
+                  }}
+                />
+              </SectionRenderer>
+            ))}
+            <button className="section-add-button" type="button" onClick={handleAddSection}>
+              + 섹션 추가
+            </button>
           </article>
         </section>
 
@@ -583,6 +659,15 @@ export function BuilderMvpPage() {
               onPatch={patchPage}
               onSave={handleSavePage}
               onDelete={() => deletePageMutation.mutate(selectedPage.id)}
+            />
+          ) : null}
+
+          {selectedSection ? (
+            <SectionSettingsPanel
+              section={selectedSection}
+              readOnly={selectedTarget.type !== 'page'}
+              onPatch={patchSection}
+              onAddSection={handleAddSection}
             />
           ) : null}
 
@@ -630,6 +715,10 @@ export function BuilderMvpPage() {
             onChange={replaceBlockDraft}
             onSave={handleSaveBlocks}
             onDelete={(block) => deleteBlockMutation.mutate(block)}
+            onDuplicate={(block) => createBlockMutation.mutate({ type: block.blockType, source: block })}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
+            onToggleLock={handleToggleLock}
           />
 
           {(createPageMutation.isError ||
@@ -659,7 +748,9 @@ function pageToPayload(page: SitePage): PagePayload {
     navVisible: page.navVisible,
     sortOrder: page.sortOrder,
     seoTitle: page.seoTitle,
-    seoDescription: page.seoDescription
+    seoDescription: page.seoDescription,
+    seoOgImage: page.seoOgImage,
+    sections: normalizeEditorSections(page.sections, [], page.id)
   };
 }
 
@@ -673,7 +764,9 @@ function pageFromDraft(page: SitePage, draft: PagePayload): SitePage {
     navVisible: draft.navVisible ?? page.navVisible,
     sortOrder: draft.sortOrder ?? page.sortOrder,
     seoTitle: draft.seoTitle,
-    seoDescription: draft.seoDescription
+    seoDescription: draft.seoDescription,
+    seoOgImage: draft.seoOgImage,
+    sections: normalizeEditorSections(draft.sections, [], page.id)
   };
 }
 
@@ -778,9 +871,98 @@ function PageSettingsPanel({
         <span>SEO 설명</span>
         <textarea value={draft.seoDescription ?? ''} onChange={(event) => onPatch('seoDescription', event.target.value)} />
       </label>
+      <label className="field">
+        <span>OG 이미지 URL</span>
+        <input value={draft.seoOgImage ?? ''} onChange={(event) => onPatch('seoOgImage', event.target.value)} />
+      </label>
       <button className="button button-primary" type="button" disabled={isSaving} onClick={onSave}>
         {isSaving ? '저장 중...' : '페이지 저장'}
       </button>
+    </section>
+  );
+}
+
+function SectionSettingsPanel({
+  section,
+  readOnly,
+  onPatch,
+  onAddSection
+}: {
+  section: SiteSection;
+  readOnly: boolean;
+  onPatch: (section: SiteSection) => void;
+  onAddSection: () => void;
+}) {
+  const styles = section.styles ?? {};
+
+  function patch<K extends keyof SiteSection>(field: K, value: SiteSection[K]) {
+    onPatch({ ...section, [field]: value });
+  }
+
+  function patchStyle(key: keyof SiteSection['styles'], value: string | number) {
+    onPatch({
+      ...section,
+      styles: {
+        ...styles,
+        [key]: value
+      }
+    });
+  }
+
+  return (
+    <section className="inspector-section">
+      <div className="block-editor-card-header">
+        <div>
+          <p className="panel-label">섹션 설정</p>
+          <h3>{section.name}</h3>
+        </div>
+        <button className="button button-ghost" type="button" disabled={readOnly} onClick={onAddSection}>
+          추가
+        </button>
+      </div>
+      {readOnly ? <p className="muted">프로젝트 상세는 현재 기본 섹션으로 렌더링됩니다. 블록 위치와 스타일은 저장됩니다.</p> : null}
+      <label className="field">
+        <span>섹션 이름</span>
+        <input disabled={readOnly} value={section.name} onChange={(event) => patch('name', event.target.value)} />
+      </label>
+      <label className="field">
+        <span>배경 이미지 URL</span>
+        <input disabled={readOnly} value={styles.backgroundImage ?? ''} onChange={(event) => patchStyle('backgroundImage', event.target.value)} />
+      </label>
+      <div className="compact-field-grid">
+        <label className="field">
+          <span>배경색</span>
+          <input disabled={readOnly} type="color" value={styles.backgroundColor ?? '#fffdf9'} onChange={(event) => patchStyle('backgroundColor', event.target.value)} />
+        </label>
+        <label className="field">
+          <span>오버레이</span>
+          <input disabled={readOnly} value={styles.overlayColor ?? 'rgba(0,0,0,0)'} onChange={(event) => patchStyle('overlayColor', event.target.value)} />
+        </label>
+      </div>
+      <div className="compact-field-grid">
+        <label className="field">
+          <span>최소 높이</span>
+          <input disabled={readOnly} type="number" value={styles.minHeight ?? 720} onChange={(event) => patchStyle('minHeight', Number(event.target.value))} />
+        </label>
+        <label className="field">
+          <span>패딩</span>
+          <input disabled={readOnly} type="number" value={styles.padding ?? 80} onChange={(event) => patchStyle('padding', Number(event.target.value))} />
+        </label>
+      </div>
+      <div className="compact-field-grid">
+        <label className="field">
+          <span>배경 크기</span>
+          <select disabled={readOnly} value={styles.backgroundSize ?? 'cover'} onChange={(event) => patchStyle('backgroundSize', event.target.value)}>
+            <option value="cover">cover</option>
+            <option value="contain">contain</option>
+            <option value="auto">auto</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>배경 위치</span>
+          <input disabled={readOnly} value={styles.backgroundPosition ?? 'center'} onChange={(event) => patchStyle('backgroundPosition', event.target.value)} />
+        </label>
+      </div>
     </section>
   );
 }
@@ -910,11 +1092,11 @@ function blockToPayload(block: SiteBlock): BlockPayload {
   };
 }
 
-function createBlockPayload(type: BlockType, index: number, source?: SiteBlock): BlockPayload {
+function createBlockPayload(type: BlockType, index: number, sectionId: string, source?: SiteBlock): BlockPayload {
   const payload: BlockPayload = source
     ? {
         blockType: source.blockType,
-        sectionId: source.sectionId,
+        sectionId: source.sectionId ?? sectionId,
         content: cloneRecord(source.content),
         settings: { ...defaultBlockSettings, ...(source.settings ?? {}) },
         styles: { ...defaultBlockStyles(source.blockType), ...(source.styles ?? {}) },
@@ -924,6 +1106,7 @@ function createBlockPayload(type: BlockType, index: number, source?: SiteBlock):
       }
     : {
         blockType: type,
+        sectionId,
         content: defaultBlockContent(type),
         settings: defaultBlockSettings,
         styles: defaultBlockStyles(type),
@@ -937,6 +1120,7 @@ function createBlockPayload(type: BlockType, index: number, source?: SiteBlock):
 function withRenderableDefaults(block: SiteBlock): SiteBlock {
   return {
     ...block,
+    sectionId: block.sectionId ?? 'section-main',
     settings: { ...defaultBlockSettings, ...(block.settings ?? {}) },
     styles: { ...defaultBlockStyles(block.blockType), ...(block.styles ?? {}) },
     layout: normalizeLayout(block.blockType, block.sortOrder, block.layout)
@@ -986,4 +1170,32 @@ function csvToArray(value: string) {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function blockSectionId(block: SiteBlock) {
+  return block.sectionId || 'section-main';
+}
+
+function normalizeEditorSections(sections: SiteSection[] | undefined, blocks: SiteBlock[], pageId?: number): SiteSection[] {
+  const normalized: SiteSection[] = (sections?.length ? sections : [defaultSection('section-main', 'Main Section', 0)]).map((section, index) => {
+    const fallback = defaultSection(section.id || `section-${index + 1}`, section.name || `Section ${index + 1}`, section.sortOrder ?? index);
+    return {
+      ...fallback,
+      ...section,
+      pageId: section.pageId ?? pageId,
+      styles: {
+        ...fallback.styles,
+        ...(section.styles ?? {})
+      }
+    };
+  });
+  const seen = new Set(normalized.map((section) => section.id));
+  blocks.forEach((block) => {
+    const sectionId = blockSectionId(block);
+    if (!seen.has(sectionId)) {
+      seen.add(sectionId);
+      normalized.push(defaultSection(sectionId, sectionId, normalized.length));
+    }
+  });
+  return normalized.sort((first, second) => first.sortOrder - second.sortOrder);
 }

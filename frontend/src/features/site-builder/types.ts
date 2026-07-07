@@ -16,6 +16,7 @@ export type BlockType =
   | 'QUOTE'
   | 'CALLOUT'
   | 'LIST'
+  | 'NUMBERED_LIST'
   | 'CHECKLIST'
   | 'CODE'
   | 'TABLE'
@@ -30,7 +31,21 @@ export type BlockType =
   | 'GITHUB_CARD'
   | 'RENDER_LINK_CARD'
   | 'NOTION_LINK_CARD'
+  | 'VIMEO_EMBED'
+  | 'PDF_EMBED'
+  | 'CODEPEN_EMBED'
+  | 'GOOGLE_DRIVE_EMBED'
+  | 'MAP_EMBED'
+  | 'AUDIO'
+  | 'FULL_WIDTH_IMAGE'
+  | 'IMAGE_TEXT'
   | 'PROJECT_CARD'
+  | 'PROJECT_GRID'
+  | 'PROJECT_OVERVIEW'
+  | 'PROJECT_INFO_CARD'
+  | 'PROBLEM_SOLUTION_RESULT'
+  | 'ROLE_CONTRIBUTION'
+  | 'RETROSPECTIVE'
   | 'TABS'
   | 'ACCORDION'
   | 'TWO_COLUMN'
@@ -56,6 +71,7 @@ export type BlockLayoutFrame = {
 export type BlockLayout = Partial<Record<DeviceMode, BlockLayoutFrame>>;
 
 export type BlockStyles = {
+  fontFamily?: string;
   fontSize?: number;
   fontWeight?: number;
   color?: string;
@@ -65,9 +81,31 @@ export type BlockStyles = {
   margin?: number;
   opacity?: number;
   textAlign?: 'left' | 'center' | 'right';
+  lineHeight?: number;
+  border?: string;
   borderWidth?: number;
   borderColor?: string;
   borderStyle?: string;
+  boxShadow?: string;
+  buttonStyle?: 'solid' | 'outline' | 'ghost' | 'pill';
+};
+
+export type SectionStyles = {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  overlayColor?: string;
+  minHeight?: number;
+  padding?: number;
+};
+
+export type SiteSection = {
+  id: string;
+  pageId?: number | string;
+  name: string;
+  sortOrder: number;
+  styles: SectionStyles;
 };
 
 export type BuilderProjectVisibility = 'PUBLIC' | 'PRIVATE' | 'DRAFT';
@@ -99,6 +137,8 @@ export type SitePage = {
   sortOrder: number;
   seoTitle?: string;
   seoDescription?: string;
+  seoOgImage?: string;
+  sections?: SiteSection[];
 };
 
 export type SiteBlock = {
@@ -106,6 +146,7 @@ export type SiteBlock = {
   pageId?: number | null;
   projectId?: number | null;
   blockType: BlockType;
+  name?: string;
   sectionId?: string | null;
   content: Record<string, unknown>;
   settings?: Record<string, unknown>;
@@ -113,6 +154,7 @@ export type SiteBlock = {
   layout?: BlockLayout;
   sortOrder: number;
   visible: boolean;
+  locked?: boolean;
 };
 
 export type BuilderProject = {
@@ -135,6 +177,8 @@ export type BuilderProject = {
   sortOrder: number;
   seoTitle?: string;
   seoDescription?: string;
+  seoOgImage?: string;
+  sections?: SiteSection[];
 };
 
 export type PageWithBlocks = {
@@ -168,6 +212,8 @@ export type PagePayload = {
   sortOrder?: number;
   seoTitle?: string;
   seoDescription?: string;
+  seoOgImage?: string;
+  sections?: SiteSection[];
 };
 
 export type BlockPayload = {
