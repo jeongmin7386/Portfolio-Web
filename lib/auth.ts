@@ -1,8 +1,34 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 
+import {
+  authenticateAdminUser,
+  getApprovedAdminUserById,
+  type PublicAdminUser
+} from "@/lib/admin-users";
+
 const adminCookieName = "studio_archive_admin";
 const sessionDurationSeconds = 60 * 60 * 12;
+
+type SessionRole = "owner" | "admin";
+
+type SessionTokenPayload = {
+  expiresAt: number;
+  role: SessionRole;
+  sub: string;
+};
+
+export type AdminSession = {
+  authEnabled: boolean;
+  authenticated: boolean;
+  isOwner: boolean;
+  user?: {
+    email?: string;
+    id: string;
+    name: string;
+    role: SessionRole;
+  };
+};
 
 function getAdminPassword() {
   return process.env.STUDIO_ARCHIVE_ADMIN_PASSWORD?.trim();
@@ -25,9 +51,49 @@ function sign(value: string) {
     .digest("base64url");
 }
 
-function createSessionToken() {
-  const expiresAt = Date.now() + sessionDurationSeconds * 1000;
-  const payload = String(expiresAt);
+function encodePayload(payload: SessionTokenPayload) {
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function decodePayload(payload: string): SessionTokenPayload | null {
+  if (/^\d+$/.test(payload)) {
+    return {
+      expiresAt: Number(payload),
+      role: "owner",
+      sub: "owner"
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8")
+    ) as Partial<SessionTokenPayload>;
+
+    if (
+      typeof parsed.expiresAt !== "number" ||
+      (parsed.role !== "owner" && parsed.role !== "admin") ||
+      typeof parsed.sub !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      expiresAt: parsed.expiresAt,
+      role: parsed.role,
+      sub: parsed.sub
+    };
+  } catch {
+    return null;
+  }
+}
+
+function createSessionToken(user?: PublicAdminUser) {
+  const payload = encodePayload({
+    expiresAt: Date.now() + sessionDurationSeconds * 1000,
+    role: user?.role ?? "owner",
+    sub: user?.id ?? "owner"
+  });
+
   return `${payload}.${sign(payload)}`;
 }
 
@@ -35,27 +101,43 @@ function verifySessionToken(token: string) {
   const [payload, signature] = token.split(".");
 
   if (!payload || !signature) {
-    return false;
-  }
-
-  const expiresAt = Number(payload);
-
-  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
-    return false;
+    return null;
   }
 
   const expectedSignature = sign(payload);
   const expectedBuffer = Buffer.from(expectedSignature);
   const actualBuffer = Buffer.from(signature);
-
-  return (
+  const signatureMatches =
     expectedBuffer.length === actualBuffer.length &&
-    crypto.timingSafeEqual(expectedBuffer, actualBuffer)
-  );
+    crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+
+  if (!signatureMatches) {
+    return null;
+  }
+
+  const decodedPayload = decodePayload(payload);
+
+  if (!decodedPayload || decodedPayload.expiresAt < Date.now()) {
+    return null;
+  }
+
+  return decodedPayload;
+}
+
+export function isOwnerPasswordConfigured() {
+  return Boolean(getAdminPassword());
 }
 
 export function isAdminAuthEnabled() {
-  return Boolean(getAdminPassword());
+  if (process.env.STUDIO_ARCHIVE_DISABLE_ADMIN_AUTH === "true") {
+    return false;
+  }
+
+  return (
+    Boolean(getAdminPassword()) ||
+    process.env.STUDIO_ARCHIVE_ENABLE_ACCOUNT_LOGIN === "true" ||
+    process.env.NODE_ENV === "production"
+  );
 }
 
 export function verifyAdminPassword(password: string) {
@@ -74,20 +156,64 @@ export function verifyAdminPassword(password: string) {
   );
 }
 
-export async function getAdminSession() {
+export async function verifyAdminAccount(email: string, password: string) {
+  return authenticateAdminUser(email, password);
+}
+
+export async function getAdminSession(): Promise<AdminSession> {
   if (!isAdminAuthEnabled()) {
     return {
       authEnabled: false,
-      authenticated: true
+      authenticated: true,
+      isOwner: true
     };
   }
 
   const cookieStore = await cookies();
   const token = cookieStore.get(adminCookieName)?.value;
+  const payload = token ? verifySessionToken(token) : null;
+
+  if (!payload) {
+    return {
+      authEnabled: true,
+      authenticated: false,
+      isOwner: false
+    };
+  }
+
+  if (payload.sub === "owner" || payload.role === "owner") {
+    return {
+      authEnabled: true,
+      authenticated: true,
+      isOwner: true,
+      user: {
+        id: "owner",
+        name: "사이트 소유자",
+        role: "owner"
+      }
+    };
+  }
+
+  const user = await getApprovedAdminUserById(payload.sub);
+
+  if (!user) {
+    return {
+      authEnabled: true,
+      authenticated: false,
+      isOwner: false
+    };
+  }
 
   return {
     authEnabled: true,
-    authenticated: token ? verifySessionToken(token) : false
+    authenticated: true,
+    isOwner: user.role === "owner",
+    user: {
+      email: user.email,
+      id: user.id,
+      name: user.name,
+      role: user.role
+    }
   };
 }
 
@@ -96,10 +222,15 @@ export async function requireAdminAccess() {
   return session.authenticated;
 }
 
-export async function setAdminSessionCookie() {
+export async function requireOwnerAccess() {
+  const session = await getAdminSession();
+  return session.authenticated && session.isOwner;
+}
+
+export async function setAdminSessionCookie(user?: PublicAdminUser) {
   const cookieStore = await cookies();
 
-  cookieStore.set(adminCookieName, createSessionToken(), {
+  cookieStore.set(adminCookieName, createSessionToken(user), {
     httpOnly: true,
     maxAge: sessionDurationSeconds,
     path: "/",

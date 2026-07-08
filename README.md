@@ -152,7 +152,10 @@ Admin paths:
 
 - `/admin`: project, category, and archive note management
 - `/admin/editor`: live responsive page builder
-- `/admin/login`: admin login when `STUDIO_ARCHIVE_ADMIN_PASSWORD` is set
+- `/admin/projects`: project editor with live public preview
+- `/admin/archive`: archive note editor with live public preview
+- `/admin/accounts`: account approval screen for the site owner
+- `/admin/login`: admin account login, owner login, and account request form
 
 Storage behavior:
 
@@ -161,6 +164,8 @@ Storage behavior:
 - When the Postgres table is empty, the app seeds it from `content/projects` and `content/notes`.
 - Page builder data is stored as JSON in `studio_archive_pages.sections`.
 - Without a database, page builder data falls back to `data/studio-archive-page-home.json`.
+- Admin account requests are stored in `studio_archive_admin_users` when Postgres is available.
+- Without a database, admin account requests fall back to `data/studio-archive-admin-users.json`.
 
 Page builder:
 
@@ -173,10 +178,19 @@ Recommended Render environment variables for the `studio-archive` service:
 
 ```bash
 DATABASE_URL=...                 # Render Postgres connection string
-STUDIO_ARCHIVE_ADMIN_PASSWORD=... # enables /admin login protection
+STUDIO_ARCHIVE_ADMIN_PASSWORD=... # owner password for login and account approval
 STUDIO_ARCHIVE_AUTH_SECRET=...    # generated secret for signed admin cookies
 STUDIO_ARCHIVE_UPLOAD_DIR=/tmp/studio-archive-uploads
 ```
+
+Admin account flow:
+
+1. The site owner logs in from `/admin/login` with the owner password.
+2. Other users open `/admin/login`, choose the request tab, and submit name, email, and password.
+3. The owner opens `/admin/accounts` and approves or rejects pending requests.
+4. Approved users can log in with email and password. Pending or rejected users cannot access admin pages.
+
+In production, admin login protection is enabled by default. Keep `STUDIO_ARCHIVE_ADMIN_PASSWORD` and `STUDIO_ARCHIVE_AUTH_SECRET` set on Render so only the owner can approve new accounts.
 
 Image uploads:
 

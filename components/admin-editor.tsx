@@ -1267,6 +1267,12 @@ export function AdminEditor({
             <Link className={`${secondaryButtonClass} w-full sm:w-auto`} href="/admin/editor">
               홈 빌더
             </Link>
+            <Link
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              href="/admin/accounts"
+            >
+              계정 승인
+            </Link>
           </nav>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">

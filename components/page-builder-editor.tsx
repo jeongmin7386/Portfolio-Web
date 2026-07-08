@@ -1520,6 +1520,9 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           <Link className={buttonClass} href="/admin/archive">
             아카이브 편집
           </Link>
+          <Link className={buttonClass} href="/admin/accounts">
+            계정 승인
+          </Link>
           {(["desktop", "tablet", "mobile"] as BuilderViewport[]).map((item) => {
             const Icon =
               item === "desktop" ? Monitor : item === "tablet" ? Tablet : Smartphone;

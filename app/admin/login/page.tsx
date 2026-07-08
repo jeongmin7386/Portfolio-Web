@@ -3,7 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminLoginForm } from "@/components/admin-login-form";
-import { getAdminSession, isAdminAuthEnabled } from "@/lib/auth";
+import {
+  getAdminSession,
+  isAdminAuthEnabled,
+  isOwnerPasswordConfigured
+} from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +53,7 @@ export default async function AdminLoginPage() {
 
   return (
     <div className="mx-auto grid min-h-[70vh] content-center px-4 py-12 sm:px-6 lg:px-8">
-      <AdminLoginForm />
+      <AdminLoginForm ownerPasswordConfigured={isOwnerPasswordConfigured()} />
     </div>
   );
 }
