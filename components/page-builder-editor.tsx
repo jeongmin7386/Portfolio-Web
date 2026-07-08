@@ -1592,7 +1592,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-65px)] lg:h-[calc(100vh-65px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
+      <div className="grid min-h-[calc(100vh-65px)] lg:h-[calc(100vh-130px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
         <aside className="border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="grid gap-6">
             <section>
