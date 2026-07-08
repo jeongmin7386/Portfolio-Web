@@ -1859,117 +1859,121 @@ function CommandBar({
   onToggleAddMenu
 }: CommandBarProps) {
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2">
-      {isAddMenuOpen ? (
-        <div className="mb-2 max-h-[min(60vh,520px)] overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-          <div className="grid gap-4 md:grid-cols-3">
-            {addMenuGroups.map((group) => (
-              <section className="min-w-0" key={group.label}>
-                <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                  {group.label}
-                </h2>
-                <div className="mt-2 grid gap-1.5">
-                  {group.items.map((option) => (
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[80] flex justify-center px-3 sm:px-4">
+      <div className="pointer-events-auto w-full max-w-[720px]">
+        {isAddMenuOpen ? (
+          <div className="mb-2 max-h-[min(60vh,520px)] overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+            <div className="grid gap-4 md:grid-cols-3">
+              {addMenuGroups.map((group) => (
+                <section className="min-w-0" key={group.label}>
+                  <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    {group.label}
+                  </h2>
+                  <div className="mt-2 grid gap-1.5">
+                    {group.items.map((option) => (
+                      <button
+                        className="rounded-md px-2 py-2 text-left text-sm transition hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:bg-neutral-900"
+                        key={option.id}
+                        onClick={() => onSelectOption(option)}
+                        type="button"
+                      >
+                        <span className="block font-medium text-neutral-950 dark:text-neutral-50">
+                          {option.label}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-neutral-500">
+                          {option.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {isCommandOpen ? (
+          <div className="mb-2 max-h-80 overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+            {commandMatches.length > 0 ? (
+              <div className="grid gap-1">
+                {commandMatches.map((option, index) => {
+                  const active = index === selectedCommandIndex;
+
+                  return (
                     <button
-                      className="rounded-md px-2 py-2 text-left text-sm transition hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:bg-neutral-900"
+                      className={`grid grid-cols-[72px_1fr_auto] items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
+                        active
+                          ? "bg-neutral-950 text-white dark:bg-neutral-50 dark:text-neutral-950"
+                          : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
+                      }`}
                       key={option.id}
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => onSelectOption(option)}
                       type="button"
                     >
-                      <span className="block font-medium text-neutral-950 dark:text-neutral-50">
-                        {option.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-5 text-neutral-500">
-                        {option.description}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {isCommandOpen ? (
-        <div className="mb-2 max-h-80 overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-          {commandMatches.length > 0 ? (
-            <div className="grid gap-1">
-              {commandMatches.map((option, index) => {
-                const active = index === selectedCommandIndex;
-
-                return (
-                  <button
-                    className={`grid grid-cols-[72px_1fr_auto] items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
-                      active
-                        ? "bg-neutral-950 text-white dark:bg-neutral-50 dark:text-neutral-950"
-                        : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
-                    }`}
-                    key={option.id}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => onSelectOption(option)}
-                    type="button"
-                  >
-                    <span
-                      className={`font-mono text-xs ${
-                        active ? "text-white/80 dark:text-neutral-600" : "text-neutral-500"
-                      }`}
-                    >
-                      {option.command}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">
-                        {option.label}
-                      </span>
                       <span
-                        className={`block truncate text-xs ${
+                        className={`font-mono text-xs ${
                           active
-                            ? "text-white/70 dark:text-neutral-600"
+                            ? "text-white/80 dark:text-neutral-600"
                             : "text-neutral-500"
                         }`}
                       >
-                        {option.description}
+                        {option.command}
                       </span>
-                    </span>
-                    <span
-                      className={`rounded-sm border px-1.5 py-0.5 text-[11px] ${
-                        active
-                          ? "border-white/30 text-white/80 dark:border-neutral-300 dark:text-neutral-600"
-                          : "border-neutral-200 text-neutral-500 dark:border-neutral-800"
-                      }`}
-                    >
-                      {option.kind === "block" ? "블록" : "섹션"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="px-3 py-2 text-sm text-neutral-500">
-              맞는 명령어가 없습니다.
-            </p>
-          )}
-        </div>
-      ) : null}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">
+                          {option.label}
+                        </span>
+                        <span
+                          className={`block truncate text-xs ${
+                            active
+                              ? "text-white/70 dark:text-neutral-600"
+                              : "text-neutral-500"
+                          }`}
+                        >
+                          {option.description}
+                        </span>
+                      </span>
+                      <span
+                        className={`rounded-sm border px-1.5 py-0.5 text-[11px] ${
+                          active
+                            ? "border-white/30 text-white/80 dark:border-neutral-300 dark:text-neutral-600"
+                            : "border-neutral-200 text-neutral-500 dark:border-neutral-800"
+                        }`}
+                      >
+                        {option.kind === "block" ? "블록" : "섹션"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="px-3 py-2 text-sm text-neutral-500">
+                맞는 명령어가 없습니다.
+              </p>
+            )}
+          </div>
+        ) : null}
 
-      <div className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white/90 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
-        <input
-          className="min-h-10 flex-1 rounded-md border border-transparent bg-transparent px-3 text-sm text-neutral-950 placeholder:text-neutral-400 focus:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-neutral-50 dark:focus:border-neutral-700"
-          onChange={(event) => onCommandValueChange(event.target.value)}
-          onFocus={onCommandFocus}
-          onKeyDown={onCommandKeyDown}
-          placeholder="/ 입력으로 블록 추가"
-          value={commandValue}
-        />
-        <button
-          aria-expanded={isAddMenuOpen}
-          aria-label="블록과 섹션 추가"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-950 text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-700 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200"
-          onClick={onToggleAddMenu}
-          type="button"
-        >
-          <Plus aria-hidden size={18} />
-        </button>
+        <div className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white/90 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
+          <input
+            className="min-h-10 flex-1 rounded-md border border-transparent bg-transparent px-3 text-sm text-neutral-950 placeholder:text-neutral-400 focus:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-neutral-50 dark:focus:border-neutral-700"
+            onChange={(event) => onCommandValueChange(event.target.value)}
+            onFocus={onCommandFocus}
+            onKeyDown={onCommandKeyDown}
+            placeholder="/ 입력으로 블록 추가"
+            value={commandValue}
+          />
+          <button
+            aria-expanded={isAddMenuOpen}
+            aria-label="블록과 섹션 추가"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-950 text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-700 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200"
+            onClick={onToggleAddMenu}
+            type="button"
+          >
+            <Plus aria-hidden size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );
