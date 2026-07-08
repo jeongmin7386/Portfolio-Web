@@ -1132,6 +1132,28 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     });
   };
 
+  const updateBlockInSection = (sectionId: string, block: BuilderBlock) => {
+    updatePage((currentPage) => ({
+      ...currentPage,
+      sections: orderItems(
+        currentPage.sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                blocks: orderItems(
+                  section.blocks.map((currentBlock) =>
+                    currentBlock.id === block.id ? block : currentBlock
+                  )
+                )
+              }
+            : section
+        )
+      )
+    }));
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(block.id);
+  };
+
   const insertSectionAtSelection = (section: BuilderSection) => {
     if (!page) {
       return;
@@ -1661,6 +1683,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
             <BuilderPageRenderer
               editable
               notes={notes}
+              onChangeBlock={updateBlockInSection}
               onSelectBlock={(sectionId, blockId) => {
                 setSelectedSectionId(sectionId);
                 setSelectedBlockId(blockId);

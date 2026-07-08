@@ -2,6 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import {
+  createElement,
+  type FocusEvent,
+  type FormEvent,
+  type KeyboardEvent
+} from "react";
 
 import { ProjectCard } from "@/components/project-card";
 import { TagList } from "@/components/tag-list";
@@ -22,6 +28,7 @@ type BuilderPageRendererProps = {
   selectedBlockId?: string;
   onSelectSection?: (sectionId: string) => void;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
+  onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
 };
 
 const paddingYClass = {
@@ -123,25 +130,374 @@ type BlockRendererProps = {
   selected?: boolean;
   sectionId: string;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
+  onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
 };
+
+type InlineEditableTag = "cite" | "figcaption" | "h1" | "h2" | "h3" | "p" | "span";
+
+type InlineEditableTextProps = {
+  as: InlineEditableTag;
+  value: string;
+  className?: string;
+  multiline?: boolean;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+};
+
+function InlineEditableText({
+  as,
+  value,
+  className,
+  multiline,
+  placeholder,
+  onChange,
+  onFocus
+}: InlineEditableTextProps) {
+  return createElement(
+    as,
+    {
+      "aria-label": placeholder,
+      "aria-multiline": multiline || undefined,
+      className: `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`,
+      contentEditable: true,
+      "data-placeholder": placeholder ?? "",
+      onBlur: (event: FocusEvent<HTMLElement>) => {
+        const nextValue = event.currentTarget.textContent ?? "";
+
+        if (nextValue !== value) {
+          onChange(nextValue);
+        }
+      },
+      onFocus,
+      onInput: (event: FormEvent<HTMLElement>) =>
+        onChange(event.currentTarget.textContent ?? ""),
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        if (!multiline && event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+      },
+      role: "textbox",
+      suppressContentEditableWarning: true
+    },
+    value
+  );
+}
+
+type FloatingBlockToolbarProps = {
+  block: BuilderBlock;
+  onChange: (block: BuilderBlock) => void;
+};
+
+function ToolbarButton({
+  active,
+  children,
+  onClick
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-xs font-medium transition ${
+        active
+          ? "border-neutral-950 bg-neutral-950 text-white dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
+          : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToolbarSelect({
+  label,
+  value,
+  children,
+  onChange
+}: {
+  label: string;
+  value: string | number;
+  children: React.ReactNode;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs text-neutral-500">
+      {label}
+      <select
+        className="h-8 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function AlignControls({
+  value,
+  onChange
+}: {
+  value: "left" | "center" | "right";
+  onChange: (value: "left" | "center" | "right") => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {(["left", "center", "right"] as const).map((align) => (
+        <ToolbarButton
+          active={value === align}
+          key={align}
+          onClick={() => onChange(align)}
+        >
+          {align === "left" ? "좌" : align === "center" ? "중" : "우"}
+        </ToolbarButton>
+      ))}
+    </div>
+  );
+}
+
+function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
+  const frameClass =
+    "absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95";
+
+  const updateSettings = (settings: BuilderBlock["settings"]) => {
+    onChange({
+      ...block,
+      settings: {
+        ...block.settings,
+        ...settings
+      } as BuilderBlock["settings"]
+    } as BuilderBlock);
+  };
+
+  return (
+    <div
+      className={frameClass}
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+    >
+      {block.type === "heading" ? (
+        <>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3].map((level) => (
+              <ToolbarButton
+                active={(block.settings.level ?? 2) === level}
+                key={level}
+                onClick={() =>
+                  onChange({
+                    ...block,
+                    settings: {
+                      ...block.settings,
+                      level: level as 1 | 2 | 3
+                    }
+                  })
+                }
+              >
+                H{level}
+              </ToolbarButton>
+            ))}
+          </div>
+          <AlignControls
+            onChange={(align) => updateSettings({ align })}
+            value={block.settings.align ?? "left"}
+          />
+        </>
+      ) : null}
+
+      {block.type === "paragraph" ? (
+        <>
+          <ToolbarSelect
+            label="너비"
+            onChange={(width) =>
+              updateSettings({
+                width: width as "narrow" | "content" | "wide"
+              })
+            }
+            value={block.settings.width ?? "content"}
+          >
+            <option value="narrow">좁게</option>
+            <option value="content">기본</option>
+            <option value="wide">넓게</option>
+          </ToolbarSelect>
+          <AlignControls
+            onChange={(align) => updateSettings({ align })}
+            value={block.settings.align ?? "left"}
+          />
+        </>
+      ) : null}
+
+      {block.type === "button" ? (
+        <>
+          <ToolbarSelect
+            label="형태"
+            onChange={(variant) =>
+              updateSettings({
+                variant: variant as "primary" | "secondary" | "text"
+              })
+            }
+            value={block.settings.variant ?? "primary"}
+          >
+            <option value="primary">채움</option>
+            <option value="secondary">선</option>
+            <option value="text">텍스트</option>
+          </ToolbarSelect>
+          <AlignControls
+            onChange={(align) => updateSettings({ align })}
+            value={block.settings.align ?? "left"}
+          />
+        </>
+      ) : null}
+
+      {block.type === "quote" || block.type === "stats" ? (
+        <AlignControls
+          onChange={(align) => updateSettings({ align })}
+          value={block.settings.align ?? "left"}
+        />
+      ) : null}
+
+      {block.type === "image" ? (
+        <>
+          <ToolbarSelect
+            label="비율"
+            onChange={(ratio) =>
+              updateSettings({ ratio: ratio as "wide" | "square" | "portrait" })
+            }
+            value={block.settings.ratio ?? "wide"}
+          >
+            <option value="wide">가로</option>
+            <option value="square">정사각</option>
+            <option value="portrait">세로</option>
+          </ToolbarSelect>
+          <ToolbarSelect
+            label="모서리"
+            onChange={(borderRadius) =>
+              updateSettings({
+                borderRadius: borderRadius as "none" | "sm" | "md" | "lg"
+              })
+            }
+            value={block.settings.borderRadius ?? "md"}
+          >
+            <option value="none">없음</option>
+            <option value="sm">작게</option>
+            <option value="md">보통</option>
+            <option value="lg">크게</option>
+          </ToolbarSelect>
+        </>
+      ) : null}
+
+      {block.type === "gallery" ? (
+        <ToolbarSelect
+          label="열"
+          onChange={(columns) =>
+            updateSettings({ columns: Number(columns) as 2 | 3 | 4 })
+          }
+          value={block.settings.columns ?? 3}
+        >
+          <option value={2}>2열</option>
+          <option value={3}>3열</option>
+          <option value={4}>4열</option>
+        </ToolbarSelect>
+      ) : null}
+
+      {block.type === "divider" ? (
+        <>
+          <ToolbarSelect
+            label="형태"
+            onChange={(style) =>
+              updateSettings({ style: style as "line" | "dashed" | "blank" })
+            }
+            value={block.settings.style ?? "line"}
+          >
+            <option value="line">실선</option>
+            <option value="dashed">점선</option>
+            <option value="blank">여백</option>
+          </ToolbarSelect>
+          <ToolbarSelect
+            label="간격"
+            onChange={(spacing) =>
+              updateSettings({ spacing: spacing as "sm" | "md" | "lg" })
+            }
+            value={block.settings.spacing ?? "md"}
+          >
+            <option value="sm">작게</option>
+            <option value="md">보통</option>
+            <option value="lg">넓게</option>
+          </ToolbarSelect>
+        </>
+      ) : null}
+
+      {block.type === "spacer" ? (
+        <label className="flex items-center gap-2 text-xs text-neutral-500">
+          높이
+          <input
+            className="h-8 w-20 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+            min={0}
+            onChange={(event) =>
+              updateSettings({ height: Number(event.target.value) })
+            }
+            type="number"
+            value={block.settings.height ?? 48}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
 
 function BuilderBlockRenderer({
   block,
   editable,
   selected,
   sectionId,
-  onSelectBlock
+  onSelectBlock,
+  onChangeBlock
 }: BlockRendererProps) {
+  const selectBlock = () => {
+    if (editable) {
+      onSelectBlock?.(sectionId, block.id);
+    }
+  };
+  const changeBlock = (nextBlock: BuilderBlock) => {
+    onChangeBlock?.(sectionId, nextBlock);
+  };
   const blockProps = {
     className: `${getBlockSelectionClass(Boolean(selected))} ${
-      editable ? "cursor-pointer" : ""
-    }`,
-    onClick: editable
-      ? (event: React.MouseEvent) => {
+      editable ? "cursor-text" : ""
+    }`
+  };
+  const wrapEditableBlock = (children: React.ReactNode) => {
+    if (!editable) {
+      return children;
+    }
+
+    return (
+      <div
+        className={`relative ${selected ? "z-30" : ""}`}
+        onClick={(event) => {
           event.stopPropagation();
-          onSelectBlock?.(sectionId, block.id);
-        }
-      : undefined
+          selectBlock();
+        }}
+        onMouseUp={(event) => {
+          event.stopPropagation();
+          selectBlock();
+        }}
+        onTouchEnd={(event) => {
+          event.stopPropagation();
+          selectBlock();
+        }}
+      >
+        {selected && onChangeBlock ? (
+          <FloatingBlockToolbar block={block} onChange={changeBlock} />
+        ) : null}
+        {children}
+      </div>
+    );
   };
 
   switch (block.type) {
@@ -158,44 +514,115 @@ function BuilderBlockRenderer({
       }`;
 
       if (level === 1) {
-        return (
-          <h1 {...blockProps} className={className}>
-            {block.content.text}
-          </h1>
+        return wrapEditableBlock(
+          editable ? (
+            <InlineEditableText
+              as="h1"
+              className={className}
+              onChange={(text) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, text }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="제목 입력"
+              value={block.content.text}
+            />
+          ) : (
+            <h1 {...blockProps} className={className}>
+              {block.content.text}
+            </h1>
+          )
         );
       }
 
       if (level === 3) {
-        return (
-          <h3 {...blockProps} className={className}>
-            {block.content.text}
-          </h3>
+        return wrapEditableBlock(
+          editable ? (
+            <InlineEditableText
+              as="h3"
+              className={className}
+              onChange={(text) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, text }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="제목 입력"
+              value={block.content.text}
+            />
+          ) : (
+            <h3 {...blockProps} className={className}>
+              {block.content.text}
+            </h3>
+          )
         );
       }
 
-      return (
-        <h2 {...blockProps} className={className}>
-          {block.content.text}
-        </h2>
+      return wrapEditableBlock(
+        editable ? (
+          <InlineEditableText
+            as="h2"
+            className={className}
+            onChange={(text) =>
+              changeBlock({
+                ...block,
+                content: { ...block.content, text }
+              })
+            }
+            onFocus={selectBlock}
+            placeholder="제목 입력"
+            value={block.content.text}
+          />
+        ) : (
+          <h2 {...blockProps} className={className}>
+            {block.content.text}
+          </h2>
+        )
       );
     }
     case "paragraph":
-      return (
-        <p
-          {...blockProps}
-          className={`${blockProps.className} ${
-            textWidthClass[block.settings.width ?? "content"]
-          } whitespace-pre-line text-base leading-8 text-neutral-600 dark:text-neutral-300 ${
-            alignClass[block.settings.align ?? "left"]
-          } ${block.settings.align === "center" ? "mx-auto" : ""} ${
-            block.settings.align === "right" ? "ml-auto" : ""
-          }`}
-        >
-          {block.content.text}
-        </p>
+      return wrapEditableBlock(
+        editable ? (
+          <InlineEditableText
+            as="p"
+            className={`${blockProps.className} ${
+              textWidthClass[block.settings.width ?? "content"]
+            } whitespace-pre-line text-base leading-8 text-neutral-600 dark:text-neutral-300 ${
+              alignClass[block.settings.align ?? "left"]
+            } ${block.settings.align === "center" ? "mx-auto" : ""} ${
+              block.settings.align === "right" ? "ml-auto" : ""
+            }`}
+            multiline
+            onChange={(text) =>
+              changeBlock({
+                ...block,
+                content: { ...block.content, text }
+              })
+            }
+            onFocus={selectBlock}
+            placeholder="본문 입력"
+            value={block.content.text}
+          />
+        ) : (
+          <p
+            {...blockProps}
+            className={`${blockProps.className} ${
+              textWidthClass[block.settings.width ?? "content"]
+            } whitespace-pre-line text-base leading-8 text-neutral-600 dark:text-neutral-300 ${
+              alignClass[block.settings.align ?? "left"]
+            } ${block.settings.align === "center" ? "mx-auto" : ""} ${
+              block.settings.align === "right" ? "ml-auto" : ""
+            }`}
+          >
+            {block.content.text}
+          </p>
+        )
       );
     case "image":
-      return (
+      return wrapEditableBlock(
         <figure {...blockProps} className={`${blockProps.className} grid gap-3`}>
           <div
             className={`overflow-hidden border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 ${
@@ -212,7 +639,21 @@ function BuilderBlockRenderer({
               width={1400}
             />
           </div>
-          {block.content.caption ? (
+          {editable ? (
+            <InlineEditableText
+              as="figcaption"
+              className="text-sm text-neutral-500 dark:text-neutral-400"
+              onChange={(caption) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, caption }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="캡션 입력"
+              value={block.content.caption ?? ""}
+            />
+          ) : block.content.caption ? (
             <figcaption className="text-sm text-neutral-500 dark:text-neutral-400">
               {block.content.caption}
             </figcaption>
@@ -220,7 +661,7 @@ function BuilderBlockRenderer({
         </figure>
       );
     case "gallery":
-      return (
+      return wrapEditableBlock(
         <div
           {...blockProps}
           className={`${blockProps.className} grid ${
@@ -240,7 +681,25 @@ function BuilderBlockRenderer({
                   width={800}
                 />
               </div>
-              {image.caption ? (
+              {editable ? (
+                <InlineEditableText
+                  as="figcaption"
+                  className="text-sm text-neutral-500"
+                  onChange={(caption) =>
+                    changeBlock({
+                      ...block,
+                      content: {
+                        images: block.content.images.map((item) =>
+                          item === image ? { ...item, caption } : item
+                        )
+                      }
+                    })
+                  }
+                  onFocus={selectBlock}
+                  placeholder="캡션 입력"
+                  value={image.caption ?? ""}
+                />
+              ) : image.caption ? (
                 <figcaption className="text-sm text-neutral-500">
                   {image.caption}
                 </figcaption>
@@ -259,27 +718,45 @@ function BuilderBlockRenderer({
             : "border-transparent bg-transparent px-0 text-neutral-950 underline-offset-4 hover:underline dark:text-neutral-50";
 
       return (
-        <div
-          {...blockProps}
-          className={`${blockProps.className} flex ${
-            block.settings.align === "center"
-              ? "justify-center"
-              : block.settings.align === "right"
-                ? "justify-end"
-                : "justify-start"
-          }`}
-        >
-          <Link
-            className={`inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`}
-            href={block.content.href}
+        wrapEditableBlock(
+          <div
+            {...blockProps}
+            className={`${blockProps.className} flex ${
+              block.settings.align === "center"
+                ? "justify-center"
+                : block.settings.align === "right"
+                  ? "justify-end"
+                  : "justify-start"
+            }`}
           >
-            {block.content.label}
-          </Link>
-        </div>
+            {editable ? (
+              <InlineEditableText
+                as="span"
+                className={`inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`}
+                onChange={(label) =>
+                  changeBlock({
+                    ...block,
+                    content: { ...block.content, label }
+                  })
+                }
+                onFocus={selectBlock}
+                placeholder="버튼"
+                value={block.content.label}
+              />
+            ) : (
+              <Link
+                className={`inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`}
+                href={block.content.href}
+              >
+                {block.content.label}
+              </Link>
+            )}
+          </div>
+        )
       );
     }
     case "divider":
-      return (
+      return wrapEditableBlock(
         <div
           {...blockProps}
           className={`${blockProps.className} ${
@@ -300,7 +777,7 @@ function BuilderBlockRenderer({
         </div>
       );
     case "embed":
-      return (
+      return wrapEditableBlock(
         <div
           {...blockProps}
           className={`${blockProps.className} overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 ${
@@ -315,7 +792,7 @@ function BuilderBlockRenderer({
         </div>
       );
     case "spacer":
-      return (
+      return wrapEditableBlock(
         <div
           {...blockProps}
           className={blockProps.className}
@@ -323,15 +800,45 @@ function BuilderBlockRenderer({
         />
       );
     case "quote":
-      return (
+      return wrapEditableBlock(
         <blockquote
           {...blockProps}
           className={`${blockProps.className} max-w-4xl border-l-2 border-emerald-600 pl-6 text-2xl leading-10 text-neutral-900 dark:border-emerald-400 dark:text-neutral-100 ${
             block.settings.align === "center" ? "mx-auto text-center" : ""
           } ${block.settings.align === "right" ? "ml-auto text-right" : ""}`}
         >
-          <p>{block.content.text}</p>
-          {block.content.author ? (
+          {editable ? (
+            <InlineEditableText
+              as="p"
+              multiline
+              onChange={(text) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, text }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="인용문 입력"
+              value={block.content.text}
+            />
+          ) : (
+            <p>{block.content.text}</p>
+          )}
+          {editable ? (
+            <InlineEditableText
+              as="cite"
+              className="mt-4 block text-sm not-italic text-neutral-500"
+              onChange={(author) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, author }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="출처 입력"
+              value={block.content.author ?? ""}
+            />
+          ) : block.content.author ? (
             <cite className="mt-4 block text-sm not-italic text-neutral-500">
               {block.content.author}
             </cite>
@@ -339,17 +846,52 @@ function BuilderBlockRenderer({
         </blockquote>
       );
     case "stats":
-      return (
+      return wrapEditableBlock(
         <div
           {...blockProps}
           className={`${blockProps.className} rounded-md border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950 ${
             alignClass[block.settings.align ?? "left"]
           }`}
         >
-          <p className="text-3xl font-semibold text-neutral-950 dark:text-neutral-50">
-            {block.content.value}
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">{block.content.label}</p>
+          {editable ? (
+            <>
+              <InlineEditableText
+                as="p"
+                className="text-3xl font-semibold text-neutral-950 dark:text-neutral-50"
+                onChange={(value) =>
+                  changeBlock({
+                    ...block,
+                    content: { ...block.content, value }
+                  })
+                }
+                onFocus={selectBlock}
+                placeholder="값"
+                value={block.content.value}
+              />
+              <InlineEditableText
+                as="p"
+                className="mt-2 text-sm text-neutral-500"
+                onChange={(label) =>
+                  changeBlock({
+                    ...block,
+                    content: { ...block.content, label }
+                  })
+                }
+                onFocus={selectBlock}
+                placeholder="라벨"
+                value={block.content.label}
+              />
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-semibold text-neutral-950 dark:text-neutral-50">
+                {block.content.value}
+              </p>
+              <p className="mt-2 text-sm text-neutral-500">
+                {block.content.label}
+              </p>
+            </>
+          )}
         </div>
       );
   }
@@ -452,7 +994,8 @@ function SectionRenderer({
   selectedSectionId,
   selectedBlockId,
   onSelectSection,
-  onSelectBlock
+  onSelectBlock,
+  onChangeBlock
 }: SectionRendererProps) {
   const selected = selectedSectionId === section.id;
   const blocks = [...section.blocks].sort((a, b) => a.order - b.order);
@@ -474,6 +1017,7 @@ function SectionRenderer({
           block={block}
           editable={editable}
           key={block.id}
+          onChangeBlock={onChangeBlock}
           onSelectBlock={onSelectBlock}
           sectionId={section.id}
           selected={selectedBlockId === block.id}
@@ -509,7 +1053,8 @@ export function BuilderPageRenderer({
   selectedSectionId,
   selectedBlockId,
   onSelectSection,
-  onSelectBlock
+  onSelectBlock,
+  onChangeBlock
 }: BuilderPageRendererProps) {
   return (
     <div className={editable ? "bg-white dark:bg-neutral-950" : ""}>
@@ -521,6 +1066,7 @@ export function BuilderPageRenderer({
             editable={editable}
             key={section.id}
             notes={notes}
+            onChangeBlock={onChangeBlock}
             onSelectBlock={onSelectBlock}
             onSelectSection={onSelectSection}
             page={page}
