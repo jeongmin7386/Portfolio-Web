@@ -35,7 +35,7 @@ import {
   Undo2,
   Upload
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
 import type {
@@ -223,6 +223,68 @@ function createId(prefix: string) {
 
 function orderItems<T extends { order: number }>(items: T[]) {
   return items.map((item, index) => ({ ...item, order: index }));
+}
+
+function isSameObjectValue(firstValue: unknown, secondValue: unknown) {
+  return JSON.stringify(firstValue) === JSON.stringify(secondValue);
+}
+
+function mergeBlockUpdate(
+  currentBlock: BuilderBlock,
+  nextBlock: BuilderBlock
+): BuilderBlock {
+  if (currentBlock.id !== nextBlock.id || currentBlock.type !== nextBlock.type) {
+    return nextBlock;
+  }
+
+  const contentChanged = !isSameObjectValue(
+    currentBlock.content,
+    nextBlock.content
+  );
+  const settingsChanged = !isSameObjectValue(
+    currentBlock.settings,
+    nextBlock.settings
+  );
+
+  if (contentChanged && settingsChanged) {
+    return {
+      ...currentBlock,
+      ...nextBlock,
+      content: currentBlock.content,
+      settings: nextBlock.settings
+    } as BuilderBlock;
+  }
+
+  return nextBlock;
+}
+
+function mergeSectionUpdate(
+  currentSection: BuilderSection,
+  nextSection: BuilderSection
+): BuilderSection {
+  if (currentSection.id !== nextSection.id) {
+    return nextSection;
+  }
+
+  const blocksChanged = !isSameObjectValue(
+    currentSection.blocks,
+    nextSection.blocks
+  );
+  const settingsChanged = !isSameObjectValue(
+    currentSection.settings,
+    nextSection.settings
+  );
+
+  if (blocksChanged && settingsChanged) {
+    return {
+      ...currentSection,
+      ...nextSection,
+      blocks: currentSection.blocks,
+      settings: nextSection.settings
+    };
+  }
+
+  return nextSection;
 }
 
 function createBlock(type: BuilderBlockType): BuilderBlock {
@@ -995,6 +1057,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     past: [],
     future: []
   });
+  const pageRef = useRef<BuilderPage | null>(null);
   const [commandValue, setCommandValue] = useState("");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -1062,6 +1125,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     };
   }, []);
 
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
   const sortedSections = useMemo(
     () => page?.sections.slice().sort((a, b) => a.order - b.order) ?? [],
     [page]
@@ -1100,32 +1167,43 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   }, [commandQuery, commandValue]);
 
   const commitPage = (nextPage: BuilderPage) => {
-    if (page) {
+    const currentPage = pageRef.current;
+
+    if (currentPage) {
       setHistory((currentHistory) => ({
-        past: [...currentHistory.past.slice(-39), page],
+        past: [...currentHistory.past.slice(-39), currentPage],
         future: []
       }));
     }
 
-    setPage({
+    const nextDraftPage: BuilderPage = {
       ...nextPage,
       status: "draft"
-    });
+    };
+
+    pageRef.current = nextDraftPage;
+    setPage(nextDraftPage);
   };
 
   const updatePage = (updater: (currentPage: BuilderPage) => BuilderPage) => {
-    if (!page) {
+    const currentPage = pageRef.current;
+
+    if (!currentPage) {
       return;
     }
 
+    const nextPage: BuilderPage = {
+      ...updater(currentPage),
+      status: "draft"
+    };
+
     setHistory((currentHistory) => ({
-      past: [...currentHistory.past.slice(-39), page],
+      past: [...currentHistory.past.slice(-39), currentPage],
       future: []
     }));
-    setPage({
-      ...updater(page),
-      status: "draft"
-    });
+
+    pageRef.current = nextPage;
+    setPage(nextPage);
   };
 
   const undo = () => {
@@ -1138,6 +1216,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       past: history.past.slice(0, -1),
       future: [page, ...history.future]
     });
+    pageRef.current = previousPage;
     setPage(previousPage);
     setSelectedSectionId(previousPage.sections[0]?.id ?? "");
     setSelectedBlockId("");
@@ -1153,6 +1232,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       past: [...history.past, page],
       future: history.future.slice(1)
     });
+    pageRef.current = nextPage;
     setPage(nextPage);
     setSelectedSectionId(nextPage.sections[0]?.id ?? "");
     setSelectedBlockId("");
@@ -1163,25 +1243,40 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       ...currentPage,
       sections: orderItems(
         currentPage.sections.map((currentSection) =>
-          currentSection.id === section.id ? section : currentSection
+          currentSection.id === section.id
+            ? mergeSectionUpdate(currentSection, section)
+            : currentSection
         )
       )
     }));
   };
 
   const updateSelectedBlock = (block: BuilderBlock) => {
-    if (!selectedSection) {
-      return;
-    }
+    updatePage((currentPage) => ({
+      ...currentPage,
+      sections: orderItems(
+        currentPage.sections.map((section) => {
+          const isTargetSection =
+            section.id === selectedSectionId ||
+            section.blocks.some((currentBlock) => currentBlock.id === block.id);
 
-    updateSelectedSection({
-      ...selectedSection,
-      blocks: orderItems(
-        selectedSection.blocks.map((currentBlock) =>
-          currentBlock.id === block.id ? block : currentBlock
-        )
+          if (!isTargetSection) {
+            return section;
+          }
+
+          return {
+            ...section,
+            blocks: orderItems(
+              section.blocks.map((currentBlock) =>
+                currentBlock.id === block.id
+                  ? mergeBlockUpdate(currentBlock, block)
+                  : currentBlock
+              )
+            )
+          };
+        })
       )
-    });
+    }));
   };
 
   const updateBlockInSection = (sectionId: string, block: BuilderBlock) => {
@@ -1194,7 +1289,9 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 ...section,
                 blocks: orderItems(
                   section.blocks.map((currentBlock) =>
-                    currentBlock.id === block.id ? block : currentBlock
+                    currentBlock.id === block.id
+                      ? mergeBlockUpdate(currentBlock, block)
+                      : currentBlock
                   )
                 )
               }
@@ -1426,8 +1523,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     }
   };
 
-  const savePage = async (nextPage = page) => {
-    if (!nextPage) {
+  const savePage = async (nextPage?: BuilderPage | null) => {
+    const pageToSave = nextPage ?? pageRef.current;
+
+    if (!pageToSave) {
       return;
     }
 
@@ -1440,7 +1539,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(nextPage)
+        body: JSON.stringify(pageToSave)
       });
 
       if (response.status === 401) {
@@ -1454,6 +1553,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       }
 
       const savedPage = (await response.json()) as BuilderPage;
+      pageRef.current = savedPage;
       setPage(savedPage);
       setStatus("초안이 저장되었습니다. 공개 페이지에는 아직 반영되지 않습니다.");
     } catch (error) {
@@ -1466,7 +1566,9 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   };
 
   const publishPage = async () => {
-    if (!page) {
+    const pageToPublish = pageRef.current;
+
+    if (!pageToPublish) {
       return;
     }
 
@@ -1479,7 +1581,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(page)
+        body: JSON.stringify(pageToPublish)
       });
 
       if (response.status === 401) {
@@ -1493,6 +1595,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       }
 
       const publishedPage = (await response.json()) as BuilderPage;
+      pageRef.current = publishedPage;
       setPage(publishedPage);
       setHistory({ past: [], future: [] });
       setStatus("게시되었습니다. 공개 페이지에 반영됩니다.");
