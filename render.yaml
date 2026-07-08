@@ -45,8 +45,8 @@ services:
     plan: free
     region: singapore
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run start -- -p $PORT
-    healthCheckPath: /
+    startCommand: npm run start -- -H 0.0.0.0 -p $PORT
+    healthCheckPath: /api/health
     autoDeployTrigger: commit
     envVars:
       - key: NODE_VERSION
