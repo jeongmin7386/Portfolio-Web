@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -14,6 +15,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { BlockRenderer } from "@/components/block-renderer";
+import { TagList } from "@/components/tag-list";
 import type {
   Note,
   Project,
@@ -40,6 +43,8 @@ const panelClass =
   "rounded-md border border-neutral-200 bg-white/95 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-4";
 const editorPanelClass =
   "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:gap-6 sm:p-5 lg:p-6";
+const previewPanelClass =
+  "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto";
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
 
@@ -807,6 +812,186 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
   }
 }
 
+type AdminLivePreviewProps = {
+  activePanel: "projects" | "notes";
+  note?: Note;
+  project?: Project;
+};
+
+function PreviewMetaItem({
+  label,
+  value
+}: {
+  label: string;
+  value?: string;
+}) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-1 border-t border-neutral-200 py-3 dark:border-neutral-800">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
+        {label}
+      </dt>
+      <dd className="text-sm leading-6 text-neutral-800 dark:text-neutral-200">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function ProjectLivePreview({ project }: { project: Project }) {
+  const coverImage = project.coverImage || "/images/placeholder-atlas.svg";
+
+  return (
+    <div className="grid gap-5">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+          실시간 미리보기
+        </p>
+        <h2 className="mt-2 text-xl font-semibold text-neutral-950 dark:text-neutral-50">
+          프로젝트 공개 화면
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+          저장 전 변경도 이 화면에 바로 반영됩니다.
+        </p>
+      </div>
+
+      <article className="grid gap-4 border-b border-neutral-200 pb-5 dark:border-neutral-800">
+        <div className="aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
+          <Image
+            alt={project.title || "프로젝트 커버 이미지"}
+            className="h-full w-full object-cover"
+            height={720}
+            sizes="(min-width: 1280px) 360px, 100vw"
+            src={coverImage}
+            unoptimized
+            width={960}
+          />
+        </div>
+        <div className="grid gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+                {project.category || "카테고리"}
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50">
+                {project.title || "프로젝트 제목"}
+              </h3>
+            </div>
+            <span className="text-sm text-neutral-500 dark:text-neutral-500">
+              {project.year}
+            </span>
+          </div>
+          <p className="text-sm leading-7 text-neutral-600 dark:text-neutral-400">
+            {project.subtitle}
+          </p>
+          <TagList compact tags={project.tags.slice(0, 4)} />
+        </div>
+      </article>
+
+      <section className="grid gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
+            상세 페이지
+          </p>
+          <h3 className="mt-2 text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+            프로젝트 정보
+          </h3>
+        </div>
+        <dl className="grid gap-0">
+          <PreviewMetaItem label="역할" value={project.role} />
+          <PreviewMetaItem label="기간" value={project.period} />
+          <PreviewMetaItem label="클라이언트" value={project.client} />
+          <PreviewMetaItem label="도구" value={project.tools.join(", ")} />
+          <PreviewMetaItem
+            label="결과물"
+            value={project.deliverables.join(", ")}
+          />
+        </dl>
+        {project.description ? (
+          <p className="whitespace-pre-line text-sm leading-7 text-neutral-600 dark:text-neutral-400">
+            {project.description}
+          </p>
+        ) : null}
+        <div className="border-t border-neutral-200 pt-1 dark:border-neutral-800 [&_blockquote]:my-6 [&_blockquote]:text-lg [&_h2]:mt-8 [&_h2]:text-2xl [&_h3]:mt-6 [&_h3]:text-xl [&_p]:text-sm [&_p]:leading-7">
+          <BlockRenderer blocks={project.blocks} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function NoteLivePreview({ note }: { note: Note }) {
+  return (
+    <div className="grid gap-5">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+          실시간 미리보기
+        </p>
+        <h2 className="mt-2 text-xl font-semibold text-neutral-950 dark:text-neutral-50">
+          아카이브 공개 화면
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+          노트 목록에 보일 제목, 분류, 요약을 바로 확인합니다.
+        </p>
+      </div>
+
+      <article className="grid gap-4 border-y border-neutral-200 py-5 dark:border-neutral-800">
+        <div className="grid gap-1">
+          <time
+            className="text-sm text-neutral-500 dark:text-neutral-500"
+            dateTime={note.date}
+          >
+            {note.date}
+          </time>
+          <span className="text-xs uppercase tracking-[0.16em] text-neutral-400">
+            {note.category || "분류"}
+          </span>
+        </div>
+        <div>
+          <h3 className="text-2xl font-semibold text-neutral-950 dark:text-neutral-50">
+            {note.title || "노트 제목"}
+          </h3>
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-600 dark:text-neutral-400">
+            {note.excerpt}
+          </p>
+        </div>
+        <TagList compact tags={note.tags} />
+      </article>
+    </div>
+  );
+}
+
+function AdminLivePreview({
+  activePanel,
+  note,
+  project
+}: AdminLivePreviewProps) {
+  if (activePanel === "projects" && project) {
+    return <ProjectLivePreview project={project} />;
+  }
+
+  if (activePanel === "notes" && note) {
+    return <NoteLivePreview note={note} />;
+  }
+
+  return (
+    <div className="grid min-h-64 place-items-center rounded-md border border-dashed border-neutral-300 p-6 text-center dark:border-neutral-700">
+      <div>
+        <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+          미리볼 항목을 선택해주세요.
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+          왼쪽 목록에서 프로젝트나 아카이브 노트를 고르면 공개 화면을 바로 볼 수
+          있습니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type AdminEditorProps = {
   authEnabled: boolean;
   storageMode: "database" | "file";
@@ -856,6 +1041,10 @@ export function AdminEditor({
   const showProjects = mode !== "notes";
   const showNotes = mode !== "projects";
   const showCategories = showProjects;
+  const editorLayoutClass =
+    mode === "all"
+      ? "grid gap-4 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]"
+      : "grid gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
 
   useEffect(() => {
     let mounted = true;
@@ -1121,7 +1310,7 @@ export function AdminEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <div className={editorLayoutClass}>
         <aside className="grid gap-4 self-start xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto xl:pr-1">
           {showCategories ? (
             <section className={panelClass}>
@@ -1714,6 +1903,16 @@ export function AdminEditor({
             </section>
           ) : null}
         </main>
+
+        {mode !== "all" ? (
+          <aside className={previewPanelClass}>
+            <AdminLivePreview
+              activePanel={activePanel}
+              note={selectedNote}
+              project={selectedProject}
+            />
+          </aside>
+        ) : null}
       </div>
     </div>
   );
