@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
@@ -803,19 +804,52 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
 type AdminEditorProps = {
   authEnabled: boolean;
   storageMode: "database" | "file";
+  mode?: "all" | "projects" | "notes";
 };
 
-export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
+const editorCopy = {
+  all: {
+    eyebrow: "Admin",
+    title: "Studio Archive 편집",
+    description:
+      "프로젝트, 카테고리, 아카이브 노트를 수정합니다. DB 저장, 로그인 보호, 이미지 업로드를 운영 환경에 연결할 수 있습니다."
+  },
+  projects: {
+    eyebrow: "Projects",
+    title: "프로젝트 편집",
+    description:
+      "프로젝트 카드와 상세 페이지에 쓰이는 제목, 이미지, 카테고리, 태그, 본문 블록을 관리합니다."
+  },
+  notes: {
+    eyebrow: "Archive",
+    title: "아카이브 편집",
+    description:
+      "아카이브 페이지에 노출되는 작업 기록, 리서치 메모, 레퍼런스 노트를 관리합니다."
+  }
+} satisfies Record<
+  NonNullable<AdminEditorProps["mode"]>,
+  { eyebrow: string; title: string; description: string }
+>;
+
+export function AdminEditor({
+  authEnabled,
+  storageMode,
+  mode = "all"
+}: AdminEditorProps) {
   const [content, setContent] = useState<StudioArchiveContent | null>(null);
   const [selectedProjectSlug, setSelectedProjectSlug] = useState("");
   const [selectedNoteSlug, setSelectedNoteSlug] = useState("");
   const [activePanel, setActivePanel] = useState<"projects" | "notes">(
-    "projects"
+    mode === "notes" ? "notes" : "projects"
   );
   const [newCategory, setNewCategory] = useState("");
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const copy = editorCopy[mode];
+  const showProjects = mode !== "notes";
+  const showNotes = mode !== "projects";
+  const showCategories = showProjects;
 
   useEffect(() => {
     let mounted = true;
@@ -994,14 +1028,13 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
       <header className="grid gap-5 border-b border-neutral-200 pb-8 dark:border-neutral-800 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-            Admin
+            {copy.eyebrow}
           </p>
           <h1 className="mt-4 font-display text-4xl font-semibold text-neutral-950 dark:text-neutral-50 md:text-6xl">
-            Studio Archive 편집
+            {copy.title}
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-            프로젝트, 카테고리, 아카이브 노트를 수정합니다. DB 저장,
-            로그인 보호, 이미지 업로드를 운영 환경에 연결할 수 있습니다.
+            {copy.description}
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
             <span className="rounded-sm border border-neutral-200 px-2 py-1 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
@@ -1011,6 +1044,31 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
               로그인: {authEnabled ? "사용 중" : "환경변수 필요"}
             </span>
           </div>
+          <nav className="mt-5 flex flex-wrap gap-2 text-sm">
+            <Link
+              className={mode === "all" ? primaryButtonClass : secondaryButtonClass}
+              href="/admin"
+            >
+              전체 관리
+            </Link>
+            <Link
+              className={
+                mode === "projects" ? primaryButtonClass : secondaryButtonClass
+              }
+              href="/admin/projects"
+            >
+              프로젝트 편집
+            </Link>
+            <Link
+              className={mode === "notes" ? primaryButtonClass : secondaryButtonClass}
+              href="/admin/archive"
+            >
+              아카이브 편집
+            </Link>
+            <Link className={secondaryButtonClass} href="/admin/editor">
+              홈 빌더
+            </Link>
+          </nav>
         </div>
         <div className="flex flex-wrap gap-2">
           {authEnabled ? (
@@ -1055,7 +1113,8 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="grid gap-6 self-start">
-          <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+          {showCategories ? (
+            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 카테고리
@@ -1140,9 +1199,11 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
                 </button>
               </div>
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+          {showProjects ? (
+            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 프로젝트
@@ -1192,9 +1253,11 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
                 );
               })}
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+          {showNotes ? (
+            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 아카이브 노트
@@ -1243,7 +1306,8 @@ export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
                 );
               })}
             </div>
-          </section>
+            </section>
+          ) : null}
         </aside>
 
         <main className="min-w-0">

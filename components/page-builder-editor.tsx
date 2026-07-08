@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   closestCenter,
   DndContext,
@@ -1513,6 +1514,12 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link className={buttonClass} href="/admin/projects">
+            프로젝트 편집
+          </Link>
+          <Link className={buttonClass} href="/admin/archive">
+            아카이브 편집
+          </Link>
           {(["desktop", "tablet", "mobile"] as BuilderViewport[]).map((item) => {
             const Icon =
               item === "desktop" ? Monitor : item === "tablet" ? Tablet : Smartphone;
