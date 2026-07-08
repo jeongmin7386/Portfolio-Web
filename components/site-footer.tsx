@@ -9,22 +9,21 @@ export function SiteFooter() {
             Studio Archive
           </p>
           <p className="mt-2 max-w-xl leading-6">
-            A modular portfolio system for image-led work, case studies, and
-            process notes.
+            이미지 중심 작업과 케이스 스터디, 과정 노트를 함께 담는 포트폴리오 시스템.
           </p>
         </div>
         <nav
-          aria-label="Footer navigation"
+          aria-label="하단 메뉴"
           className="flex flex-wrap items-start gap-x-5 gap-y-2 md:justify-end"
         >
           <Link className="transition hover:text-neutral-950 dark:hover:text-neutral-50" href="/projects">
-            Projects
+            프로젝트
           </Link>
           <Link className="transition hover:text-neutral-950 dark:hover:text-neutral-50" href="/archive">
-            Archive
+            아카이브
           </Link>
           <Link className="transition hover:text-neutral-950 dark:hover:text-neutral-50" href="/about">
-            Contact
+            연락
           </Link>
         </nav>
       </div>

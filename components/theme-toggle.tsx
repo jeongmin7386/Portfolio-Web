@@ -30,14 +30,15 @@ export function ThemeToggle() {
   }, [theme]);
 
   const nextTheme = theme === "dark" ? "light" : "dark";
+  const nextThemeLabel = nextTheme === "dark" ? "다크 모드" : "라이트 모드";
 
   return (
     <button
-      aria-label={`Switch to ${nextTheme} mode`}
+      aria-label={`${nextThemeLabel}로 전환`}
       className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-900 transition hover:border-neutral-400 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
       onClick={() => setTheme(nextTheme)}
       suppressHydrationWarning
-      title={`Switch to ${nextTheme} mode`}
+      title={`${nextThemeLabel}로 전환`}
       type="button"
     >
       {theme === "dark" ? <Sun aria-hidden size={18} /> : <Moon aria-hidden size={18} />}

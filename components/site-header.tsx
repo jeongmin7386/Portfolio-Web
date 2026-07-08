@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/projects", label: "Projects" },
-  { href: "/archive", label: "Archive" },
-  { href: "/about", label: "About" }
+  { href: "/", label: "홈" },
+  { href: "/projects", label: "프로젝트" },
+  { href: "/archive", label: "아카이브" },
+  { href: "/about", label: "소개" }
 ];
 
 export function SiteHeader() {
@@ -25,7 +25,7 @@ export function SiteHeader() {
           Studio Archive
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
-          <nav aria-label="Main navigation" className="flex items-center gap-1">
+          <nav aria-label="주요 메뉴" className="flex items-center gap-1">
             {navItems.map((item) => {
               const active =
                 item.href === "/"

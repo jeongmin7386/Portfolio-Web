@@ -1,33 +1,33 @@
 {
   "slug": "northline-art-direction",
   "title": "Northline Art Direction",
-  "subtitle": "Image direction for an outdoor lifestyle launch.",
+  "subtitle": "아웃도어 라이프스타일 런칭을 위한 이미지 디렉션.",
   "year": "2024",
-  "period": "Aug - Oct 2024",
-  "role": "Art Director",
+  "period": "2024.08 - 2024.10",
+  "role": "아트 디렉션",
   "client": "Northline",
-  "category": "Art Direction",
-  "tags": ["Campaign", "Photography", "Lookbook", "Launch"],
+  "category": "아트 디렉션",
+  "tags": ["캠페인", "사진", "룩북", "런칭"],
   "coverImage": "/images/placeholder-northline.svg",
-  "description": "A restrained image direction system for a launch campaign balancing technical product information with quiet landscape-led storytelling.",
+  "description": "제품의 기능 정보와 조용한 풍경 중심의 이야기를 균형 있게 담은 런칭 캠페인 이미지 시스템입니다.",
   "tools": ["Figma", "Lightroom", "Photoshop"],
-  "deliverables": ["Art direction", "Shot list", "Lookbook layout", "Launch image kit"],
+  "deliverables": ["아트 디렉션", "촬영 리스트", "룩북 레이아웃", "런칭 이미지 키트"],
   "featured": true,
   "blocks": [
     {
       "type": "heading",
-      "text": "Quiet Utility",
+      "text": "조용한 기능성",
       "level": 2
     },
     {
       "type": "paragraph",
-      "text": "The campaign language needed to avoid exaggerated adventure tropes. We focused on texture, utility, and measured pacing across launch imagery."
+      "text": "과장된 모험의 이미지는 피하고 싶었습니다. 질감, 기능, 절제된 속도를 중심으로 런칭 이미지의 톤을 잡았습니다."
     },
     {
       "type": "image",
       "src": "/images/placeholder-northline-detail.svg",
-      "alt": "Northline lookbook art direction board",
-      "caption": "Lookbook direction with product, landscape, and texture pairings.",
+      "alt": "Northline 룩북 아트 디렉션 보드",
+      "caption": "제품, 풍경, 질감 이미지를 함께 배치한 룩북 방향.",
       "aspectRatio": "wide"
     },
     {
@@ -36,28 +36,28 @@
       "images": [
         {
           "src": "/images/placeholder-northline-grid-1.svg",
-          "alt": "Northline product detail composition",
-          "caption": "Product detail"
+          "alt": "Northline 제품 디테일 구성",
+          "caption": "제품 디테일"
         },
         {
           "src": "/images/placeholder-northline-grid-2.svg",
-          "alt": "Northline landscape crop composition",
-          "caption": "Landscape crop"
+          "alt": "Northline 풍경 크롭 구성",
+          "caption": "풍경 크롭"
         }
       ]
     },
     {
       "type": "quote",
-      "quote": "Every frame should feel like a useful object in a real place.",
-      "cite": "Campaign direction"
+      "quote": "모든 장면은 실제 장소에 놓인 쓸모 있는 물건처럼 보여야 합니다.",
+      "cite": "캠페인 방향"
     },
     {
       "type": "result",
-      "title": "Outcome",
+      "title": "결과",
       "items": [
-        "A launch image kit covering product pages, editorial features, and social teasers.",
-        "A simple art direction guide for future seasonal shoots.",
-        "A quieter campaign tone that still kept product function visible."
+        "제품 페이지, 에디토리얼 피처, 소셜 티저에 쓸 수 있는 런칭 이미지 키트를 만들었습니다.",
+        "이후 시즌 촬영에 적용할 수 있는 간결한 아트 디렉션 가이드를 정리했습니다.",
+        "제품 기능은 선명하게 남기면서 캠페인의 톤은 한층 차분하게 조정했습니다."
       ]
     }
   ]

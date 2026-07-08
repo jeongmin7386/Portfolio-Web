@@ -1,9 +1,9 @@
 export const PROJECT_CATEGORIES = [
-  "Branding",
+  "브랜딩",
   "UI/UX",
-  "Editorial",
-  "Motion",
-  "Art Direction"
+  "에디토리얼",
+  "모션",
+  "아트 디렉션"
 ] as const;
 
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];

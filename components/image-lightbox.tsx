@@ -78,10 +78,10 @@ export function ImageLightbox({
       role="dialog"
     >
       <button
-        aria-label="Close image"
+        aria-label="이미지 닫기"
         className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-neutral-950 transition hover:bg-neutral-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         onClick={onClose}
-        title="Close image"
+        title="이미지 닫기"
         type="button"
       >
         <X aria-hidden size={20} />
@@ -93,10 +93,10 @@ export function ImageLightbox({
         <div className="relative flex min-h-[45vh] items-center justify-center">
           {hasMultipleImages ? (
             <button
-              aria-label="Previous image"
+              aria-label="이전 이미지"
               className="absolute left-0 z-10 inline-flex h-11 w-11 items-center justify-center rounded-md bg-white/90 text-neutral-950 transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               onClick={goToPrevious}
-              title="Previous image"
+              title="이전 이미지"
               type="button"
             >
               <ChevronLeft aria-hidden size={22} />
@@ -113,10 +113,10 @@ export function ImageLightbox({
           />
           {hasMultipleImages ? (
             <button
-              aria-label="Next image"
+              aria-label="다음 이미지"
               className="absolute right-0 z-10 inline-flex h-11 w-11 items-center justify-center rounded-md bg-white/90 text-neutral-950 transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               onClick={goToNext}
-              title="Next image"
+              title="다음 이미지"
               type="button"
             >
               <ChevronRight aria-hidden size={22} />

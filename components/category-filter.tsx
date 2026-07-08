@@ -2,9 +2,9 @@
 
 import { PROJECT_CATEGORIES, type ProjectCategory } from "@/lib/types";
 
-export type CategorySelection = ProjectCategory | "All";
+export type CategorySelection = ProjectCategory | "전체";
 
-const filterOptions: CategorySelection[] = ["All", ...PROJECT_CATEGORIES];
+const filterOptions: CategorySelection[] = ["전체", ...PROJECT_CATEGORIES];
 
 type CategoryFilterProps = {
   selected: CategorySelection;
@@ -19,7 +19,7 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   return (
     <div
-      aria-label="Project categories"
+      aria-label="프로젝트 카테고리"
       className="mb-10 flex flex-wrap gap-2"
       role="toolbar"
     >

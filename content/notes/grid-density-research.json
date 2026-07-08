@@ -1,8 +1,8 @@
 {
   "slug": "grid-density-research",
-  "title": "Grid Density Research",
+  "title": "그리드 밀도 리서치",
   "date": "2026-06-28",
-  "category": "Research",
-  "tags": ["Grid", "Layout", "Reference"],
-  "excerpt": "Collected references on dense editorial grids, dashboard spacing, and where portfolio cards start to lose breathing room."
+  "category": "리서치",
+  "tags": ["그리드", "레이아웃", "레퍼런스"],
+  "excerpt": "촘촘한 에디토리얼 그리드, 대시보드 간격, 포트폴리오 카드의 적정 여백을 함께 살핀 레퍼런스 모음."
 }

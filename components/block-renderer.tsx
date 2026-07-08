@@ -39,7 +39,7 @@ export function BlockRenderer({ blocks }: BlockRendererProps) {
   ) => (
     <figure className="grid gap-3">
       <button
-        aria-label={`Open image: ${image.alt}`}
+        aria-label={`이미지 크게 보기: ${image.alt}`}
         className={`group overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-900 ${aspectRatioClass[aspectRatio]}`}
         onClick={() => openLightbox(images, index)}
         type="button"

@@ -15,11 +15,11 @@ type ProjectExplorerProps = {
 
 export function ProjectExplorer({ projects }: ProjectExplorerProps) {
   const [selectedCategory, setSelectedCategory] =
-    useState<CategorySelection>("All");
+    useState<CategorySelection>("전체");
 
   const counts = useMemo(() => {
     const nextCounts: Partial<Record<CategorySelection, number>> = {
-      All: projects.length
+      전체: projects.length
     };
 
     PROJECT_CATEGORIES.forEach((category) => {
@@ -32,7 +32,7 @@ export function ProjectExplorer({ projects }: ProjectExplorerProps) {
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    if (selectedCategory === "All") {
+    if (selectedCategory === "전체") {
       return projects;
     }
 

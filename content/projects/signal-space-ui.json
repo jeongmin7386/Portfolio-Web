@@ -1,54 +1,54 @@
 {
   "slug": "signal-space-ui",
   "title": "Signal Space UI",
-  "subtitle": "A dashboard experience for monitoring cultural programming.",
+  "subtitle": "문화 프로그램 운영을 위한 대시보드 경험.",
   "year": "2026",
-  "period": "Apr - Jun 2026",
-  "role": "Product Designer",
+  "period": "2026.04 - 2026.06",
+  "role": "제품 디자인",
   "client": "Signal Space",
   "category": "UI/UX",
-  "tags": ["Dashboard", "Design System", "Research", "Prototype"],
+  "tags": ["대시보드", "디자인 시스템", "리서치", "프로토타입"],
   "coverImage": "/images/placeholder-signal.svg",
-  "description": "A quiet operational interface for teams managing event calendars, audience signals, and partner updates across multiple venues.",
+  "description": "여러 공간의 이벤트 일정, 관객 반응, 파트너 업데이트를 관리하는 팀을 위한 차분한 운영 인터페이스입니다.",
   "tools": ["Figma", "FigJam", "Notion"],
-  "deliverables": ["UX flows", "Component library", "Clickable prototype", "Handoff notes"],
+  "deliverables": ["UX 플로우", "컴포넌트 라이브러리", "클릭형 프로토타입", "핸드오프 노트"],
   "featured": true,
   "blocks": [
     {
       "type": "heading",
-      "text": "Less Noise, More Signal",
+      "text": "덜어내고, 더 또렷하게",
       "level": 2
     },
     {
       "type": "paragraph",
-      "text": "The product had to support daily scanning, quick status changes, and deeper review without turning every screen into a dense control room."
+      "text": "매일 훑어보고, 빠르게 상태를 바꾸고, 필요할 때 깊게 검토할 수 있어야 했습니다. 화면이 복잡한 관제실처럼 보이지 않는 것도 중요했습니다."
     },
     {
       "type": "image",
       "src": "/images/placeholder-signal-detail.svg",
-      "alt": "Signal Space dashboard overview with event columns and metrics",
-      "caption": "Dashboard overview with collapsible signal groups.",
+      "alt": "이벤트 열과 지표로 구성한 Signal Space 대시보드 화면",
+      "caption": "접고 펼칠 수 있는 신호 그룹을 적용한 대시보드.",
       "aspectRatio": "wide"
     },
     {
       "type": "quote",
-      "quote": "The interface should feel like a reliable desk, not a command center.",
-      "cite": "Product principle"
+      "quote": "인터페이스는 지휘실보다 믿을 만한 책상에 가까워야 합니다.",
+      "cite": "제품 원칙"
     },
     {
       "type": "process",
       "steps": [
         {
-          "title": "Workflow Mapping",
-          "description": "Separated daily scheduling tasks from weekly reporting moments to reduce competing priorities on the same view."
+          "title": "흐름 정리",
+          "description": "매일 처리하는 일정 업무와 주간 리포트 흐름을 나눠 한 화면에 과제가 겹치지 않도록 했습니다."
         },
         {
-          "title": "Component Pass",
-          "description": "Designed compact controls, table states, and semantic color use for clear repeated action."
+          "title": "컴포넌트 정리",
+          "description": "반복 작업이 분명하게 보이도록 작은 컨트롤, 테이블 상태, 의미 기반 컬러 규칙을 다듬었습니다."
         },
         {
-          "title": "Prototype Review",
-          "description": "Tested navigation and density with producers who moved between desktop planning and mobile checks."
+          "title": "프로토타입 검토",
+          "description": "데스크톱으로 계획하고 모바일로 확인하는 운영자들과 함께 탐색 흐름과 정보 밀도를 점검했습니다."
         }
       ]
     },
@@ -58,13 +58,13 @@
       "images": [
         {
           "src": "/images/placeholder-signal-grid-1.svg",
-          "alt": "Signal Space mobile schedule screen",
-          "caption": "Mobile schedule"
+          "alt": "Signal Space 모바일 일정 화면",
+          "caption": "모바일 일정"
         },
         {
           "src": "/images/placeholder-signal-grid-2.svg",
-          "alt": "Signal Space component library sample",
-          "caption": "Components"
+          "alt": "Signal Space 컴포넌트 라이브러리 샘플",
+          "caption": "컴포넌트"
         }
       ]
     },
@@ -72,19 +72,19 @@
       "type": "stats",
       "items": [
         {
-          "label": "Primary flows",
+          "label": "주요 플로우",
           "value": "7",
-          "description": "Scheduling, review, publishing, reporting, and partner updates."
+          "description": "일정 관리, 검토, 발행, 리포트, 파트너 업데이트."
         },
         {
-          "label": "Reusable components",
+          "label": "재사용 컴포넌트",
           "value": "42",
-          "description": "Controls, cells, cards, overlays, and empty states."
+          "description": "컨트롤, 셀, 카드, 오버레이, 빈 상태."
         },
         {
-          "label": "Prototype screens",
+          "label": "프로토타입 화면",
           "value": "64",
-          "description": "Desktop and mobile states for stakeholder review."
+          "description": "이해관계자 검토를 위한 데스크톱과 모바일 상태."
         }
       ]
     }

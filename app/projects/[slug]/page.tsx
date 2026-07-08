@@ -31,7 +31,7 @@ export async function generateMetadata({
 
   if (!project) {
     return {
-      title: "Project not found"
+      title: "프로젝트를 찾을 수 없습니다"
     };
   }
 
@@ -61,11 +61,11 @@ export default async function ProjectDetailPage({
 
   const { previous, next } = getProjectNeighbors(projects, project.slug);
   const details = [
-    ["Role", project.role],
-    ["Period", project.period],
-    ["Client", project.client],
-    ["Tools", project.tools.join(", ")],
-    ["Deliverables", project.deliverables.join(", ")]
+    ["역할", project.role],
+    ["기간", project.period],
+    ["클라이언트", project.client],
+    ["도구", project.tools.join(", ")],
+    ["결과물", project.deliverables.join(", ")]
   ];
 
   return (
@@ -98,7 +98,7 @@ export default async function ProjectDetailPage({
       </header>
 
       <dl
-        aria-label="Project summary"
+        aria-label="프로젝트 요약"
         className="grid gap-4 border-y border-neutral-200 py-8 dark:border-neutral-800 md:grid-cols-5"
       >
         {details.map(([label, value]) => (
@@ -118,7 +118,7 @@ export default async function ProjectDetailPage({
       </section>
 
       <nav
-        aria-label="Project navigation"
+        aria-label="프로젝트 이동"
         className="grid gap-4 border-t border-neutral-200 pt-8 dark:border-neutral-800 md:grid-cols-2"
       >
         {previous ? (
@@ -128,7 +128,7 @@ export default async function ProjectDetailPage({
           >
             <span className="inline-flex items-center gap-2 text-sm text-neutral-500">
               <ArrowLeft aria-hidden size={16} />
-              Previous
+              이전 작업
             </span>
             <p className="mt-3 text-xl font-semibold text-neutral-950 group-hover:text-emerald-700 dark:text-neutral-50 dark:group-hover:text-emerald-300">
               {previous.title}
@@ -141,7 +141,7 @@ export default async function ProjectDetailPage({
             href={`/projects/${next.slug}`}
           >
             <span className="inline-flex items-center justify-end gap-2 text-sm text-neutral-500">
-              Next
+              다음 작업
               <ArrowRight aria-hidden size={16} />
             </span>
             <p className="mt-3 text-xl font-semibold text-neutral-950 group-hover:text-emerald-700 dark:text-neutral-50 dark:group-hover:text-emerald-300">

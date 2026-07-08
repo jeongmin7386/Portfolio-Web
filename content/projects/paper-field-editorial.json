@@ -1,33 +1,33 @@
 {
   "slug": "paper-field-editorial",
   "title": "Paper Field Editorial",
-  "subtitle": "A publication system for material research essays.",
+  "subtitle": "소재 리서치 에세이를 위한 출판 시스템.",
   "year": "2025",
-  "period": "Sep - Nov 2025",
-  "role": "Editorial Designer",
+  "period": "2025.09 - 2025.11",
+  "role": "에디토리얼 디자인",
   "client": "Paper Field",
-  "category": "Editorial",
-  "tags": ["Publication", "Typography", "Art Book", "Print"],
+  "category": "에디토리얼",
+  "tags": ["출판", "타이포그래피", "아트북", "인쇄"],
   "coverImage": "/images/placeholder-paper.svg",
-  "description": "A modular editorial direction for essays, field photographs, and material studies collected over a two-year research program.",
+  "description": "2년간의 리서치에서 모은 에세이, 현장 사진, 소재 기록을 하나의 출판 시스템으로 엮었습니다.",
   "tools": ["InDesign", "Photoshop", "Figma"],
-  "deliverables": ["Publication design", "Image system", "Print specifications"],
+  "deliverables": ["출판 디자인", "이미지 시스템", "인쇄 사양"],
   "featured": true,
   "blocks": [
     {
       "type": "heading",
-      "text": "Pages as Field Notes",
+      "text": "필드 노트처럼 읽히는 지면",
       "level": 2
     },
     {
       "type": "paragraph",
-      "text": "The book needed enough structure to hold dense research but enough openness to let images and annotations breathe. The final system uses restrained typography, alternating margins, and chapter-level image rules."
+      "text": "촘촘한 리서치를 담을 구조가 필요했지만, 이미지와 주석이 숨 쉴 여백도 필요했습니다. 절제된 타이포그래피와 교차하는 여백, 장별 이미지 규칙으로 리듬을 만들었습니다."
     },
     {
       "type": "image",
       "src": "/images/placeholder-paper-detail.svg",
-      "alt": "Paper Field editorial spread with photographs and annotation columns",
-      "caption": "Spread system for long-form research and image captions.",
+      "alt": "사진과 주석 열로 구성한 Paper Field 에디토리얼 펼침면",
+      "caption": "긴 리서치 텍스트와 이미지 캡션을 위한 펼침면 시스템.",
       "aspectRatio": "wide"
     },
     {
@@ -35,23 +35,23 @@
       "left": [
         {
           "type": "heading",
-          "text": "Type",
+          "text": "타입",
           "level": 3
         },
         {
           "type": "paragraph",
-          "text": "A narrow serif face carries essays while a neutral sans organizes captions, notes, and recurring reference labels."
+          "text": "좁은 폭의 세리프가 에세이를 이끌고, 중립적인 산세리프가 캡션과 노트, 반복되는 레퍼런스 라벨을 정리합니다."
         }
       ],
       "right": [
         {
           "type": "heading",
-          "text": "Image Rhythm",
+          "text": "이미지 리듬",
           "level": 3
         },
         {
           "type": "paragraph",
-          "text": "Full-bleed chapter openings alternate with smaller image constellations to keep the pace of reading varied."
+          "text": "풀블리드 장면과 작은 이미지 묶음을 번갈아 배치해 읽는 속도에 변화를 주었습니다."
         }
       ]
     },
@@ -61,27 +61,27 @@
       "images": [
         {
           "src": "/images/placeholder-paper-grid-1.svg",
-          "alt": "Paper Field chapter opener spread",
-          "caption": "Chapter opener"
+          "alt": "Paper Field 챕터 오프너 펼침면",
+          "caption": "챕터 오프너"
         },
         {
           "src": "/images/placeholder-paper-grid-2.svg",
-          "alt": "Paper Field caption system detail",
-          "caption": "Captions"
+          "alt": "Paper Field 캡션 시스템 디테일",
+          "caption": "캡션"
         },
         {
           "src": "/images/placeholder-paper-grid-3.svg",
-          "alt": "Paper Field index layout",
-          "caption": "Index"
+          "alt": "Paper Field 색인 레이아웃",
+          "caption": "색인"
         }
       ]
     },
     {
       "type": "result",
-      "title": "Outcome",
+      "title": "결과",
       "items": [
-        "A consistent publication system for essays, notes, and image plates.",
-        "A print-ready archive that can continue as a recurring research series."
+        "에세이, 노트, 이미지 판면을 위한 일관된 출판 시스템을 만들었습니다.",
+        "후속 리서치 시리즈로 이어갈 수 있는 인쇄용 아카이브를 완성했습니다."
       ]
     }
   ]

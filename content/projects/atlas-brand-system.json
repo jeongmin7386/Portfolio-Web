@@ -1,33 +1,33 @@
 {
   "slug": "atlas-brand-system",
   "title": "Atlas Brand System",
-  "subtitle": "A flexible identity for a spatial design studio.",
+  "subtitle": "공간 디자인 스튜디오를 위한 유연한 아이덴티티.",
   "year": "2026",
-  "period": "Jan - Mar 2026",
-  "role": "Brand Designer, Art Direction",
+  "period": "2026.01 - 2026.03",
+  "role": "브랜드 디자인, 아트 디렉션",
   "client": "Atlas Studio",
-  "category": "Branding",
-  "tags": ["Identity", "Guidelines", "Print", "Spatial"],
+  "category": "브랜딩",
+  "tags": ["아이덴티티", "가이드라인", "인쇄", "공간"],
   "coverImage": "/images/placeholder-atlas.svg",
-  "description": "A brand system built around modular grids, precise typography, and a restrained palette for a studio working across architecture and interiors.",
+  "description": "건축과 인테리어를 오가는 스튜디오를 위해 모듈형 그리드, 정교한 타이포그래피, 절제된 팔레트를 중심으로 브랜드 시스템을 정리했습니다.",
   "tools": ["Figma", "Illustrator", "InDesign"],
-  "deliverables": ["Brand strategy", "Visual identity", "Guidelines", "Stationery"],
+  "deliverables": ["브랜드 전략", "비주얼 아이덴티티", "가이드라인", "스테이셔너리"],
   "featured": true,
   "blocks": [
     {
       "type": "heading",
-      "text": "System First",
+      "text": "시스템을 먼저 세우기",
       "level": 2
     },
     {
       "type": "paragraph",
-      "text": "The identity needed to feel measured without becoming cold. We started with a typographic grid that could hold project imagery, client proposals, and site documentation in one consistent visual language."
+      "text": "차분하지만 차갑지 않은 인상이 필요했습니다. 프로젝트 이미지, 제안서, 현장 기록을 하나의 언어로 묶을 수 있도록 타이포그래피 그리드부터 설계했습니다."
     },
     {
       "type": "image",
       "src": "/images/placeholder-atlas-detail.svg",
-      "alt": "Atlas brand guideline spread with modular layout blocks",
-      "caption": "Guideline spread showing the spacing logic and image rhythm.",
+      "alt": "모듈형 레이아웃 블록으로 구성한 Atlas 브랜드 가이드라인 펼침면",
+      "caption": "간격 체계와 이미지 리듬을 정리한 가이드라인 펼침면.",
       "aspectRatio": "wide"
     },
     {
@@ -35,23 +35,23 @@
       "left": [
         {
           "type": "heading",
-          "text": "Challenge",
+          "text": "과제",
           "level": 3
         },
         {
           "type": "paragraph",
-          "text": "The previous identity worked for small presentations but collapsed when the studio needed proposals, signage, and social assets at different speeds."
+          "text": "기존 아이덴티티는 작은 발표 자료에는 충분했지만, 제안서와 사인물, 소셜 에셋을 빠르게 만들어야 할 때 일관성이 쉽게 흐트러졌습니다."
         }
       ],
       "right": [
         {
           "type": "heading",
-          "text": "Approach",
+          "text": "방향",
           "level": 3
         },
         {
           "type": "paragraph",
-          "text": "We created a flexible grid, a compact type scale, and image rules that let the team assemble new material without rebuilding layouts each time."
+          "text": "유연한 그리드, 간결한 타입 스케일, 이미지 운용 규칙을 만들었습니다. 팀이 매번 레이아웃을 새로 짜지 않아도 필요한 자료를 조립할 수 있게 했습니다."
         }
       ]
     },
@@ -59,16 +59,16 @@
       "type": "process",
       "steps": [
         {
-          "title": "Audit",
-          "description": "Mapped existing proposal decks, invoices, moodboards, and presentation exports to find repeatable structure."
+          "title": "자료 점검",
+          "description": "제안서, 인보이스, 무드보드, 발표 자료를 살펴보고 반복해서 쓰이는 구조를 추렸습니다."
         },
         {
-          "title": "Identity Logic",
-          "description": "Defined mark usage, layout behavior, and an image treatment that could flex across print and digital formats."
+          "title": "아이덴티티 규칙",
+          "description": "마크 사용법, 레이아웃 흐름, 이미지 처리 방식을 정리해 인쇄와 디지털 모두에서 흔들리지 않게 했습니다."
         },
         {
-          "title": "Guideline Kit",
-          "description": "Delivered editable templates and a compact usage guide for internal project teams."
+          "title": "가이드 키트",
+          "description": "내부 팀이 바로 쓸 수 있는 편집형 템플릿과 짧은 사용 가이드를 전달했습니다."
         }
       ]
     },
@@ -78,18 +78,18 @@
       "images": [
         {
           "src": "/images/placeholder-atlas-grid-1.svg",
-          "alt": "Atlas stationery system mockup",
-          "caption": "Stationery"
+          "alt": "Atlas 스테이셔너리 시스템 목업",
+          "caption": "스테이셔너리"
         },
         {
           "src": "/images/placeholder-atlas-grid-2.svg",
-          "alt": "Atlas signage layout mockup",
-          "caption": "Signage"
+          "alt": "Atlas 사인물 레이아웃 목업",
+          "caption": "사인물"
         },
         {
           "src": "/images/placeholder-atlas-grid-3.svg",
-          "alt": "Atlas social media grid mockup",
-          "caption": "Digital"
+          "alt": "Atlas 소셜 미디어 그리드 목업",
+          "caption": "디지털"
         }
       ]
     },
@@ -97,29 +97,29 @@
       "type": "stats",
       "items": [
         {
-          "label": "Template formats",
+          "label": "템플릿 형식",
           "value": "18",
-          "description": "Proposal, case study, stationery, and social layouts."
+          "description": "제안서, 케이스 스터디, 스테이셔너리, 소셜 레이아웃."
         },
         {
-          "label": "Production time",
+          "label": "제작 시간",
           "value": "-35%",
-          "description": "Estimated reduction for recurring presentation work."
+          "description": "반복되는 발표 자료 제작 시간을 기준으로 산정했습니다."
         },
         {
-          "label": "Core grid",
-          "value": "12 col",
-          "description": "One layout logic across most project documents."
+          "label": "기본 그리드",
+          "value": "12열",
+          "description": "대부분의 프로젝트 문서에 적용되는 하나의 레이아웃 규칙."
         }
       ]
     },
     {
       "type": "result",
-      "title": "Outcome",
+      "title": "결과",
       "items": [
-        "A sharper studio presence across client-facing documents.",
-        "A practical template system for internal team use.",
-        "A visual foundation that can support future web and signage work."
+        "클라이언트 문서 전반에서 스튜디오의 인상이 더 또렷해졌습니다.",
+        "내부 팀이 바로 활용할 수 있는 실무형 템플릿 체계를 마련했습니다.",
+        "웹과 사인물로 확장할 수 있는 시각 기반을 만들었습니다."
       ]
     }
   ]
