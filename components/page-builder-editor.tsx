@@ -47,7 +47,6 @@ import type {
   BuilderSectionType,
   BuilderTextFont,
   BuilderTextSettings,
-  BuilderTextSize,
   BuilderViewport,
   Note,
   Project,
@@ -173,23 +172,19 @@ const textFontOptions: Array<{
   { label: "모노", value: "mono" }
 ];
 
-const textSizeOptions: Array<{
-  label: string;
-  value: BuilderTextSize | "auto";
-}> = [
-  { label: "기본", value: "auto" },
-  { label: "XS", value: "xs" },
-  { label: "S", value: "sm" },
-  { label: "M", value: "base" },
-  { label: "L", value: "lg" },
-  { label: "XL", value: "xl" },
-  { label: "2XL", value: "2xl" },
-  { label: "3XL", value: "3xl" },
-  { label: "4XL", value: "4xl" },
-  { label: "5XL", value: "5xl" },
-  { label: "6XL", value: "6xl" },
-  { label: "7XL", value: "7xl" }
-];
+const legacyTextSizePt: Record<string, number> = {
+  xs: 9,
+  sm: 10.5,
+  base: 12,
+  lg: 13.5,
+  xl: 15,
+  "2xl": 18,
+  "3xl": 22.5,
+  "4xl": 27,
+  "5xl": 36,
+  "6xl": 45,
+  "7xl": 54
+};
 
 function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
   return (
@@ -2576,25 +2571,28 @@ function TextStyleFields({
         </select>
       </label>
       <label className={labelClass}>
-        크기
-        <select
+        크기(pt)
+        <input
           className={inputClass}
+          max={160}
+          min={6}
           onChange={(event) =>
             updateSettings({
-              fontSize:
-                event.target.value === "auto"
-                  ? undefined
-                  : (event.target.value as BuilderTextSize)
+              fontSize: undefined,
+              fontSizePt: event.target.value
+                ? Number(event.target.value)
+                : undefined
             })
           }
-          value={block.settings.fontSize ?? "auto"}
-        >
-          {textSizeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          placeholder="기본"
+          type="number"
+          value={
+            block.settings.fontSizePt ??
+            (block.settings.fontSize
+              ? legacyTextSizePt[block.settings.fontSize]
+              : "")
+          }
+        />
       </label>
     </div>
   );

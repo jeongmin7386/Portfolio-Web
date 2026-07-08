@@ -151,6 +151,7 @@ export type BuilderTextSize =
 export type BuilderTextSettings = {
   fontFamily?: BuilderTextFont;
   fontSize?: BuilderTextSize;
+  fontSizePt?: number;
 };
 
 export type BuilderSectionSettings = {

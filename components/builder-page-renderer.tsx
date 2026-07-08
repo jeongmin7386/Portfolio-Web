@@ -106,21 +106,18 @@ const textFontFamily: Record<BuilderTextFont, string> = {
   mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace"
 };
 
-const textSizeStyle: Record<
-  BuilderTextSize,
-  Pick<CSSProperties, "fontSize" | "lineHeight">
-> = {
-  xs: { fontSize: "0.75rem", lineHeight: "1.4" },
-  sm: { fontSize: "0.875rem", lineHeight: "1.55" },
-  base: { fontSize: "1rem", lineHeight: "1.75" },
-  lg: { fontSize: "1.125rem", lineHeight: "1.75" },
-  xl: { fontSize: "1.25rem", lineHeight: "1.6" },
-  "2xl": { fontSize: "1.5rem", lineHeight: "1.45" },
-  "3xl": { fontSize: "1.875rem", lineHeight: "1.3" },
-  "4xl": { fontSize: "2.25rem", lineHeight: "1.2" },
-  "5xl": { fontSize: "3rem", lineHeight: "1.08" },
-  "6xl": { fontSize: "3.75rem", lineHeight: "1.05" },
-  "7xl": { fontSize: "4.5rem", lineHeight: "1.03" }
+const legacyTextSizePt: Record<BuilderTextSize, number> = {
+  xs: 9,
+  sm: 10.5,
+  base: 12,
+  lg: 13.5,
+  xl: 15,
+  "2xl": 18,
+  "3xl": 22.5,
+  "4xl": 27,
+  "5xl": 36,
+  "6xl": 45,
+  "7xl": 54
 };
 
 type TextStyleBlock = Extract<
@@ -139,24 +136,6 @@ const textFontOptions: Array<{
   { label: "모노", value: "mono" }
 ];
 
-const textSizeOptions: Array<{
-  label: string;
-  value: BuilderTextSize | "auto";
-}> = [
-  { label: "기본", value: "auto" },
-  { label: "XS", value: "xs" },
-  { label: "S", value: "sm" },
-  { label: "M", value: "base" },
-  { label: "L", value: "lg" },
-  { label: "XL", value: "xl" },
-  { label: "2XL", value: "2xl" },
-  { label: "3XL", value: "3xl" },
-  { label: "4XL", value: "4xl" },
-  { label: "5XL", value: "5xl" },
-  { label: "6XL", value: "6xl" },
-  { label: "7XL", value: "7xl" }
-];
-
 function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
   return (
     block.type === "heading" ||
@@ -168,14 +147,21 @@ function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
 }
 
 function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined {
-  const style: CSSProperties = {};
+  const style: CSSProperties = {
+    whiteSpace: "pre-line"
+  };
 
   if (settings.fontFamily) {
     style.fontFamily = textFontFamily[settings.fontFamily];
   }
 
-  if (settings.fontSize) {
-    Object.assign(style, textSizeStyle[settings.fontSize]);
+  const fontSizePt = settings.fontSizePt ?? (
+    settings.fontSize ? legacyTextSizePt[settings.fontSize] : undefined
+  );
+
+  if (fontSizePt) {
+    style.fontSize = `${fontSizePt}pt`;
+    style.lineHeight = fontSizePt >= 32 ? "1.08" : fontSizePt >= 20 ? "1.2" : "1.6";
   }
 
   return Object.keys(style).length ? style : undefined;
@@ -302,6 +288,29 @@ function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Enter" && event.shiftKey) {
+        event.preventDefault();
+
+        const selection = window.getSelection();
+
+        if (!selection || selection.rangeCount === 0) {
+          return;
+        }
+
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+
+        const lineBreak = document.createTextNode("\n");
+        range.insertNode(lineBreak);
+        range.setStartAfter(lineBreak);
+        range.collapse(true);
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+        onChange(event.currentTarget.textContent ?? "");
+        return;
+      }
+
       if (!multiline && event.key === "Enter") {
         event.preventDefault();
         event.currentTarget.blur();
@@ -387,6 +396,41 @@ function ToolbarSelect({
   );
 }
 
+function ToolbarNumberInput({
+  label,
+  max,
+  min,
+  placeholder,
+  value,
+  onChange
+}: {
+  label: string;
+  max?: number;
+  min?: number;
+  placeholder?: string;
+  value?: number;
+  onChange: (value: number | undefined) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs text-neutral-500">
+      {label}
+      <input
+        className="h-8 w-16 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+        max={max}
+        min={min}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          onChange(nextValue ? Number(nextValue) : undefined);
+        }}
+        placeholder={placeholder}
+        type="number"
+        value={value ?? ""}
+      />
+      <span>pt</span>
+    </label>
+  );
+}
+
 function AlignControls({
   value,
   onChange
@@ -464,22 +508,24 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
               </option>
             ))}
           </ToolbarSelect>
-          <ToolbarSelect
+          <ToolbarNumberInput
             label="크기"
-            onChange={(fontSize) =>
+            max={160}
+            min={6}
+            onChange={(fontSizePt) =>
               updateTextSettings({
-                fontSize:
-                  fontSize === "auto" ? undefined : (fontSize as BuilderTextSize)
+                fontSize: undefined,
+                fontSizePt
               })
             }
-            value={block.settings.fontSize ?? "auto"}
-          >
-            {textSizeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </ToolbarSelect>
+            placeholder="자동"
+            value={
+              block.settings.fontSizePt ??
+              (block.settings.fontSize
+                ? legacyTextSizePt[block.settings.fontSize]
+                : undefined)
+            }
+          />
         </>
       ) : null}
 
