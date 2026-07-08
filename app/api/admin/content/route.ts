@@ -4,9 +4,11 @@ import {
   getStudioArchiveContent,
   saveStudioArchiveContent
 } from "@/lib/content";
+import { requireAdminAccess } from "@/lib/auth";
 import type { StudioArchiveContent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function isEditableContent(value: unknown): value is StudioArchiveContent {
   if (!value || typeof value !== "object") {
@@ -21,7 +23,18 @@ function isEditableContent(value: unknown): value is StudioArchiveContent {
   );
 }
 
+function unauthorized() {
+  return NextResponse.json(
+    { message: "관리자 로그인이 필요합니다." },
+    { status: 401 }
+  );
+}
+
 export async function GET() {
+  if (!(await requireAdminAccess())) {
+    return unauthorized();
+  }
+
   const content = await getStudioArchiveContent();
 
   return NextResponse.json(content, {
@@ -32,6 +45,10 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  if (!(await requireAdminAccess())) {
+    return unauthorized();
+  }
+
   const body = (await request.json()) as unknown;
 
   if (!isEditableContent(body)) {

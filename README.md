@@ -146,6 +146,32 @@ npm run build
 npm run typecheck
 ```
 
+### Admin, DB, and Uploads
+
+The editor is available at `/admin`.
+
+Storage behavior:
+
+- If `DATABASE_URL` or `STUDIO_ARCHIVE_DATABASE_URL` is set, Studio Archive stores editable content in Postgres.
+- If no database URL is set, it falls back to `data/studio-archive-content.json`.
+- When the Postgres table is empty, the app seeds it from `content/projects` and `content/notes`.
+
+Recommended Render environment variables for the `studio-archive` service:
+
+```bash
+DATABASE_URL=...                 # Render Postgres connection string
+STUDIO_ARCHIVE_ADMIN_PASSWORD=... # enables /admin login protection
+STUDIO_ARCHIVE_AUTH_SECRET=...    # generated secret for signed admin cookies
+STUDIO_ARCHIVE_UPLOAD_DIR=/tmp/studio-archive-uploads
+```
+
+Image uploads:
+
+- In `/admin`, image fields support both direct URL input and file upload.
+- Uploaded files are served from `/uploads/[filename]`.
+- `/tmp/studio-archive-uploads` is enough for MVP testing, but files are ephemeral on Render.
+- For production, attach a Render Persistent Disk or replace `lib/uploads.ts` with S3/R2 storage.
+
 ### Content Structure
 
 Projects are stored as JSON files in `content/projects`.
@@ -168,7 +194,7 @@ type Project = {
   period: string;
   role: string;
   client: string;
-  category: "Branding" | "UI/UX" | "Editorial" | "Motion" | "Art Direction";
+  category: string;
   tags: string[];
   coverImage: string;
   description: string;

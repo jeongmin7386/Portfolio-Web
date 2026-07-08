@@ -3,11 +3,13 @@
 import {
   ArrowDown,
   ArrowUp,
+  LogOut,
   Loader2,
   Plus,
   RefreshCw,
   Save,
-  Trash2
+  Trash2,
+  Upload
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -187,6 +189,75 @@ type ImageFieldsProps = {
   ) => void;
 };
 
+type UploadImageInputProps = {
+  onUploaded: (url: string) => void;
+};
+
+function UploadImageInput({ onUploaded }: UploadImageInputProps) {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setIsUploading(true);
+
+    try {
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData
+      });
+      const body = (await response.json()) as {
+        message?: string;
+        url?: string;
+      };
+
+      if (response.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
+      if (!response.ok || !body.url) {
+        throw new Error(body.message ?? "이미지를 업로드하지 못했습니다.");
+      }
+
+      onUploaded(body.url);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "이미지를 업로드하지 못했습니다."
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <label className={`${secondaryButtonClass} w-fit cursor-pointer`}>
+      {isUploading ? (
+        <Loader2 aria-hidden className="animate-spin" size={15} />
+      ) : (
+        <Upload aria-hidden size={15} />
+      )}
+      이미지 업로드
+      <input
+        accept="image/*"
+        className="sr-only"
+        disabled={isUploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+
+          if (file) {
+            void handleUpload(file);
+          }
+
+          event.target.value = "";
+        }}
+        type="file"
+      />
+    </label>
+  );
+}
+
 function ImageFields({
   image,
   showAspectRatio,
@@ -239,6 +310,11 @@ function ImageFields({
           </select>
         </label>
       ) : null}
+      <div className="md:col-span-2">
+        <UploadImageInput
+          onUploaded={(url) => onChange({ ...image, src: url })}
+        />
+      </div>
     </div>
   );
 }
@@ -724,7 +800,12 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
   }
 }
 
-export function AdminEditor() {
+type AdminEditorProps = {
+  authEnabled: boolean;
+  storageMode: "database" | "file";
+};
+
+export function AdminEditor({ authEnabled, storageMode }: AdminEditorProps) {
   const [content, setContent] = useState<StudioArchiveContent | null>(null);
   const [selectedProjectSlug, setSelectedProjectSlug] = useState("");
   const [selectedNoteSlug, setSelectedNoteSlug] = useState("");
@@ -745,6 +826,11 @@ export function AdminEditor() {
         const response = await fetch("/api/admin/content", {
           cache: "no-store"
         });
+
+        if (response.status === 401) {
+          window.location.href = "/admin/login";
+          return;
+        }
 
         if (!response.ok) {
           throw new Error("콘텐츠를 불러오지 못했습니다.");
@@ -827,6 +913,12 @@ export function AdminEditor() {
     setStatus("다시 불러오는 중입니다.");
 
     const response = await fetch("/api/admin/content", { cache: "no-store" });
+
+    if (response.status === 401) {
+      window.location.href = "/admin/login";
+      return;
+    }
+
     const nextContent = (await response.json()) as StudioArchiveContent;
     setContent(nextContent);
     setSelectedProjectSlug(nextContent.projects[0]?.slug ?? "");
@@ -852,6 +944,11 @@ export function AdminEditor() {
         body: JSON.stringify(content)
       });
 
+      if (response.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("저장하지 못했습니다.");
       }
@@ -864,6 +961,13 @@ export function AdminEditor() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const logout = async () => {
+    await fetch("/api/admin/logout", {
+      method: "POST"
+    });
+    window.location.href = "/admin/login";
   };
 
   if (isLoading && !content) {
@@ -896,11 +1000,29 @@ export function AdminEditor() {
             Studio Archive 편집
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-            프로젝트, 카테고리, 아카이브 노트를 수정합니다. 현재 관리 화면은
-            인증 없이 열리므로 실제 운영 전에는 로그인 보호를 연결해야 합니다.
+            프로젝트, 카테고리, 아카이브 노트를 수정합니다. DB 저장,
+            로그인 보호, 이미지 업로드를 운영 환경에 연결할 수 있습니다.
           </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
+            <span className="rounded-sm border border-neutral-200 px-2 py-1 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
+              저장소: {storageMode === "database" ? "Postgres DB" : "파일"}
+            </span>
+            <span className="rounded-sm border border-neutral-200 px-2 py-1 text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
+              로그인: {authEnabled ? "사용 중" : "환경변수 필요"}
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {authEnabled ? (
+            <button
+              className={secondaryButtonClass}
+              onClick={() => void logout()}
+              type="button"
+            >
+              <LogOut aria-hidden size={16} />
+              로그아웃
+            </button>
+          ) : null}
           <button
             className={secondaryButtonClass}
             onClick={() => void reloadContent()}
@@ -1291,6 +1413,14 @@ export function AdminEditor() {
                       })
                     }
                     value={selectedProject.coverImage}
+                  />
+                  <UploadImageInput
+                    onUploaded={(url) =>
+                      updateSelectedProject({
+                        ...selectedProject,
+                        coverImage: url
+                      })
+                    }
                   />
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>

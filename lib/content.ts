@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { unstable_noStore as noStore } from "next/cache";
+import { Pool, type PoolConfig } from "pg";
 
 import {
   PROJECT_CATEGORIES,
@@ -9,14 +10,22 @@ import {
   type StudioArchiveContent
 } from "@/lib/types";
 
+export type ContentStorageMode = "database" | "file";
+
 const contentRoot = path.join(process.cwd(), "content");
 const projectsRoot = path.join(contentRoot, "projects");
 const notesRoot = path.join(contentRoot, "notes");
+const contentRowId = "studio-archive";
 
 const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
   ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
   : path.join(process.cwd(), "data");
 const editableContentPath = path.join(dataRoot, "studio-archive-content.json");
+const databaseUrl =
+  process.env.STUDIO_ARCHIVE_DATABASE_URL ?? process.env.DATABASE_URL;
+
+let pool: Pool | undefined;
+let tableReady = false;
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const file = await fs.readFile(filePath, "utf8");
@@ -45,6 +54,72 @@ function sortNotes(notes: Note[]) {
   );
 }
 
+function normalizeContent(content: StudioArchiveContent): StudioArchiveContent {
+  return {
+    categories: Array.from(
+      new Set(
+        (content.categories?.length
+          ? content.categories
+          : [...PROJECT_CATEGORIES]
+        ).filter(Boolean)
+      )
+    ),
+    projects: sortProjects(content.projects ?? []),
+    notes: sortNotes(content.notes ?? []),
+    updatedAt: content.updatedAt ?? new Date().toISOString()
+  };
+}
+
+function getDatabaseSsl(): PoolConfig["ssl"] {
+  const sslMode =
+    process.env.STUDIO_ARCHIVE_DATABASE_SSL ?? process.env.PGSSLMODE;
+
+  if (sslMode === "disable") {
+    return false;
+  }
+
+  if (
+    sslMode === "require" ||
+    databaseUrl?.includes("sslmode=require") ||
+    process.env.NODE_ENV === "production"
+  ) {
+    return {
+      rejectUnauthorized: false
+    };
+  }
+
+  return undefined;
+}
+
+function getPool() {
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is not configured.");
+  }
+
+  pool ??= new Pool({
+    connectionString: databaseUrl,
+    ssl: getDatabaseSsl()
+  });
+
+  return pool;
+}
+
+async function ensureContentTable() {
+  if (tableReady) {
+    return;
+  }
+
+  await getPool().query(`
+    create table if not exists studio_archive_content (
+      id text primary key,
+      content jsonb not null,
+      updated_at timestamptz not null default now()
+    )
+  `);
+
+  tableReady = true;
+}
+
 async function getSeedContent(): Promise<StudioArchiveContent> {
   const [projects, notes] = await Promise.all([
     readJsonDirectory<Project>(projectsRoot),
@@ -56,29 +131,19 @@ async function getSeedContent(): Promise<StudioArchiveContent> {
     new Set([...PROJECT_CATEGORIES, ...projectCategories])
   );
 
-  return {
+  return normalizeContent({
     categories,
-    projects: sortProjects(projects),
-    notes: sortNotes(notes),
+    projects,
+    notes,
     updatedAt: new Date().toISOString()
-  };
+  });
 }
 
-export async function getStudioArchiveContent(): Promise<StudioArchiveContent> {
-  noStore();
-
+async function readFileContent(): Promise<StudioArchiveContent> {
   try {
     const content =
       await readJsonFile<StudioArchiveContent>(editableContentPath);
-
-    return {
-      ...content,
-      categories: content.categories?.length
-        ? content.categories
-        : [...PROJECT_CATEGORIES],
-      projects: sortProjects(content.projects ?? []),
-      notes: sortNotes(content.notes ?? [])
-    };
+    return normalizeContent(content);
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
 
@@ -90,15 +155,13 @@ export async function getStudioArchiveContent(): Promise<StudioArchiveContent> {
   }
 }
 
-export async function saveStudioArchiveContent(
+async function saveFileContent(
   content: StudioArchiveContent
 ): Promise<StudioArchiveContent> {
-  const nextContent: StudioArchiveContent = {
-    categories: Array.from(new Set(content.categories.filter(Boolean))),
-    projects: sortProjects(content.projects),
-    notes: sortNotes(content.notes),
+  const nextContent = normalizeContent({
+    ...content,
     updatedAt: new Date().toISOString()
-  };
+  });
 
   await fs.mkdir(dataRoot, { recursive: true });
   await fs.writeFile(
@@ -108,6 +171,71 @@ export async function saveStudioArchiveContent(
   );
 
   return nextContent;
+}
+
+async function readDatabaseContent(): Promise<StudioArchiveContent> {
+  await ensureContentTable();
+
+  const result = await getPool().query<{ content: StudioArchiveContent }>(
+    "select content from studio_archive_content where id = $1",
+    [contentRowId]
+  );
+
+  const content = result.rows[0]?.content;
+
+  if (content) {
+    return normalizeContent(content);
+  }
+
+  const seedContent = await readFileContent();
+  return saveDatabaseContent(seedContent);
+}
+
+async function saveDatabaseContent(
+  content: StudioArchiveContent
+): Promise<StudioArchiveContent> {
+  await ensureContentTable();
+
+  const nextContent = normalizeContent({
+    ...content,
+    updatedAt: new Date().toISOString()
+  });
+
+  await getPool().query(
+    `
+      insert into studio_archive_content (id, content, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (id)
+      do update set content = excluded.content, updated_at = now()
+    `,
+    [contentRowId, JSON.stringify(nextContent)]
+  );
+
+  return nextContent;
+}
+
+export function getContentStorageMode(): ContentStorageMode {
+  return databaseUrl ? "database" : "file";
+}
+
+export async function getStudioArchiveContent(): Promise<StudioArchiveContent> {
+  noStore();
+
+  if (getContentStorageMode() === "database") {
+    return readDatabaseContent();
+  }
+
+  return readFileContent();
+}
+
+export async function saveStudioArchiveContent(
+  content: StudioArchiveContent
+): Promise<StudioArchiveContent> {
+  if (getContentStorageMode() === "database") {
+    return saveDatabaseContent(content);
+  }
+
+  return saveFileContent(content);
 }
 
 export async function getAllCategories(): Promise<string[]> {
