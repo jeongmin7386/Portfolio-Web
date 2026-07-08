@@ -139,6 +139,10 @@ export type BuilderSectionSettings = {
   paddingY?: "none" | "sm" | "md" | "lg" | "xl";
   marginY?: "none" | "sm" | "md" | "lg";
   backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundImagePosition?: "center" | "top" | "bottom" | "left" | "right";
+  backgroundImageSize?: "cover" | "contain";
+  backgroundOverlay?: "none" | "dark" | "light";
   textColor?: string;
   maxWidth?: "narrow" | "content" | "wide" | "full";
   align?: BuilderAlign;

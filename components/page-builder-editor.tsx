@@ -305,6 +305,10 @@ function createSection(type: BuilderSectionType): BuilderSection {
     align: "left",
     gap: "md",
     backgroundColor: "transparent",
+    backgroundImage: "",
+    backgroundImagePosition: "center",
+    backgroundImageSize: "cover",
+    backgroundOverlay: "none",
     textColor: ""
   };
 
@@ -1765,6 +1769,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 onChange={updateSelectedSection}
                 onDelete={deleteSelectedSection}
                 onDuplicate={duplicateSelectedSection}
+                onImageUpload={handleImageUpload}
                 section={selectedSection}
               />
             ) : null}
@@ -2018,6 +2023,7 @@ type SectionInspectorProps = {
   onChange: (section: BuilderSection) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 };
 
 function SectionInspector({
@@ -2025,7 +2031,8 @@ function SectionInspector({
   categories,
   onChange,
   onDelete,
-  onDuplicate
+  onDuplicate,
+  onImageUpload
 }: SectionInspectorProps) {
   const updateSettings = (settings: Partial<BuilderSectionSettings>) => {
     onChange({
@@ -2118,6 +2125,89 @@ function SectionInspector({
           placeholder="transparent 또는 #f8fafc"
           value={section.settings.backgroundColor ?? ""}
         />
+      </label>
+      <div className="grid gap-2">
+        <label className={labelClass}>
+          배경 이미지
+          <input
+            className={inputClass}
+            onChange={(event) =>
+              updateSettings({ backgroundImage: event.target.value })
+            }
+            placeholder="/images/cover.jpg 또는 https://..."
+            value={section.settings.backgroundImage ?? ""}
+          />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <UploadButton
+            onImageUpload={onImageUpload}
+            onUploaded={(url) => updateSettings({ backgroundImage: url })}
+          />
+          {section.settings.backgroundImage ? (
+            <button
+              className={buttonClass}
+              onClick={() => updateSettings({ backgroundImage: "" })}
+              type="button"
+            >
+              이미지 지우기
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className={labelClass}>
+          이미지 위치
+          <select
+            className={inputClass}
+            onChange={(event) =>
+              updateSettings({
+                backgroundImagePosition:
+                  event.target
+                    .value as BuilderSectionSettings["backgroundImagePosition"]
+              })
+            }
+            value={section.settings.backgroundImagePosition ?? "center"}
+          >
+            <option value="center">가운데</option>
+            <option value="top">위</option>
+            <option value="bottom">아래</option>
+            <option value="left">왼쪽</option>
+            <option value="right">오른쪽</option>
+          </select>
+        </label>
+        <label className={labelClass}>
+          이미지 채우기
+          <select
+            className={inputClass}
+            onChange={(event) =>
+              updateSettings({
+                backgroundImageSize:
+                  event.target.value as BuilderSectionSettings["backgroundImageSize"]
+              })
+            }
+            value={section.settings.backgroundImageSize ?? "cover"}
+          >
+            <option value="cover">꽉 채우기</option>
+            <option value="contain">전체 보이기</option>
+          </select>
+        </label>
+      </div>
+      <label className={labelClass}>
+        이미지 톤
+        <select
+          className={inputClass}
+          onChange={(event) =>
+            updateSettings({
+              backgroundOverlay:
+                event.target.value as BuilderSectionSettings["backgroundOverlay"]
+            })
+          }
+          value={section.settings.backgroundOverlay ?? "none"}
+        >
+          <option value="none">원본</option>
+          <option value="dark">어둡게</option>
+          <option value="light">밝게</option>
+        </select>
       </label>
       <label className={labelClass}>
         글자색

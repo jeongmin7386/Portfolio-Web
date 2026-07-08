@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type HTMLAttributes,
   type KeyboardEvent,
+  type CSSProperties,
   useEffect,
   useRef
 } from "react";
@@ -94,8 +95,8 @@ const textWidthClass = {
   wide: "max-w-5xl"
 };
 
-function getSectionStyle(section: BuilderSection) {
-  return {
+function getSectionStyle(section: BuilderSection): CSSProperties {
+  const style: CSSProperties = {
     backgroundColor:
       section.settings.backgroundColor &&
       section.settings.backgroundColor !== "transparent"
@@ -103,6 +104,27 @@ function getSectionStyle(section: BuilderSection) {
         : undefined,
     color: section.settings.textColor || undefined
   };
+
+  const backgroundImage = section.settings.backgroundImage?.trim();
+
+  if (backgroundImage) {
+    const overlay =
+      section.settings.backgroundOverlay === "dark"
+        ? "linear-gradient(rgba(0,0,0,.38), rgba(0,0,0,.38))"
+        : section.settings.backgroundOverlay === "light"
+          ? "linear-gradient(rgba(255,255,255,.68), rgba(255,255,255,.68))"
+          : "";
+
+    style.backgroundImage = overlay
+      ? `${overlay}, url(${JSON.stringify(backgroundImage)})`
+      : `url(${JSON.stringify(backgroundImage)})`;
+    style.backgroundPosition =
+      section.settings.backgroundImagePosition ?? "center";
+    style.backgroundRepeat = "no-repeat";
+    style.backgroundSize = section.settings.backgroundImageSize ?? "cover";
+  }
+
+  return style;
 }
 
 function getSectionFrameClass(section: BuilderSection, selected: boolean) {
