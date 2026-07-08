@@ -4,6 +4,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import { Pool, type PoolConfig } from "pg";
 
 import {
+  type BuilderBlock,
+  type BuilderPage,
+  type BuilderSection,
   PROJECT_CATEGORIES,
   type Note,
   type Project,
@@ -21,11 +24,13 @@ const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
   ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
   : path.join(process.cwd(), "data");
 const editableContentPath = path.join(dataRoot, "studio-archive-content.json");
+const editablePagePath = path.join(dataRoot, "studio-archive-page-home.json");
 const databaseUrl =
   process.env.STUDIO_ARCHIVE_DATABASE_URL ?? process.env.DATABASE_URL;
 
 let pool: Pool | undefined;
-let tableReady = false;
+let contentTableReady = false;
+let pageTableReady = false;
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const file = await fs.readFile(filePath, "utf8");
@@ -70,6 +75,37 @@ function normalizeContent(content: StudioArchiveContent): StudioArchiveContent {
   };
 }
 
+function sortBuilderBlocks(blocks: BuilderBlock[]) {
+  return [...(blocks ?? [])]
+    .map((block, index) => ({
+      ...block,
+      order: Number.isFinite(block.order) ? block.order : index
+    }))
+    .sort((a, b) => a.order - b.order);
+}
+
+function sortBuilderSections(sections: BuilderSection[]) {
+  return [...(sections ?? [])]
+    .map((section, index) => ({
+      ...section,
+      order: Number.isFinite(section.order) ? section.order : index,
+      settings: section.settings ?? {},
+      blocks: sortBuilderBlocks(section.blocks)
+    }))
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizeBuilderPage(page: BuilderPage): BuilderPage {
+  return {
+    ...page,
+    seoTitle: page.seoTitle ?? page.title,
+    seoDescription: page.seoDescription ?? "",
+    status: page.status ?? "published",
+    sections: sortBuilderSections(page.sections),
+    updatedAt: page.updatedAt ?? new Date().toISOString()
+  };
+}
+
 function getDatabaseSsl(): PoolConfig["ssl"] {
   const sslMode =
     process.env.STUDIO_ARCHIVE_DATABASE_SSL ?? process.env.PGSSLMODE;
@@ -105,7 +141,7 @@ function getPool() {
 }
 
 async function ensureContentTable() {
-  if (tableReady) {
+  if (contentTableReady) {
     return;
   }
 
@@ -117,7 +153,28 @@ async function ensureContentTable() {
     )
   `);
 
-  tableReady = true;
+  contentTableReady = true;
+}
+
+async function ensurePageTable() {
+  if (pageTableReady) {
+    return;
+  }
+
+  await getPool().query(`
+    create table if not exists studio_archive_pages (
+      id text primary key,
+      slug text unique not null,
+      title text not null,
+      seo_title text,
+      seo_description text,
+      status text not null default 'published',
+      sections jsonb not null,
+      updated_at timestamptz not null default now()
+    )
+  `);
+
+  pageTableReady = true;
 }
 
 async function getSeedContent(): Promise<StudioArchiveContent> {
@@ -136,6 +193,203 @@ async function getSeedContent(): Promise<StudioArchiveContent> {
     projects,
     notes,
     updatedAt: new Date().toISOString()
+  });
+}
+
+async function getSeedBuilderPage(): Promise<BuilderPage> {
+  const content = await readFileContent();
+
+  return normalizeBuilderPage({
+    id: "page-home",
+    slug: "home",
+    title: "홈",
+    seoTitle: "Studio Archive",
+    seoDescription:
+      "작업의 맥락과 이미지를 차분하게 담는 개인 포트폴리오.",
+    status: "published",
+    updatedAt: new Date().toISOString(),
+    sections: [
+      {
+        id: "section-hero",
+        type: "hero",
+        order: 0,
+        settings: {
+          paddingY: "xl",
+          maxWidth: "wide",
+          align: "left",
+          backgroundColor: "transparent"
+        },
+        blocks: [
+          {
+            id: "block-hero-eyebrow",
+            type: "paragraph",
+            order: 0,
+            content: {
+              text: "Studio Archive"
+            },
+            settings: {
+              width: "narrow",
+              align: "left"
+            }
+          },
+          {
+            id: "block-hero-heading",
+            type: "heading",
+            order: 1,
+            content: {
+              text: "작업의 맥락과 이미지를 차분하게 담는 포트폴리오."
+            },
+            settings: {
+              level: 1,
+              align: "left"
+            }
+          },
+          {
+            id: "block-hero-body",
+            type: "paragraph",
+            order: 2,
+            content: {
+              text:
+                "브랜드, 디지털 제품, 에디토리얼 시스템을 다룹니다. 유연한 작업 노트와 정제된 케이스 스터디를 한곳에 모았습니다."
+            },
+            settings: {
+              width: "content",
+              align: "left"
+            }
+          },
+          {
+            id: "block-hero-button",
+            type: "button",
+            order: 3,
+            content: {
+              label: "작업 보기",
+              href: "/projects"
+            },
+            settings: {
+              variant: "primary",
+              align: "left"
+            }
+          }
+        ]
+      },
+      {
+        id: "section-projects",
+        type: "projectGrid",
+        order: 1,
+        settings: {
+          paddingY: "lg",
+          maxWidth: "wide",
+          columns: 3,
+          gap: "md",
+          cardStyle: "none",
+          gridStyle: "cards",
+          projectSource: "featured",
+          projectLimit: 6
+        },
+        blocks: [
+          {
+            id: "block-project-heading",
+            type: "heading",
+            order: 0,
+            content: {
+              text: "선별한 프로젝트"
+            },
+            settings: {
+              level: 2,
+              align: "left"
+            }
+          },
+          {
+            id: "block-project-body",
+            type: "paragraph",
+            order: 1,
+            content: {
+              text: "브랜딩, 제품, 편집, 모션 작업을 간결하게 묶었습니다."
+            },
+            settings: {
+              width: "content",
+              align: "left"
+            }
+          }
+        ]
+      },
+      {
+        id: "section-archive",
+        type: "archiveList",
+        order: 2,
+        settings: {
+          paddingY: "lg",
+          maxWidth: "wide",
+          gap: "md"
+        },
+        blocks: [
+          {
+            id: "block-archive-heading",
+            type: "heading",
+            order: 0,
+            content: {
+              text: "최근 노트"
+            },
+            settings: {
+              level: 2,
+              align: "left"
+            }
+          }
+        ]
+      },
+      {
+        id: "section-contact",
+        type: "contact",
+        order: 3,
+        settings: {
+          paddingY: "lg",
+          maxWidth: "content",
+          align: "left"
+        },
+        blocks: [
+          {
+            id: "block-contact-heading",
+            type: "heading",
+            order: 0,
+            content: {
+              text: "함께 만들 이야기가 있다면"
+            },
+            settings: {
+              level: 2,
+              align: "left"
+            }
+          },
+          {
+            id: "block-contact-body",
+            type: "paragraph",
+            order: 1,
+            content: {
+              text:
+                content.projects.length > 0
+                  ? "작업 의뢰와 협업 제안을 편하게 보내주세요."
+                  : "프로젝트를 추가하면 이 공간에 더 풍부한 맥락을 담을 수 있습니다."
+            },
+            settings: {
+              width: "content",
+              align: "left"
+            }
+          },
+          {
+            id: "block-contact-button",
+            type: "button",
+            order: 2,
+            content: {
+              label: "연락하기",
+              href: "mailto:hello@example.com"
+            },
+            settings: {
+              variant: "secondary",
+              align: "left"
+            }
+          }
+        ]
+      }
+    ]
   });
 }
 
@@ -214,6 +468,129 @@ async function saveDatabaseContent(
   return nextContent;
 }
 
+async function readFileBuilderPage(): Promise<BuilderPage> {
+  try {
+    const page = await readJsonFile<BuilderPage>(editablePagePath);
+    return normalizeBuilderPage(page);
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT") {
+      return getSeedBuilderPage();
+    }
+
+    throw error;
+  }
+}
+
+async function saveFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
+  const nextPage = normalizeBuilderPage({
+    ...page,
+    updatedAt: new Date().toISOString()
+  });
+
+  await fs.mkdir(dataRoot, { recursive: true });
+  await fs.writeFile(
+    editablePagePath,
+    JSON.stringify(nextPage, null, 2),
+    "utf8"
+  );
+
+  return nextPage;
+}
+
+async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
+  await ensurePageTable();
+
+  const result = await getPool().query<{
+    id: string;
+    slug: string;
+    title: string;
+    seoTitle: string | null;
+    seoDescription: string | null;
+    status: BuilderPage["status"];
+    sections: BuilderSection[];
+    updatedAt: Date;
+  }>(
+    `
+      select
+        id,
+        slug,
+        title,
+        seo_title as "seoTitle",
+        seo_description as "seoDescription",
+        status,
+        sections,
+        updated_at as "updatedAt"
+      from studio_archive_pages
+      where slug = $1
+    `,
+    [slug]
+  );
+
+  const row = result.rows[0];
+
+  if (row) {
+    return normalizeBuilderPage({
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      seoTitle: row.seoTitle ?? row.title,
+      seoDescription: row.seoDescription ?? "",
+      status: row.status,
+      sections: row.sections,
+      updatedAt: row.updatedAt.toISOString()
+    });
+  }
+
+  const seedPage = await readFileBuilderPage();
+  return saveDatabaseBuilderPage({ ...seedPage, slug });
+}
+
+async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> {
+  await ensurePageTable();
+
+  const nextPage = normalizeBuilderPage({
+    ...page,
+    updatedAt: new Date().toISOString()
+  });
+
+  await getPool().query(
+    `
+      insert into studio_archive_pages (
+        id,
+        slug,
+        title,
+        seo_title,
+        seo_description,
+        status,
+        sections,
+        updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      on conflict (slug)
+      do update set
+        title = excluded.title,
+        seo_title = excluded.seo_title,
+        seo_description = excluded.seo_description,
+        status = excluded.status,
+        sections = excluded.sections,
+        updated_at = now()
+    `,
+    [
+      nextPage.id,
+      nextPage.slug,
+      nextPage.title,
+      nextPage.seoTitle,
+      nextPage.seoDescription,
+      nextPage.status,
+      JSON.stringify(nextPage.sections)
+    ]
+  );
+
+  return nextPage;
+}
+
 export function getContentStorageMode(): ContentStorageMode {
   return databaseUrl ? "database" : "file";
 }
@@ -236,6 +613,27 @@ export async function saveStudioArchiveContent(
   }
 
   return saveFileContent(content);
+}
+
+export async function getBuilderPage(slug = "home"): Promise<BuilderPage> {
+  noStore();
+
+  if (getContentStorageMode() === "database") {
+    return readDatabaseBuilderPage(slug);
+  }
+
+  const page = await readFileBuilderPage();
+  return page.slug === slug ? page : { ...page, slug };
+}
+
+export async function saveBuilderPage(
+  page: BuilderPage
+): Promise<BuilderPage> {
+  if (getContentStorageMode() === "database") {
+    return saveDatabaseBuilderPage(page);
+  }
+
+  return saveFileBuilderPage(page);
 }
 
 export async function getAllCategories(): Promise<string[]> {

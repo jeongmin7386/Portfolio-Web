@@ -148,13 +148,26 @@ npm run typecheck
 
 ### Admin, DB, and Uploads
 
-The editor is available at `/admin`.
+Admin paths:
+
+- `/admin`: project, category, and archive note management
+- `/admin/editor`: live responsive page builder
+- `/admin/login`: admin login when `STUDIO_ARCHIVE_ADMIN_PASSWORD` is set
 
 Storage behavior:
 
 - If `DATABASE_URL` or `STUDIO_ARCHIVE_DATABASE_URL` is set, Studio Archive stores editable content in Postgres.
 - If no database URL is set, it falls back to `data/studio-archive-content.json`.
 - When the Postgres table is empty, the app seeds it from `content/projects` and `content/notes`.
+- Page builder data is stored as JSON in `studio_archive_pages.sections`.
+- Without a database, page builder data falls back to `data/studio-archive-page-home.json`.
+
+Page builder:
+
+- `/admin/editor` has a three-panel editing layout: section library, live canvas, and settings panel.
+- The canvas can switch between desktop, tablet, and mobile preview widths.
+- Sections and blocks can be added, selected, duplicated, deleted, and reordered with drag and drop.
+- The public home page (`/`) renders the saved page JSON with the same renderer used by the editor preview.
 
 Recommended Render environment variables for the `studio-archive` service:
 
