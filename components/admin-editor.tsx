@@ -36,6 +36,12 @@ const dangerButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800";
 const iconButtonClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-neutral-50";
+const panelClass =
+  "rounded-md border border-neutral-200 bg-white/95 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-4";
+const editorPanelClass =
+  "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:gap-6 sm:p-5 lg:p-6";
+const listClass =
+  "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
 
 const blockLabels: Record<ProjectBlock["type"], string> = {
   heading: "제목",
@@ -265,7 +271,7 @@ function ImageFields({
   onChange
 }: ImageFieldsProps) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2">
       <label className={labelClass}>
         이미지 URL
         <input
@@ -311,7 +317,7 @@ function ImageFields({
           </select>
         </label>
       ) : null}
-      <div className="md:col-span-2">
+      <div className="sm:col-span-2">
         <UploadImageInput
           onUploaded={(url) => onChange({ ...image, src: url })}
         />
@@ -352,7 +358,7 @@ function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
     <div className={nested ? "grid gap-3" : "grid gap-4"}>
       {blocks.map((block, index) => (
         <section
-          className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
+          className="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950 sm:p-4"
           key={`${block.type}-${index}`}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1024,13 +1030,13 @@ export function AdminEditor({
   }
 
   return (
-    <div className="grid gap-8">
-      <header className="grid gap-5 border-b border-neutral-200 pb-8 dark:border-neutral-800 lg:grid-cols-[1fr_auto] lg:items-end">
+    <div className="mx-auto grid max-w-[1600px] gap-4 sm:gap-5">
+      <header className="grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 xl:grid-cols-[1fr_auto] xl:items-end">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
             {copy.eyebrow}
           </p>
-          <h1 className="mt-4 font-display text-4xl font-semibold text-neutral-950 dark:text-neutral-50 md:text-6xl">
+          <h1 className="mt-3 font-display text-3xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-4xl lg:text-5xl">
             {copy.title}
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-neutral-600 dark:text-neutral-300">
@@ -1044,36 +1050,40 @@ export function AdminEditor({
               로그인: {authEnabled ? "사용 중" : "환경변수 필요"}
             </span>
           </div>
-          <nav className="mt-5 flex flex-wrap gap-2 text-sm">
+          <nav className="mt-5 grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap">
             <Link
-              className={mode === "all" ? primaryButtonClass : secondaryButtonClass}
+              className={`w-full sm:w-auto ${
+                mode === "all" ? primaryButtonClass : secondaryButtonClass
+              }`}
               href="/admin"
             >
               전체 관리
             </Link>
             <Link
-              className={
+              className={`w-full sm:w-auto ${
                 mode === "projects" ? primaryButtonClass : secondaryButtonClass
-              }
+              }`}
               href="/admin/projects"
             >
               프로젝트 편집
             </Link>
             <Link
-              className={mode === "notes" ? primaryButtonClass : secondaryButtonClass}
+              className={`w-full sm:w-auto ${
+                mode === "notes" ? primaryButtonClass : secondaryButtonClass
+              }`}
               href="/admin/archive"
             >
               아카이브 편집
             </Link>
-            <Link className={secondaryButtonClass} href="/admin/editor">
+            <Link className={`${secondaryButtonClass} w-full sm:w-auto`} href="/admin/editor">
               홈 빌더
             </Link>
           </nav>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
           {authEnabled ? (
             <button
-              className={secondaryButtonClass}
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
               onClick={() => void logout()}
               type="button"
             >
@@ -1082,7 +1092,7 @@ export function AdminEditor({
             </button>
           ) : null}
           <button
-            className={secondaryButtonClass}
+            className={`${secondaryButtonClass} w-full sm:w-auto`}
             onClick={() => void reloadContent()}
             type="button"
           >
@@ -1090,7 +1100,7 @@ export function AdminEditor({
             다시 불러오기
           </button>
           <button
-            className={primaryButtonClass}
+            className={`${primaryButtonClass} col-span-2 w-full sm:col-span-1 sm:w-auto`}
             disabled={isSaving}
             onClick={() => void saveContent()}
             type="button"
@@ -1111,16 +1121,16 @@ export function AdminEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="grid gap-6 self-start">
+      <div className="grid gap-4 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+        <aside className="grid gap-4 self-start xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto xl:pr-1">
           {showCategories ? (
-            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+            <section className={panelClass}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 카테고리
               </h2>
             </div>
-            <div className="grid gap-2">
+            <div className="grid max-h-64 gap-2 overflow-y-auto pr-1 sm:max-h-80">
               {content.categories.map((category, index) => (
                 <div className="flex gap-2" key={`${category}-${index}`}>
                   <input
@@ -1203,7 +1213,7 @@ export function AdminEditor({
           ) : null}
 
           {showProjects ? (
-            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+            <section className={panelClass}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 프로젝트
@@ -1225,7 +1235,7 @@ export function AdminEditor({
                 <Plus aria-hidden size={15} />
               </button>
             </div>
-            <div className="grid gap-2">
+            <div className={listClass}>
               {content.projects.map((project) => {
                 const active =
                   activePanel === "projects" &&
@@ -1257,7 +1267,7 @@ export function AdminEditor({
           ) : null}
 
           {showNotes ? (
-            <section className="rounded-md border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+            <section className={panelClass}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-neutral-950 dark:text-neutral-50">
                 아카이브 노트
@@ -1279,7 +1289,7 @@ export function AdminEditor({
                 <Plus aria-hidden size={15} />
               </button>
             </div>
-            <div className="grid gap-2">
+            <div className={listClass}>
               {content.notes.map((note) => {
                 const active =
                   activePanel === "notes" && selectedNoteSlug === note.slug;
@@ -1312,7 +1322,7 @@ export function AdminEditor({
 
         <main className="min-w-0">
           {activePanel === "projects" && selectedProject ? (
-            <section className="grid gap-6 rounded-md border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
+            <section className={editorPanelClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
@@ -1323,7 +1333,7 @@ export function AdminEditor({
                   </h2>
                 </div>
                 <button
-                  className={dangerButtonClass}
+                  className={`${dangerButtonClass} w-full sm:w-auto`}
                   onClick={() => {
                     if (!window.confirm("이 프로젝트를 삭제할까요?")) {
                       return;
@@ -1349,7 +1359,7 @@ export function AdminEditor({
                 </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className={labelClass}>
                   제목
                   <input
@@ -1466,7 +1476,7 @@ export function AdminEditor({
                     ))}
                   </select>
                 </label>
-                <label className={`${labelClass} md:col-span-2`}>
+                <label className={`${labelClass} sm:col-span-2`}>
                   커버 이미지 URL
                   <input
                     className={inputClass}
@@ -1487,7 +1497,7 @@ export function AdminEditor({
                     }
                   />
                 </label>
-                <label className={`${labelClass} md:col-span-2`}>
+                <label className={`${labelClass} sm:col-span-2`}>
                   소개
                   <textarea
                     className={textareaClass}
@@ -1578,7 +1588,7 @@ export function AdminEditor({
           ) : null}
 
           {activePanel === "notes" && selectedNote ? (
-            <section className="grid gap-6 rounded-md border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950">
+            <section className={editorPanelClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
@@ -1589,7 +1599,7 @@ export function AdminEditor({
                   </h2>
                 </div>
                 <button
-                  className={dangerButtonClass}
+                  className={`${dangerButtonClass} w-full sm:w-auto`}
                   onClick={() => {
                     if (!window.confirm("이 노트를 삭제할까요?")) {
                       return;
@@ -1614,7 +1624,7 @@ export function AdminEditor({
                   삭제
                 </button>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className={labelClass}>
                   제목
                   <input
@@ -1674,7 +1684,7 @@ export function AdminEditor({
                     value={selectedNote.category}
                   />
                 </label>
-                <label className={`${labelClass} md:col-span-2`}>
+                <label className={`${labelClass} sm:col-span-2`}>
                   태그
                   <input
                     className={inputClass}
@@ -1687,7 +1697,7 @@ export function AdminEditor({
                     value={listToText(selectedNote.tags)}
                   />
                 </label>
-                <label className={`${labelClass} md:col-span-2`}>
+                <label className={`${labelClass} sm:col-span-2`}>
                   내용
                   <textarea
                     className={textareaClass}
