@@ -1592,8 +1592,8 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[280px_1fr_340px]">
-        <aside className="border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="grid min-h-[calc(100vh-65px)] lg:h-[calc(100vh-65px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
+        <aside className="border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="grid gap-6">
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
@@ -1676,7 +1676,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           </div>
         </aside>
 
-        <main className="overflow-auto bg-neutral-100 p-4 dark:bg-neutral-900">
+        <main className="min-h-[720px] overflow-auto bg-neutral-100 p-4 pb-28 dark:bg-neutral-900 lg:min-h-0">
           {status ? (
             <p className="mb-3 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
               {status}
@@ -1707,7 +1707,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           </div>
         </main>
 
-        <aside className="border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+        <aside className="border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="grid gap-6">
             <section className="grid gap-3">
               <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
