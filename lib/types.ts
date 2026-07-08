@@ -289,5 +289,9 @@ export type BuilderPage = {
   seoDescription: string;
   status: BuilderPageStatus;
   sections: BuilderSection[];
+  publishedSections?: BuilderSection[];
+  publishedSeoTitle?: string;
+  publishedSeoDescription?: string;
+  publishedAt?: string;
   updatedAt: string;
 };

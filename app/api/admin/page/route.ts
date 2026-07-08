@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminAccess } from "@/lib/auth";
-import { getBuilderPage, saveBuilderPage } from "@/lib/content";
+import {
+  getBuilderPage,
+  publishBuilderPage,
+  saveBuilderPage
+} from "@/lib/content";
 import type { BuilderPage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +51,8 @@ export async function PUT(request: Request) {
     return unauthorized();
   }
 
+  const url = new URL(request.url);
+  const shouldPublish = url.searchParams.get("publish") === "true";
   const body = (await request.json()) as unknown;
 
   if (!isBuilderPage(body)) {
@@ -56,7 +62,9 @@ export async function PUT(request: Request) {
     );
   }
 
-  const savedPage = await saveBuilderPage(body);
+  const savedPage = shouldPublish
+    ? await publishBuilderPage(body)
+    : await saveBuilderPage({ ...body, status: "draft" });
 
   return NextResponse.json(savedPage, {
     headers: {

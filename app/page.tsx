@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
-import { getAllNotes, getAllProjects, getBuilderPage } from "@/lib/content";
+import {
+  getAllNotes,
+  getAllProjects,
+  getPublishedBuilderPage
+} from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getBuilderPage("home");
+  const page = await getPublishedBuilderPage("home");
 
   return {
     title: page.seoTitle || page.title,
@@ -16,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const [page, projects, notes] = await Promise.all([
-    getBuilderPage("home"),
+    getPublishedBuilderPage("home"),
     getAllProjects(),
     getAllNotes()
   ]);

@@ -25,11 +25,13 @@ import {
   Monitor,
   PanelRight,
   Plus,
+  Redo2,
   Save,
   Send,
   Smartphone,
   Tablet,
   Trash2,
+  Undo2,
   Upload
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -52,10 +54,22 @@ type PageBuilderEditorProps = {
   authEnabled: boolean;
 };
 
+type BuilderHistory = {
+  past: BuilderPage[];
+  future: BuilderPage[];
+};
+
 type SortableRowProps = {
   id: string;
   active?: boolean;
   children: React.ReactNode;
+};
+
+type SectionPreset = {
+  id: string;
+  label: string;
+  description: string;
+  create: () => BuilderSection;
 };
 
 const sectionLabels: Record<BuilderSectionType, string> = {
@@ -235,6 +249,10 @@ function createBlock(type: BuilderBlockType): BuilderBlock {
   }
 }
 
+function createTypedBlock<Type extends BuilderBlockType>(type: Type) {
+  return createBlock(type) as Extract<BuilderBlock, { type: Type }>;
+}
+
 function createSection(type: BuilderSectionType): BuilderSection {
   const id = createId("section");
   const baseSettings: BuilderSectionSettings = {
@@ -354,6 +372,132 @@ function createSection(type: BuilderSectionType): BuilderSection {
   }
 }
 
+const sectionPresets: SectionPreset[] = [
+  {
+    id: "opening-statement",
+    label: "첫 화면 소개",
+    description: "큰 제목, 짧은 설명, 작업 보기 버튼",
+    create: () => {
+      const section = createSection("hero");
+      return {
+        ...section,
+        settings: {
+          ...section.settings,
+          paddingY: "xl",
+          maxWidth: "wide"
+        },
+        blocks: orderItems([
+          {
+            ...createTypedBlock("heading"),
+            content: {
+              text: "작업의 맥락을 또렷하게 보여주는 포트폴리오."
+            },
+            settings: {
+              level: 1,
+              align: "left"
+            }
+          },
+          {
+            ...createTypedBlock("paragraph"),
+            content: {
+              text:
+                "프로젝트의 이미지와 과정, 결과를 한 화면에서 차분하게 정리합니다."
+            }
+          },
+          {
+            ...createTypedBlock("button"),
+            content: {
+              label: "프로젝트 보기",
+              href: "/projects"
+            }
+          }
+        ])
+      };
+    }
+  },
+  {
+    id: "featured-projects",
+    label: "대표 프로젝트",
+    description: "제목과 프로젝트 그리드",
+    create: () => {
+      const section = createSection("projectGrid");
+      return {
+        ...section,
+        settings: {
+          ...section.settings,
+          columns: 3,
+          gridStyle: "cards",
+          projectSource: "featured",
+          projectLimit: 6
+        },
+        blocks: orderItems([
+          {
+            ...createTypedBlock("heading"),
+            content: {
+              text: "선별한 프로젝트"
+            },
+            settings: {
+              level: 2,
+              align: "left"
+            }
+          },
+          {
+            ...createTypedBlock("paragraph"),
+            content: {
+              text: "브랜딩, 제품, 편집, 모션 작업을 간결하게 묶었습니다."
+            }
+          }
+        ])
+      };
+    }
+  },
+  {
+    id: "contact-cta",
+    label: "연락 CTA",
+    description: "문의 문구와 메일 버튼",
+    create: () => {
+      const section = createSection("contact");
+      return {
+        ...section,
+        settings: {
+          ...section.settings,
+          maxWidth: "content",
+          paddingY: "lg"
+        },
+        blocks: orderItems([
+          {
+            ...createTypedBlock("heading"),
+            content: {
+              text: "함께 만들 이야기가 있다면"
+            },
+            settings: {
+              level: 2,
+              align: "left"
+            }
+          },
+          {
+            ...createTypedBlock("paragraph"),
+            content: {
+              text: "작업 의뢰와 협업 제안을 편하게 보내주세요."
+            }
+          },
+          {
+            ...createTypedBlock("button"),
+            content: {
+              label: "연락하기",
+              href: "mailto:hello@example.com"
+            },
+            settings: {
+              variant: "secondary",
+              align: "left"
+            }
+          }
+        ])
+      };
+    }
+  }
+];
+
 function cloneSection(section: BuilderSection) {
   return {
     ...section,
@@ -446,6 +590,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [history, setHistory] = useState<BuilderHistory>({
+    past: [],
+    future: []
+  });
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 }
@@ -487,6 +635,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
         setNotes(content.notes);
         setSelectedSectionId(nextPage.sections[0]?.id ?? "");
         setSelectedBlockId("");
+        setHistory({ past: [], future: [] });
         setStatus("편집 데이터를 불러왔습니다.");
       } catch (error) {
         setStatus(
@@ -519,8 +668,63 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     (block) => block.id === selectedBlockId
   );
 
+  const commitPage = (nextPage: BuilderPage) => {
+    if (page) {
+      setHistory((currentHistory) => ({
+        past: [...currentHistory.past.slice(-39), page],
+        future: []
+      }));
+    }
+
+    setPage({
+      ...nextPage,
+      status: "draft"
+    });
+  };
+
   const updatePage = (updater: (currentPage: BuilderPage) => BuilderPage) => {
-    setPage((currentPage) => (currentPage ? updater(currentPage) : currentPage));
+    if (!page) {
+      return;
+    }
+
+    setHistory((currentHistory) => ({
+      past: [...currentHistory.past.slice(-39), page],
+      future: []
+    }));
+    setPage({
+      ...updater(page),
+      status: "draft"
+    });
+  };
+
+  const undo = () => {
+    if (!page || history.past.length === 0) {
+      return;
+    }
+
+    const previousPage = history.past[history.past.length - 1];
+    setHistory({
+      past: history.past.slice(0, -1),
+      future: [page, ...history.future]
+    });
+    setPage(previousPage);
+    setSelectedSectionId(previousPage.sections[0]?.id ?? "");
+    setSelectedBlockId("");
+  };
+
+  const redo = () => {
+    if (!page || history.future.length === 0) {
+      return;
+    }
+
+    const nextPage = history.future[0];
+    setHistory({
+      past: [...history.past, page],
+      future: history.future.slice(1)
+    });
+    setPage(nextPage);
+    setSelectedSectionId(nextPage.sections[0]?.id ?? "");
+    setSelectedBlockId("");
   };
 
   const updateSelectedSection = (section: BuilderSection) => {
@@ -557,7 +761,18 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     const section = createSection(type);
     const sections = orderItems([...sortedSections, section]);
 
-    setPage({ ...page, sections });
+    commitPage({ ...page, sections });
+    setSelectedSectionId(section.id);
+    setSelectedBlockId("");
+  };
+
+  const addPresetSection = (section: BuilderSection) => {
+    if (!page) {
+      return;
+    }
+
+    const sections = orderItems([...sortedSections, section]);
+    commitPage({ ...page, sections });
     setSelectedSectionId(section.id);
     setSelectedBlockId("");
   };
@@ -570,7 +785,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     const sections = orderItems(
       page.sections.filter((section) => section.id !== selectedSection.id)
     );
-    setPage({ ...page, sections });
+    commitPage({ ...page, sections });
     setSelectedSectionId(sections[0]?.id ?? "");
     setSelectedBlockId("");
   };
@@ -586,7 +801,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     const nextSections = [...sortedSections];
     const copiedSection = cloneSection(selectedSection);
     nextSections.splice(index + 1, 0, copiedSection);
-    setPage({ ...page, sections: orderItems(nextSections) });
+    commitPage({ ...page, sections: orderItems(nextSections) });
     setSelectedSectionId(copiedSection.id);
     setSelectedBlockId("");
   };
@@ -628,7 +843,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       (section) => section.id === event.over?.id
     );
 
-    setPage({
+    commitPage({
       ...page,
       sections: orderItems(arrayMove(sortedSections, oldIndex, newIndex))
     });
@@ -655,7 +870,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
 
     try {
       setIsSaving(true);
-      setStatus("저장하는 중입니다.");
+      setStatus("초안을 저장하는 중입니다.");
 
       const response = await fetch("/api/admin/page", {
         method: "PUT",
@@ -677,7 +892,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
 
       const savedPage = (await response.json()) as BuilderPage;
       setPage(savedPage);
-      setStatus("저장되었습니다.");
+      setStatus("초안이 저장되었습니다. 공개 페이지에는 아직 반영되지 않습니다.");
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "페이지를 저장하지 못했습니다."
@@ -692,8 +907,39 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       return;
     }
 
-    await savePage({ ...page, status: "published" });
-    setStatus("게시되었습니다. 공개 페이지에 반영됩니다.");
+    try {
+      setIsSaving(true);
+      setStatus("게시하는 중입니다.");
+
+      const response = await fetch("/api/admin/page?publish=true", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(page)
+      });
+
+      if (response.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
+      if (!response.ok) {
+        const body = (await response.json()) as { message?: string };
+        throw new Error(body.message ?? "페이지를 게시하지 못했습니다.");
+      }
+
+      const publishedPage = (await response.json()) as BuilderPage;
+      setPage(publishedPage);
+      setHistory({ past: [], future: [] });
+      setStatus("게시되었습니다. 공개 페이지에 반영됩니다.");
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "페이지를 게시하지 못했습니다."
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImageUpload = async (onUploaded: (url: string) => void, file?: File) => {
@@ -746,6 +992,14 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
               {authEnabled ? "관리자 로그인 사용 중" : "로그인 환경변수 필요"}
             </p>
           </div>
+          <span className="rounded-sm border border-neutral-200 px-2 py-1 text-xs text-neutral-500 dark:border-neutral-800">
+            {page.status === "draft" ? "초안" : "게시됨"}
+          </span>
+          {page.publishedAt ? (
+            <span className="hidden text-xs text-neutral-500 md:inline">
+              마지막 게시 {new Date(page.publishedAt).toLocaleDateString("ko-KR")}
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {(["desktop", "tablet", "mobile"] as BuilderViewport[]).map((item) => {
@@ -771,6 +1025,24 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           })}
           <button
             className={buttonClass}
+            disabled={history.past.length === 0}
+            onClick={undo}
+            type="button"
+          >
+            <Undo2 aria-hidden size={16} />
+            되돌리기
+          </button>
+          <button
+            className={buttonClass}
+            disabled={history.future.length === 0}
+            onClick={redo}
+            type="button"
+          >
+            <Redo2 aria-hidden size={16} />
+            다시 실행
+          </button>
+          <button
+            className={buttonClass}
             onClick={() => window.open("/", "_blank", "noopener,noreferrer")}
             type="button"
           >
@@ -788,7 +1060,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
             ) : (
               <Save aria-hidden size={16} />
             )}
-            저장
+            초안 저장
           </button>
           <button
             className={primaryButtonClass}
@@ -819,6 +1091,29 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                   >
                     <Plus aria-hidden size={15} />
                     {sectionLabels[type]}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                추천 프리셋
+              </h2>
+              <div className="mt-3 grid gap-2">
+                {sectionPresets.map((preset) => (
+                  <button
+                    className="rounded-md border border-neutral-200 bg-white p-3 text-left text-sm transition hover:border-neutral-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600"
+                    key={preset.id}
+                    onClick={() => addPresetSection(preset.create())}
+                    type="button"
+                  >
+                    <span className="block font-medium text-neutral-950 dark:text-neutral-50">
+                      {preset.label}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-neutral-500">
+                      {preset.description}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -904,7 +1199,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 <input
                   className={inputClass}
                   onChange={(event) =>
-                    setPage({ ...page, title: event.target.value })
+                    updatePage((currentPage) => ({
+                      ...currentPage,
+                      title: event.target.value
+                    }))
                   }
                   value={page.title}
                 />
@@ -914,7 +1212,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 <input
                   className={inputClass}
                   onChange={(event) =>
-                    setPage({ ...page, seoTitle: event.target.value })
+                    updatePage((currentPage) => ({
+                      ...currentPage,
+                      seoTitle: event.target.value
+                    }))
                   }
                   value={page.seoTitle}
                 />
@@ -924,7 +1225,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 <textarea
                   className={textareaClass}
                   onChange={(event) =>
-                    setPage({ ...page, seoDescription: event.target.value })
+                    updatePage((currentPage) => ({
+                      ...currentPage,
+                      seoDescription: event.target.value
+                    }))
                   }
                   value={page.seoDescription}
                 />

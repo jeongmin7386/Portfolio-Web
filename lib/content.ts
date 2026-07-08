@@ -102,6 +102,12 @@ function normalizeBuilderPage(page: BuilderPage): BuilderPage {
     seoDescription: page.seoDescription ?? "",
     status: page.status ?? "published",
     sections: sortBuilderSections(page.sections),
+    publishedSections: page.publishedSections
+      ? sortBuilderSections(page.publishedSections)
+      : undefined,
+    publishedSeoTitle: page.publishedSeoTitle ?? page.seoTitle ?? page.title,
+    publishedSeoDescription:
+      page.publishedSeoDescription ?? page.seoDescription ?? "",
     updatedAt: page.updatedAt ?? new Date().toISOString()
   };
 }
@@ -173,6 +179,13 @@ async function ensurePageTable() {
       updated_at timestamptz not null default now()
     )
   `);
+  await getPool().query(`
+    alter table studio_archive_pages
+      add column if not exists published_sections jsonb,
+      add column if not exists published_seo_title text,
+      add column if not exists published_seo_description text,
+      add column if not exists published_at timestamptz
+  `);
 
   pageTableReady = true;
 }
@@ -198,8 +211,7 @@ async function getSeedContent(): Promise<StudioArchiveContent> {
 
 async function getSeedBuilderPage(): Promise<BuilderPage> {
   const content = await readFileContent();
-
-  return normalizeBuilderPage({
+  const page = normalizeBuilderPage({
     id: "page-home",
     slug: "home",
     title: "홈",
@@ -391,6 +403,14 @@ async function getSeedBuilderPage(): Promise<BuilderPage> {
       }
     ]
   });
+
+  return {
+    ...page,
+    publishedSections: page.sections,
+    publishedSeoTitle: page.seoTitle,
+    publishedSeoDescription: page.seoDescription,
+    publishedAt: page.updatedAt
+  };
 }
 
 async function readFileContent(): Promise<StudioArchiveContent> {
@@ -499,6 +519,28 @@ async function saveFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
   return nextPage;
 }
 
+async function publishFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
+  const now = new Date().toISOString();
+  const nextPage = normalizeBuilderPage({
+    ...page,
+    status: "published",
+    publishedSections: page.sections,
+    publishedSeoTitle: page.seoTitle,
+    publishedSeoDescription: page.seoDescription,
+    publishedAt: now,
+    updatedAt: now
+  });
+
+  await fs.mkdir(dataRoot, { recursive: true });
+  await fs.writeFile(
+    editablePagePath,
+    JSON.stringify(nextPage, null, 2),
+    "utf8"
+  );
+
+  return nextPage;
+}
+
 async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
   await ensurePageTable();
 
@@ -510,6 +552,10 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
     seoDescription: string | null;
     status: BuilderPage["status"];
     sections: BuilderSection[];
+    publishedSections: BuilderSection[] | null;
+    publishedSeoTitle: string | null;
+    publishedSeoDescription: string | null;
+    publishedAt: Date | null;
     updatedAt: Date;
   }>(
     `
@@ -521,6 +567,10 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
         seo_description as "seoDescription",
         status,
         sections,
+        published_sections as "publishedSections",
+        published_seo_title as "publishedSeoTitle",
+        published_seo_description as "publishedSeoDescription",
+        published_at as "publishedAt",
         updated_at as "updatedAt"
       from studio_archive_pages
       where slug = $1
@@ -539,6 +589,10 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
       seoDescription: row.seoDescription ?? "",
       status: row.status,
       sections: row.sections,
+      publishedSections: row.publishedSections ?? undefined,
+      publishedSeoTitle: row.publishedSeoTitle ?? undefined,
+      publishedSeoDescription: row.publishedSeoDescription ?? undefined,
+      publishedAt: row.publishedAt?.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     });
   }
@@ -565,9 +619,13 @@ async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> 
         seo_description,
         status,
         sections,
+        published_sections,
+        published_seo_title,
+        published_seo_description,
+        published_at,
         updated_at
       )
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11::timestamptz, now())
       on conflict (slug)
       do update set
         title = excluded.title,
@@ -584,7 +642,76 @@ async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> 
       nextPage.seoTitle,
       nextPage.seoDescription,
       nextPage.status,
-      JSON.stringify(nextPage.sections)
+      JSON.stringify(nextPage.sections),
+      nextPage.publishedSections
+        ? JSON.stringify(nextPage.publishedSections)
+        : null,
+      nextPage.publishedSeoTitle ?? null,
+      nextPage.publishedSeoDescription ?? null,
+      nextPage.publishedAt ?? null
+    ]
+  );
+
+  return nextPage;
+}
+
+async function publishDatabaseBuilderPage(
+  page: BuilderPage
+): Promise<BuilderPage> {
+  await ensurePageTable();
+
+  const now = new Date().toISOString();
+  const nextPage = normalizeBuilderPage({
+    ...page,
+    status: "published",
+    publishedSections: page.sections,
+    publishedSeoTitle: page.seoTitle,
+    publishedSeoDescription: page.seoDescription,
+    publishedAt: now,
+    updatedAt: now
+  });
+
+  await getPool().query(
+    `
+      insert into studio_archive_pages (
+        id,
+        slug,
+        title,
+        seo_title,
+        seo_description,
+        status,
+        sections,
+        published_sections,
+        published_seo_title,
+        published_seo_description,
+        published_at,
+        updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, now(), now())
+      on conflict (slug)
+      do update set
+        title = excluded.title,
+        seo_title = excluded.seo_title,
+        seo_description = excluded.seo_description,
+        status = excluded.status,
+        sections = excluded.sections,
+        published_sections = excluded.published_sections,
+        published_seo_title = excluded.published_seo_title,
+        published_seo_description = excluded.published_seo_description,
+        published_at = now(),
+        updated_at = now()
+    `,
+    [
+      nextPage.id,
+      nextPage.slug,
+      nextPage.title,
+      nextPage.seoTitle,
+      nextPage.seoDescription,
+      nextPage.status,
+      JSON.stringify(nextPage.sections),
+      JSON.stringify(nextPage.publishedSections ?? nextPage.sections),
+      nextPage.publishedSeoTitle ?? nextPage.seoTitle,
+      nextPage.publishedSeoDescription ?? nextPage.seoDescription
     ]
   );
 
@@ -634,6 +761,30 @@ export async function saveBuilderPage(
   }
 
   return saveFileBuilderPage(page);
+}
+
+export async function publishBuilderPage(
+  page: BuilderPage
+): Promise<BuilderPage> {
+  if (getContentStorageMode() === "database") {
+    return publishDatabaseBuilderPage(page);
+  }
+
+  return publishFileBuilderPage(page);
+}
+
+export async function getPublishedBuilderPage(
+  slug = "home"
+): Promise<BuilderPage> {
+  const page = await getBuilderPage(slug);
+
+  return normalizeBuilderPage({
+    ...page,
+    seoTitle: page.publishedSeoTitle ?? page.seoTitle,
+    seoDescription: page.publishedSeoDescription ?? page.seoDescription,
+    sections: page.publishedSections ?? page.sections,
+    status: "published"
+  });
 }
 
 export async function getAllCategories(): Promise<string[]> {
