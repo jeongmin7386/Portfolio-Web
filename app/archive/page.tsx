@@ -4,6 +4,8 @@ import { SectionTitle } from "@/components/section-title";
 import { TagList } from "@/components/tag-list";
 import { getAllNotes } from "@/lib/content";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "아카이브",
   description: "리서치, 과정, 레퍼런스, 작업 메모를 모은 Studio Archive의 노트 공간."

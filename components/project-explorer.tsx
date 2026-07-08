@@ -7,29 +7,38 @@ import {
   type CategorySelection
 } from "@/components/category-filter";
 import { ProjectGrid } from "@/components/project-grid";
-import { PROJECT_CATEGORIES, type Project } from "@/lib/types";
+import type { Project } from "@/lib/types";
 
 type ProjectExplorerProps = {
+  categories: string[];
   projects: Project[];
 };
 
-export function ProjectExplorer({ projects }: ProjectExplorerProps) {
+export function ProjectExplorer({
+  categories,
+  projects
+}: ProjectExplorerProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategorySelection>("전체");
+
+  const visibleCategories = useMemo(() => {
+    const projectCategories = projects.map((project) => project.category);
+    return Array.from(new Set([...categories, ...projectCategories]));
+  }, [categories, projects]);
 
   const counts = useMemo(() => {
     const nextCounts: Partial<Record<CategorySelection, number>> = {
       전체: projects.length
     };
 
-    PROJECT_CATEGORIES.forEach((category) => {
+    visibleCategories.forEach((category) => {
       nextCounts[category] = projects.filter(
         (project) => project.category === category
       ).length;
     });
 
     return nextCounts;
-  }, [projects]);
+  }, [projects, visibleCategories]);
 
   const filteredProjects = useMemo(() => {
     if (selectedCategory === "전체") {
@@ -42,6 +51,7 @@ export function ProjectExplorer({ projects }: ProjectExplorerProps) {
   return (
     <>
       <CategoryFilter
+        categories={visibleCategories}
         counts={counts}
         onChange={setSelectedCategory}
         selected={selectedCategory}

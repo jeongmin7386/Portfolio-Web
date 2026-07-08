@@ -1,12 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { cache } from "react";
+import { unstable_noStore as noStore } from "next/cache";
 
-import type { Note, Project, ProjectCategory } from "@/lib/types";
+import {
+  PROJECT_CATEGORIES,
+  type Note,
+  type Project,
+  type StudioArchiveContent
+} from "@/lib/types";
 
 const contentRoot = path.join(process.cwd(), "content");
 const projectsRoot = path.join(contentRoot, "projects");
 const notesRoot = path.join(contentRoot, "notes");
+
+const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
+  ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
+  : path.join(process.cwd(), "data");
+const editableContentPath = path.join(dataRoot, "studio-archive-content.json");
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const file = await fs.readFile(filePath, "utf8");
@@ -22,34 +32,113 @@ async function readJsonDirectory<T>(directory: string): Promise<T[]> {
   );
 }
 
-export const getAllProjects = cache(async (): Promise<Project[]> => {
-  const projects = await readJsonDirectory<Project>(projectsRoot);
-
-  return projects.sort((a, b) => {
+function sortProjects(projects: Project[]) {
+  return [...projects].sort((a, b) => {
     const yearDelta = Number(b.year) - Number(a.year);
     return yearDelta || a.title.localeCompare(b.title);
   });
-});
+}
 
-export const getFeaturedProjects = cache(async (): Promise<Project[]> => {
+function sortNotes(notes: Note[]) {
+  return [...notes].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+async function getSeedContent(): Promise<StudioArchiveContent> {
+  const [projects, notes] = await Promise.all([
+    readJsonDirectory<Project>(projectsRoot),
+    readJsonDirectory<Note>(notesRoot)
+  ]);
+
+  const projectCategories = projects.map((project) => project.category);
+  const categories = Array.from(
+    new Set([...PROJECT_CATEGORIES, ...projectCategories])
+  );
+
+  return {
+    categories,
+    projects: sortProjects(projects),
+    notes: sortNotes(notes),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+export async function getStudioArchiveContent(): Promise<StudioArchiveContent> {
+  noStore();
+
+  try {
+    const content =
+      await readJsonFile<StudioArchiveContent>(editableContentPath);
+
+    return {
+      ...content,
+      categories: content.categories?.length
+        ? content.categories
+        : [...PROJECT_CATEGORIES],
+      projects: sortProjects(content.projects ?? []),
+      notes: sortNotes(content.notes ?? [])
+    };
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT") {
+      return getSeedContent();
+    }
+
+    throw error;
+  }
+}
+
+export async function saveStudioArchiveContent(
+  content: StudioArchiveContent
+): Promise<StudioArchiveContent> {
+  const nextContent: StudioArchiveContent = {
+    categories: Array.from(new Set(content.categories.filter(Boolean))),
+    projects: sortProjects(content.projects),
+    notes: sortNotes(content.notes),
+    updatedAt: new Date().toISOString()
+  };
+
+  await fs.mkdir(dataRoot, { recursive: true });
+  await fs.writeFile(
+    editableContentPath,
+    JSON.stringify(nextContent, null, 2),
+    "utf8"
+  );
+
+  return nextContent;
+}
+
+export async function getAllCategories(): Promise<string[]> {
+  const content = await getStudioArchiveContent();
+  return content.categories;
+}
+
+export async function getAllProjects(): Promise<Project[]> {
+  const content = await getStudioArchiveContent();
+  return content.projects;
+}
+
+export async function getFeaturedProjects(): Promise<Project[]> {
   const projects = await getAllProjects();
   const featured = projects.filter((project) => project.featured);
   return (featured.length ? featured : projects).slice(0, 6);
-});
+}
 
-export const getProjectBySlug = cache(
-  async (slug: string): Promise<Project | undefined> => {
-    const projects = await getAllProjects();
-    return projects.find((project) => project.slug === slug);
-  }
-);
+export async function getProjectBySlug(
+  slug: string
+): Promise<Project | undefined> {
+  const projects = await getAllProjects();
+  return projects.find((project) => project.slug === slug);
+}
 
-export const getProjectsByCategory = cache(
-  async (category: ProjectCategory): Promise<Project[]> => {
-    const projects = await getAllProjects();
-    return projects.filter((project) => project.category === category);
-  }
-);
+export async function getProjectsByCategory(
+  category: string
+): Promise<Project[]> {
+  const projects = await getAllProjects();
+  return projects.filter((project) => project.category === category);
+}
 
 export function getProjectNeighbors(projects: Project[], slug: string) {
   const currentIndex = projects.findIndex((project) => project.slug === slug);
@@ -69,14 +158,12 @@ export function getProjectNeighbors(projects: Project[], slug: string) {
   };
 }
 
-export const getAllNotes = cache(async (): Promise<Note[]> => {
-  const notes = await readJsonDirectory<Note>(notesRoot);
-  return notes.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-});
+export async function getAllNotes(): Promise<Note[]> {
+  const content = await getStudioArchiveContent();
+  return content.notes;
+}
 
-export const getRecentNotes = cache(async (limit = 4): Promise<Note[]> => {
+export async function getRecentNotes(limit = 4): Promise<Note[]> {
   const notes = await getAllNotes();
   return notes.slice(0, limit);
-});
+}

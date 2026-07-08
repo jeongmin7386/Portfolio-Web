@@ -75,7 +75,7 @@ export type Project = {
   period: string;
   role: string;
   client: string;
-  category: ProjectCategory;
+  category: string;
   tags: string[];
   coverImage: string;
   description: string;
@@ -92,4 +92,11 @@ export type Note = {
   category: string;
   tags: string[];
   excerpt: string;
+};
+
+export type StudioArchiveContent = {
+  categories: string[];
+  projects: Project[];
+  notes: Note[];
+  updatedAt: string;
 };

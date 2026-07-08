@@ -1,22 +1,22 @@
 "use client";
 
-import { PROJECT_CATEGORIES, type ProjectCategory } from "@/lib/types";
-
-export type CategorySelection = ProjectCategory | "전체";
-
-const filterOptions: CategorySelection[] = ["전체", ...PROJECT_CATEGORIES];
+export type CategorySelection = string | "전체";
 
 type CategoryFilterProps = {
+  categories: string[];
   selected: CategorySelection;
   onChange: (category: CategorySelection) => void;
   counts?: Partial<Record<CategorySelection, number>>;
 };
 
 export function CategoryFilter({
+  categories,
   selected,
   onChange,
   counts
 }: CategoryFilterProps) {
+  const filterOptions: CategorySelection[] = ["전체", ...categories];
+
   return (
     <div
       aria-label="프로젝트 카테고리"

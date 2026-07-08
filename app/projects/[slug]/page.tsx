@@ -12,16 +12,13 @@ import {
   getProjectNeighbors
 } from "@/lib/content";
 
+export const dynamic = "force-dynamic";
+
 type ProjectDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
-
-export async function generateStaticParams() {
-  const projects = await getAllProjects();
-  return projects.map((project) => ({ slug: project.slug }));
-}
 
 export async function generateMetadata({
   params

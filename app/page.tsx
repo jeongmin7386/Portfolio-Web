@@ -6,6 +6,8 @@ import { SectionTitle } from "@/components/section-title";
 import { TagList } from "@/components/tag-list";
 import { getFeaturedProjects, getRecentNotes } from "@/lib/content";
 
+export const dynamic = "force-dynamic";
+
 const capabilities = [
   "브랜드 시스템",
   "UI/UX",
