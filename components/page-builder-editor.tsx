@@ -72,6 +72,33 @@ type SectionPreset = {
   create: () => BuilderSection;
 };
 
+type BlockInsertOption = {
+  id: string;
+  kind: "block";
+  label: string;
+  description: string;
+  command?: string;
+  aliases?: string[];
+  create: () => BuilderBlock;
+};
+
+type SectionInsertOption = {
+  id: string;
+  kind: "section";
+  label: string;
+  description: string;
+  command?: string;
+  aliases?: string[];
+  create: () => BuilderSection;
+};
+
+type InsertOption = BlockInsertOption | SectionInsertOption;
+
+type InsertOptionGroup = {
+  label: string;
+  items: InsertOption[];
+};
+
 const sectionLabels: Record<BuilderSectionType, string> = {
   hero: "Hero",
   projectGrid: "Project Grid",
@@ -253,6 +280,21 @@ function createTypedBlock<Type extends BuilderBlockType>(type: Type) {
   return createBlock(type) as Extract<BuilderBlock, { type: Type }>;
 }
 
+function createHeadingBlock(level: 1 | 2 | 3) {
+  const block = createTypedBlock("heading");
+
+  return {
+    ...block,
+    content: {
+      text: level === 1 ? "새 큰 제목" : level === 2 ? "새 제목" : "새 소제목"
+    },
+    settings: {
+      ...block.settings,
+      level
+    }
+  };
+}
+
 function createSection(type: BuilderSectionType): BuilderSection {
   const id = createId("section");
   const baseSettings: BuilderSectionSettings = {
@@ -370,6 +412,21 @@ function createSection(type: BuilderSectionType): BuilderSection {
         blocks: orderItems([createBlock("heading")])
       };
   }
+}
+
+function createSectionWithSettings(
+  type: BuilderSectionType,
+  settings: Partial<BuilderSectionSettings>
+) {
+  const section = createSection(type);
+
+  return {
+    ...section,
+    settings: {
+      ...section.settings,
+      ...settings
+    }
+  };
 }
 
 const sectionPresets: SectionPreset[] = [
@@ -498,6 +555,298 @@ const sectionPresets: SectionPreset[] = [
   }
 ];
 
+const baseBlockInsertOptions: BlockInsertOption[] = [
+  {
+    id: "block-heading",
+    kind: "block",
+    label: "제목",
+    description: "섹션의 흐름을 나누는 제목",
+    create: () => createBlock("heading")
+  },
+  {
+    id: "block-paragraph",
+    kind: "block",
+    label: "본문",
+    description: "짧은 설명이나 긴 글",
+    create: () => createBlock("paragraph")
+  },
+  {
+    id: "block-image",
+    kind: "block",
+    label: "이미지",
+    description: "한 장의 대표 이미지",
+    create: () => createBlock("image")
+  },
+  {
+    id: "block-gallery",
+    kind: "block",
+    label: "갤러리",
+    description: "여러 이미지를 묶어서 표시",
+    create: () => createBlock("gallery")
+  },
+  {
+    id: "block-button",
+    kind: "block",
+    label: "버튼",
+    description: "링크나 행동 버튼",
+    create: () => createBlock("button")
+  },
+  {
+    id: "block-quote",
+    kind: "block",
+    label: "인용",
+    description: "강조 문장이나 코멘트",
+    create: () => createBlock("quote")
+  },
+  {
+    id: "block-divider",
+    kind: "block",
+    label: "구분선",
+    description: "콘텐츠 사이를 가볍게 분리",
+    create: () => createBlock("divider")
+  },
+  {
+    id: "block-spacer",
+    kind: "block",
+    label: "여백",
+    description: "섹션 안의 간격 조절",
+    create: () => createBlock("spacer")
+  },
+  {
+    id: "block-embed",
+    kind: "block",
+    label: "임베드",
+    description: "외부 영상이나 링크 삽입",
+    create: () => createBlock("embed")
+  }
+];
+
+const sectionInsertOptions: SectionInsertOption[] = [
+  {
+    id: "section-hero",
+    kind: "section",
+    label: "Hero",
+    description: "첫 화면용 큰 소개 섹션",
+    create: () => createSection("hero")
+  },
+  {
+    id: "section-project-grid",
+    kind: "section",
+    label: "Project Grid",
+    description: "프로젝트를 이미지 중심으로 정리",
+    create: () => createSection("projectGrid")
+  },
+  {
+    id: "section-image-gallery",
+    kind: "section",
+    label: "Image Gallery",
+    description: "이미지 묶음을 넓게 보여주는 섹션",
+    create: () => createSection("imageGallery")
+  },
+  {
+    id: "section-text",
+    kind: "section",
+    label: "Text Section",
+    description: "문장 중심의 차분한 섹션",
+    create: () => createSection("textSection")
+  },
+  {
+    id: "section-two-column",
+    kind: "section",
+    label: "Two Column",
+    description: "텍스트와 이미지를 나란히 배치",
+    create: () => createSection("twoColumn")
+  },
+  {
+    id: "section-contact",
+    kind: "section",
+    label: "Contact",
+    description: "문의 문구와 연락 버튼",
+    create: () => createSection("contact")
+  },
+  {
+    id: "section-archive",
+    kind: "section",
+    label: "Archive List",
+    description: "노트와 기록을 목록으로 표시",
+    create: () => createSection("archiveList")
+  }
+];
+
+const layoutInsertOptions: SectionInsertOption[] = [
+  {
+    id: "layout-two-column",
+    kind: "section",
+    label: "2 Column",
+    description: "두 열로 나뉘는 기본 레이아웃",
+    create: () => createSectionWithSettings("twoColumn", { columns: 2 })
+  },
+  {
+    id: "layout-three-column",
+    kind: "section",
+    label: "3 Column",
+    description: "세 열 카드나 설명을 놓기 좋은 레이아웃",
+    create: () => createSectionWithSettings("twoColumn", { columns: 3 })
+  },
+  {
+    id: "layout-card-grid",
+    kind: "section",
+    label: "Card Grid",
+    description: "카드형 프로젝트 그리드",
+    create: () =>
+      createSectionWithSettings("projectGrid", {
+        gridStyle: "cards",
+        columns: 3
+      })
+  },
+  {
+    id: "layout-masonry-grid",
+    kind: "section",
+    label: "Masonry Grid",
+    description: "이미지 비율을 살리는 그리드",
+    create: () =>
+      createSectionWithSettings("projectGrid", {
+        gridStyle: "masonry",
+        columns: 3
+      })
+  }
+];
+
+const addMenuGroups: InsertOptionGroup[] = [
+  {
+    label: "기본 블록",
+    items: baseBlockInsertOptions
+  },
+  {
+    label: "섹션",
+    items: sectionInsertOptions
+  },
+  {
+    label: "레이아웃",
+    items: layoutInsertOptions
+  }
+];
+
+const slashCommandOptions: InsertOption[] = [
+  {
+    id: "command-h1",
+    kind: "block",
+    label: "제목 1",
+    description: "큰 제목 블록",
+    command: "/h1",
+    aliases: ["h1", "제목1", "큰제목"],
+    create: () => createHeadingBlock(1)
+  },
+  {
+    id: "command-h2",
+    kind: "block",
+    label: "제목 2",
+    description: "기본 제목 블록",
+    command: "/h2",
+    aliases: ["h2", "제목2", "제목"],
+    create: () => createHeadingBlock(2)
+  },
+  {
+    id: "command-h3",
+    kind: "block",
+    label: "제목 3",
+    description: "작은 제목 블록",
+    command: "/h3",
+    aliases: ["h3", "제목3", "소제목"],
+    create: () => createHeadingBlock(3)
+  },
+  {
+    id: "command-text",
+    kind: "block",
+    label: "본문",
+    description: "문단 블록",
+    command: "/text",
+    aliases: ["text", "본문", "paragraph"],
+    create: () => createBlock("paragraph")
+  },
+  {
+    id: "command-image",
+    kind: "block",
+    label: "이미지",
+    description: "이미지 블록",
+    command: "/image",
+    aliases: ["image", "이미지"],
+    create: () => createBlock("image")
+  },
+  {
+    id: "command-gallery",
+    kind: "block",
+    label: "갤러리",
+    description: "이미지 갤러리 블록",
+    command: "/gallery",
+    aliases: ["gallery", "갤러리"],
+    create: () => createBlock("gallery")
+  },
+  {
+    id: "command-quote",
+    kind: "block",
+    label: "인용",
+    description: "인용문 블록",
+    command: "/quote",
+    aliases: ["quote", "인용"],
+    create: () => createBlock("quote")
+  },
+  {
+    id: "command-button",
+    kind: "block",
+    label: "버튼",
+    description: "링크 버튼 블록",
+    command: "/button",
+    aliases: ["button", "버튼"],
+    create: () => createBlock("button")
+  },
+  {
+    id: "command-divider",
+    kind: "block",
+    label: "구분선",
+    description: "구분선 블록",
+    command: "/divider",
+    aliases: ["divider", "구분선"],
+    create: () => createBlock("divider")
+  },
+  {
+    id: "command-embed",
+    kind: "block",
+    label: "임베드",
+    description: "외부 콘텐츠 임베드",
+    command: "/embed",
+    aliases: ["embed", "임베드"],
+    create: () => createBlock("embed")
+  },
+  {
+    id: "command-spacer",
+    kind: "block",
+    label: "여백",
+    description: "빈 간격 블록",
+    command: "/spacer",
+    aliases: ["spacer", "여백"],
+    create: () => createBlock("spacer")
+  },
+  {
+    id: "command-grid",
+    kind: "section",
+    label: "프로젝트 그리드",
+    description: "프로젝트 목록 섹션",
+    command: "/grid",
+    aliases: ["grid", "프로젝트그리드", "projectgrid"],
+    create: () => createSection("projectGrid")
+  },
+  {
+    id: "command-contact",
+    kind: "section",
+    label: "연락처",
+    description: "연락 섹션",
+    command: "/contact",
+    aliases: ["contact", "연락처", "연락"],
+    create: () => createSection("contact")
+  }
+];
+
 function cloneSection(section: BuilderSection) {
   return {
     ...section,
@@ -594,6 +943,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     past: [],
     future: []
   });
+  const [commandValue, setCommandValue] = useState("");
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 }
@@ -667,6 +1020,32 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   const selectedBlock = selectedSection?.blocks.find(
     (block) => block.id === selectedBlockId
   );
+  const commandQuery = commandValue.trimStart().startsWith("/")
+    ? commandValue.trimStart().slice(1).trim().toLowerCase()
+    : "";
+  const commandMatches = useMemo(() => {
+    if (!commandValue.trimStart().startsWith("/")) {
+      return [];
+    }
+
+    if (!commandQuery) {
+      return slashCommandOptions;
+    }
+
+    return slashCommandOptions.filter((option) => {
+      const haystack = [
+        option.command,
+        option.label,
+        option.description,
+        ...(option.aliases ?? [])
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(commandQuery);
+    });
+  }, [commandQuery, commandValue]);
 
   const commitPage = (nextPage: BuilderPage) => {
     if (page) {
@@ -753,28 +1132,82 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     });
   };
 
-  const addSection = (type: BuilderSectionType) => {
+  const insertSectionAtSelection = (section: BuilderSection) => {
     if (!page) {
       return;
     }
 
-    const section = createSection(type);
-    const sections = orderItems([...sortedSections, section]);
+    const insertAfterIndex = sortedSections.findIndex(
+      (currentSection) => currentSection.id === selectedSectionId
+    );
+    const insertIndex =
+      insertAfterIndex >= 0 ? insertAfterIndex + 1 : sortedSections.length;
+    const nextSections = [...sortedSections];
+    nextSections.splice(insertIndex, 0, section);
 
-    commitPage({ ...page, sections });
+    commitPage({ ...page, sections: orderItems(nextSections) });
     setSelectedSectionId(section.id);
     setSelectedBlockId("");
+    setStatus(`${sectionLabels[section.type]} 섹션을 추가했습니다.`);
+  };
+
+  const addSection = (type: BuilderSectionType) => {
+    insertSectionAtSelection(createSection(type));
   };
 
   const addPresetSection = (section: BuilderSection) => {
+    insertSectionAtSelection(section);
+  };
+
+  const insertBlockAtSelection = (block: BuilderBlock) => {
     if (!page) {
       return;
     }
 
-    const sections = orderItems([...sortedSections, section]);
-    commitPage({ ...page, sections });
-    setSelectedSectionId(section.id);
-    setSelectedBlockId("");
+    const fallbackSection =
+      sortedSections.length > 0 ? sortedSections[sortedSections.length - 1] : null;
+    const targetSection = selectedSection ?? fallbackSection;
+
+    if (!targetSection) {
+      const section = {
+        ...createSection("textSection"),
+        blocks: orderItems([block])
+      };
+
+      commitPage({ ...page, sections: [section] });
+      setSelectedSectionId(section.id);
+      setSelectedBlockId(block.id);
+      setStatus(`${blockLabels[block.type]} 블록을 추가했습니다.`);
+      return;
+    }
+
+    const nextSections = sortedSections.map((section) => {
+      if (section.id !== targetSection.id) {
+        return section;
+      }
+
+      const sortedBlocks = section.blocks
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      const selectedIndex =
+        selectedBlock && selectedSection?.id === targetSection.id
+          ? sortedBlocks.findIndex((item) => item.id === selectedBlock.id)
+          : -1;
+      const insertIndex =
+        selectedIndex >= 0 ? selectedIndex + 1 : sortedBlocks.length;
+      const nextBlocks = [...sortedBlocks];
+      nextBlocks.splice(insertIndex, 0, block);
+
+      return {
+        ...section,
+        blocks: orderItems(nextBlocks)
+      };
+    });
+
+    commitPage({ ...page, sections: orderItems(nextSections) });
+    setSelectedSectionId(targetSection.id);
+    setSelectedBlockId(block.id);
+    setStatus(`${blockLabels[block.type]} 블록을 추가했습니다.`);
   };
 
   const deleteSelectedSection = () => {
@@ -807,16 +1240,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   };
 
   const addBlock = (type: BuilderBlockType) => {
-    if (!selectedSection) {
-      return;
-    }
-
-    const block = createBlock(type);
-    updateSelectedSection({
-      ...selectedSection,
-      blocks: orderItems([...selectedSection.blocks, block])
-    });
-    setSelectedBlockId(block.id);
+    insertBlockAtSelection(createBlock(type));
   };
 
   const deleteSelectedBlock = () => {
@@ -861,6 +1285,71 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       ...selectedSection,
       blocks: orderItems(arrayMove(blocks, oldIndex, newIndex))
     });
+  };
+
+  const runInsertOption = (option: InsertOption) => {
+    if (option.kind === "block") {
+      insertBlockAtSelection(option.create());
+    } else {
+      insertSectionAtSelection(option.create());
+    }
+
+    setCommandValue("");
+    setIsCommandOpen(false);
+    setIsAddMenuOpen(false);
+    setSelectedCommandIndex(0);
+  };
+
+  const handleCommandValueChange = (value: string) => {
+    setCommandValue(value);
+    setSelectedCommandIndex(0);
+
+    if (value.trimStart().startsWith("/")) {
+      setIsCommandOpen(true);
+      setIsAddMenuOpen(false);
+      return;
+    }
+
+    setIsCommandOpen(false);
+  };
+
+  const handleCommandKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Escape") {
+      setIsCommandOpen(false);
+      setIsAddMenuOpen(false);
+      return;
+    }
+
+    if (!isCommandOpen || commandMatches.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSelectedCommandIndex((currentIndex) =>
+        currentIndex >= commandMatches.length - 1 ? 0 : currentIndex + 1
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelectedCommandIndex((currentIndex) =>
+        currentIndex <= 0 ? commandMatches.length - 1 : currentIndex - 1
+      );
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runInsertOption(
+        commandMatches[
+          Math.min(selectedCommandIndex, commandMatches.length - 1)
+        ]
+      );
+    }
   };
 
   const savePage = async (nextPage = page) => {
@@ -1320,6 +1809,167 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
             ) : null}
           </div>
         </aside>
+      </div>
+      <CommandBar
+        commandMatches={commandMatches}
+        commandValue={commandValue}
+        isAddMenuOpen={isAddMenuOpen}
+        isCommandOpen={isCommandOpen}
+        onCommandFocus={() => {
+          if (commandValue.trimStart().startsWith("/")) {
+            setIsCommandOpen(true);
+          }
+        }}
+        onCommandKeyDown={handleCommandKeyDown}
+        onCommandValueChange={handleCommandValueChange}
+        onSelectOption={runInsertOption}
+        onToggleAddMenu={() => {
+          setIsAddMenuOpen((current) => !current);
+          setIsCommandOpen(false);
+        }}
+        selectedCommandIndex={selectedCommandIndex}
+      />
+    </div>
+  );
+}
+
+type CommandBarProps = {
+  commandMatches: InsertOption[];
+  commandValue: string;
+  isAddMenuOpen: boolean;
+  isCommandOpen: boolean;
+  selectedCommandIndex: number;
+  onCommandFocus: () => void;
+  onCommandKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  onCommandValueChange: (value: string) => void;
+  onSelectOption: (option: InsertOption) => void;
+  onToggleAddMenu: () => void;
+};
+
+function CommandBar({
+  commandMatches,
+  commandValue,
+  isAddMenuOpen,
+  isCommandOpen,
+  selectedCommandIndex,
+  onCommandFocus,
+  onCommandKeyDown,
+  onCommandValueChange,
+  onSelectOption,
+  onToggleAddMenu
+}: CommandBarProps) {
+  return (
+    <div className="fixed bottom-4 left-1/2 z-40 w-[min(720px,calc(100vw-2rem))] -translate-x-1/2">
+      {isAddMenuOpen ? (
+        <div className="mb-2 max-h-[min(60vh,520px)] overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+          <div className="grid gap-4 md:grid-cols-3">
+            {addMenuGroups.map((group) => (
+              <section className="min-w-0" key={group.label}>
+                <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  {group.label}
+                </h2>
+                <div className="mt-2 grid gap-1.5">
+                  {group.items.map((option) => (
+                    <button
+                      className="rounded-md px-2 py-2 text-left text-sm transition hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:bg-neutral-900"
+                      key={option.id}
+                      onClick={() => onSelectOption(option)}
+                      type="button"
+                    >
+                      <span className="block font-medium text-neutral-950 dark:text-neutral-50">
+                        {option.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-neutral-500">
+                        {option.description}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {isCommandOpen ? (
+        <div className="mb-2 max-h-80 overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+          {commandMatches.length > 0 ? (
+            <div className="grid gap-1">
+              {commandMatches.map((option, index) => {
+                const active = index === selectedCommandIndex;
+
+                return (
+                  <button
+                    className={`grid grid-cols-[72px_1fr_auto] items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
+                      active
+                        ? "bg-neutral-950 text-white dark:bg-neutral-50 dark:text-neutral-950"
+                        : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
+                    }`}
+                    key={option.id}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onSelectOption(option)}
+                    type="button"
+                  >
+                    <span
+                      className={`font-mono text-xs ${
+                        active ? "text-white/80 dark:text-neutral-600" : "text-neutral-500"
+                      }`}
+                    >
+                      {option.command}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {option.label}
+                      </span>
+                      <span
+                        className={`block truncate text-xs ${
+                          active
+                            ? "text-white/70 dark:text-neutral-600"
+                            : "text-neutral-500"
+                        }`}
+                      >
+                        {option.description}
+                      </span>
+                    </span>
+                    <span
+                      className={`rounded-sm border px-1.5 py-0.5 text-[11px] ${
+                        active
+                          ? "border-white/30 text-white/80 dark:border-neutral-300 dark:text-neutral-600"
+                          : "border-neutral-200 text-neutral-500 dark:border-neutral-800"
+                      }`}
+                    >
+                      {option.kind === "block" ? "블록" : "섹션"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="px-3 py-2 text-sm text-neutral-500">
+              맞는 명령어가 없습니다.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white/90 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
+        <input
+          className="min-h-10 flex-1 rounded-md border border-transparent bg-transparent px-3 text-sm text-neutral-950 placeholder:text-neutral-400 focus:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-neutral-50 dark:focus:border-neutral-700"
+          onChange={(event) => onCommandValueChange(event.target.value)}
+          onFocus={onCommandFocus}
+          onKeyDown={onCommandKeyDown}
+          placeholder="/ 입력으로 블록 추가"
+          value={commandValue}
+        />
+        <button
+          aria-expanded={isAddMenuOpen}
+          aria-label="블록과 섹션 추가"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-950 text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-700 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200"
+          onClick={onToggleAddMenu}
+          type="button"
+        >
+          <Plus aria-hidden size={18} />
+        </button>
       </div>
     </div>
   );
