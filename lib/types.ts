@@ -134,6 +134,24 @@ export type BuilderBlockType = (typeof BUILDER_BLOCK_TYPES)[number];
 export type BuilderPageStatus = "draft" | "published";
 export type BuilderAlign = "left" | "center" | "right";
 export type BuilderViewport = "desktop" | "tablet" | "mobile";
+export type BuilderTextFont = "sans" | "display" | "serif" | "mono";
+export type BuilderTextSize =
+  | "xs"
+  | "sm"
+  | "base"
+  | "lg"
+  | "xl"
+  | "2xl"
+  | "3xl"
+  | "4xl"
+  | "5xl"
+  | "6xl"
+  | "7xl";
+
+export type BuilderTextSettings = {
+  fontFamily?: BuilderTextFont;
+  fontSize?: BuilderTextSize;
+};
 
 export type BuilderSectionSettings = {
   paddingY?: "none" | "sm" | "md" | "lg" | "xl";
@@ -168,7 +186,7 @@ export type BuilderBlock =
       settings: {
         level?: 1 | 2 | 3;
         align?: BuilderAlign;
-      };
+      } & BuilderTextSettings;
     }
   | {
       id: string;
@@ -180,7 +198,7 @@ export type BuilderBlock =
       settings: {
         width?: "narrow" | "content" | "wide";
         align?: BuilderAlign;
-      };
+      } & BuilderTextSettings;
     }
   | {
       id: string;
@@ -219,7 +237,7 @@ export type BuilderBlock =
       settings: {
         variant?: "primary" | "secondary" | "text";
         align?: BuilderAlign;
-      };
+      } & BuilderTextSettings;
     }
   | {
       id: string;
@@ -262,7 +280,7 @@ export type BuilderBlock =
       };
       settings: {
         align?: BuilderAlign;
-      };
+      } & BuilderTextSettings;
     }
   | {
       id: string;
@@ -274,7 +292,7 @@ export type BuilderBlock =
       };
       settings: {
         align?: BuilderAlign;
-      };
+      } & BuilderTextSettings;
     };
 
 export type BuilderSection = {

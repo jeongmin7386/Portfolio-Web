@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  type CSSProperties,
   type FocusEvent,
   type FormEvent,
   type HTMLAttributes,
   type KeyboardEvent,
-  type CSSProperties,
   useEffect,
   useRef
 } from "react";
@@ -18,6 +18,9 @@ import type {
   BuilderBlock,
   BuilderPage,
   BuilderSection,
+  BuilderTextFont,
+  BuilderTextSettings,
+  BuilderTextSize,
   Note,
   Project
 } from "@/lib/types";
@@ -95,6 +98,89 @@ const textWidthClass = {
   wide: "max-w-5xl"
 };
 
+const textFontFamily: Record<BuilderTextFont, string> = {
+  sans: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+  display:
+    "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+  serif: "ui-serif, Georgia, Cambria, Times New Roman, Times, serif",
+  mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace"
+};
+
+const textSizeStyle: Record<
+  BuilderTextSize,
+  Pick<CSSProperties, "fontSize" | "lineHeight">
+> = {
+  xs: { fontSize: "0.75rem", lineHeight: "1.4" },
+  sm: { fontSize: "0.875rem", lineHeight: "1.55" },
+  base: { fontSize: "1rem", lineHeight: "1.75" },
+  lg: { fontSize: "1.125rem", lineHeight: "1.75" },
+  xl: { fontSize: "1.25rem", lineHeight: "1.6" },
+  "2xl": { fontSize: "1.5rem", lineHeight: "1.45" },
+  "3xl": { fontSize: "1.875rem", lineHeight: "1.3" },
+  "4xl": { fontSize: "2.25rem", lineHeight: "1.2" },
+  "5xl": { fontSize: "3rem", lineHeight: "1.08" },
+  "6xl": { fontSize: "3.75rem", lineHeight: "1.05" },
+  "7xl": { fontSize: "4.5rem", lineHeight: "1.03" }
+};
+
+type TextStyleBlock = Extract<
+  BuilderBlock,
+  { type: "heading" | "paragraph" | "button" | "quote" | "stats" }
+>;
+
+const textFontOptions: Array<{
+  label: string;
+  value: BuilderTextFont | "auto";
+}> = [
+  { label: "기본", value: "auto" },
+  { label: "산세리프", value: "sans" },
+  { label: "디스플레이", value: "display" },
+  { label: "세리프", value: "serif" },
+  { label: "모노", value: "mono" }
+];
+
+const textSizeOptions: Array<{
+  label: string;
+  value: BuilderTextSize | "auto";
+}> = [
+  { label: "기본", value: "auto" },
+  { label: "XS", value: "xs" },
+  { label: "S", value: "sm" },
+  { label: "M", value: "base" },
+  { label: "L", value: "lg" },
+  { label: "XL", value: "xl" },
+  { label: "2XL", value: "2xl" },
+  { label: "3XL", value: "3xl" },
+  { label: "4XL", value: "4xl" },
+  { label: "5XL", value: "5xl" },
+  { label: "6XL", value: "6xl" },
+  { label: "7XL", value: "7xl" }
+];
+
+function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
+  return (
+    block.type === "heading" ||
+    block.type === "paragraph" ||
+    block.type === "button" ||
+    block.type === "quote" ||
+    block.type === "stats"
+  );
+}
+
+function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined {
+  const style: CSSProperties = {};
+
+  if (settings.fontFamily) {
+    style.fontFamily = textFontFamily[settings.fontFamily];
+  }
+
+  if (settings.fontSize) {
+    Object.assign(style, textSizeStyle[settings.fontSize]);
+  }
+
+  return Object.keys(style).length ? style : undefined;
+}
+
 function getSectionStyle(section: BuilderSection): CSSProperties {
   const style: CSSProperties = {
     backgroundColor:
@@ -163,6 +249,7 @@ type InlineEditableTextProps = {
   as: InlineEditableTag;
   value: string;
   className?: string;
+  style?: CSSProperties;
   multiline?: boolean;
   placeholder?: string;
   onChange: (value: string) => void;
@@ -173,6 +260,7 @@ function InlineEditableText({
   as,
   value,
   className,
+  style,
   multiline,
   placeholder,
   onChange,
@@ -202,6 +290,7 @@ function InlineEditableText({
     contentEditable: true,
     "data-placeholder": placeholder ?? "",
     dir: "ltr",
+    style,
     onBlur: (event: FocusEvent<HTMLElement>) => {
       const nextValue = event.currentTarget.textContent ?? "";
 
@@ -334,6 +423,20 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
     } as BuilderBlock);
   };
 
+  const updateTextSettings = (settings: Partial<BuilderTextSettings>) => {
+    if (!isTextStyleBlock(block)) {
+      return;
+    }
+
+    onChange({
+      ...block,
+      settings: {
+        ...block.settings,
+        ...settings
+      } as TextStyleBlock["settings"]
+    } as TextStyleBlock);
+  };
+
   return (
     <div
       className={frameClass}
@@ -341,6 +444,45 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
       onMouseDown={(event) => event.stopPropagation()}
       onTouchStart={(event) => event.stopPropagation()}
     >
+      {isTextStyleBlock(block) ? (
+        <>
+          <ToolbarSelect
+            label="폰트"
+            onChange={(fontFamily) =>
+              updateTextSettings({
+                fontFamily:
+                  fontFamily === "auto"
+                    ? undefined
+                    : (fontFamily as BuilderTextFont)
+              })
+            }
+            value={block.settings.fontFamily ?? "auto"}
+          >
+            {textFontOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </ToolbarSelect>
+          <ToolbarSelect
+            label="크기"
+            onChange={(fontSize) =>
+              updateTextSettings({
+                fontSize:
+                  fontSize === "auto" ? undefined : (fontSize as BuilderTextSize)
+              })
+            }
+            value={block.settings.fontSize ?? "auto"}
+          >
+            {textSizeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </ToolbarSelect>
+        </>
+      ) : null}
+
       {block.type === "heading" ? (
         <>
           <div className="flex items-center gap-1">
@@ -562,6 +704,7 @@ function BuilderBlockRenderer({
   switch (block.type) {
     case "heading": {
       const level = block.settings.level ?? 2;
+      const textStyle = getTextStyle(block.settings);
       const className = `${blockProps.className} ${
         alignClass[block.settings.align ?? "left"]
       } ${
@@ -586,10 +729,11 @@ function BuilderBlockRenderer({
               }
               onFocus={selectBlock}
               placeholder="제목 입력"
+              style={textStyle}
               value={block.content.text}
             />
           ) : (
-            <h1 {...blockProps} className={className}>
+            <h1 {...blockProps} className={className} style={textStyle}>
               {block.content.text}
             </h1>
           )
@@ -610,10 +754,11 @@ function BuilderBlockRenderer({
               }
               onFocus={selectBlock}
               placeholder="제목 입력"
+              style={textStyle}
               value={block.content.text}
             />
           ) : (
-            <h3 {...blockProps} className={className}>
+            <h3 {...blockProps} className={className} style={textStyle}>
               {block.content.text}
             </h3>
           )
@@ -633,16 +778,19 @@ function BuilderBlockRenderer({
             }
             onFocus={selectBlock}
             placeholder="제목 입력"
+            style={textStyle}
             value={block.content.text}
           />
         ) : (
-          <h2 {...blockProps} className={className}>
+          <h2 {...blockProps} className={className} style={textStyle}>
             {block.content.text}
           </h2>
         )
       );
     }
-    case "paragraph":
+    case "paragraph": {
+      const textStyle = getTextStyle(block.settings);
+
       return wrapEditableBlock(
         editable ? (
           <InlineEditableText
@@ -663,6 +811,7 @@ function BuilderBlockRenderer({
             }
             onFocus={selectBlock}
             placeholder="본문 입력"
+            style={textStyle}
             value={block.content.text}
           />
         ) : (
@@ -675,11 +824,13 @@ function BuilderBlockRenderer({
             } ${block.settings.align === "center" ? "mx-auto" : ""} ${
               block.settings.align === "right" ? "ml-auto" : ""
             }`}
+            style={textStyle}
           >
             {block.content.text}
           </p>
         )
       );
+    }
     case "image":
       return wrapEditableBlock(
         <figure {...blockProps} className={`${blockProps.className} grid gap-3`}>
@@ -769,6 +920,7 @@ function BuilderBlockRenderer({
       );
     case "button": {
       const variant = block.settings.variant ?? "primary";
+      const textStyle = getTextStyle(block.settings);
       const buttonClass =
         variant === "primary"
           ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800 dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
@@ -800,12 +952,14 @@ function BuilderBlockRenderer({
                 }
                 onFocus={selectBlock}
                 placeholder="버튼"
+                style={textStyle}
                 value={block.content.label}
               />
             ) : (
               <Link
                 className={`inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`}
                 href={block.content.href}
+                style={textStyle}
               >
                 {block.content.label}
               </Link>
@@ -858,7 +1012,9 @@ function BuilderBlockRenderer({
           style={{ height: block.settings.height ?? 48 }}
         />
       );
-    case "quote":
+    case "quote": {
+      const textStyle = getTextStyle(block.settings);
+
       return wrapEditableBlock(
         <blockquote
           {...blockProps}
@@ -878,10 +1034,11 @@ function BuilderBlockRenderer({
               }
               onFocus={selectBlock}
               placeholder="인용문 입력"
+              style={textStyle}
               value={block.content.text}
             />
           ) : (
-            <p>{block.content.text}</p>
+            <p style={textStyle}>{block.content.text}</p>
           )}
           {editable ? (
             <InlineEditableText
@@ -904,7 +1061,10 @@ function BuilderBlockRenderer({
           ) : null}
         </blockquote>
       );
-    case "stats":
+    }
+    case "stats": {
+      const textStyle = getTextStyle(block.settings);
+
       return wrapEditableBlock(
         <div
           {...blockProps}
@@ -925,6 +1085,7 @@ function BuilderBlockRenderer({
                 }
                 onFocus={selectBlock}
                 placeholder="값"
+                style={textStyle}
                 value={block.content.value}
               />
               <InlineEditableText
@@ -943,7 +1104,10 @@ function BuilderBlockRenderer({
             </>
           ) : (
             <>
-              <p className="text-3xl font-semibold text-neutral-950 dark:text-neutral-50">
+              <p
+                className="text-3xl font-semibold text-neutral-950 dark:text-neutral-50"
+                style={textStyle}
+              >
                 {block.content.value}
               </p>
               <p className="mt-2 text-sm text-neutral-500">
@@ -953,6 +1117,7 @@ function BuilderBlockRenderer({
           )}
         </div>
       );
+    }
   }
 }
 

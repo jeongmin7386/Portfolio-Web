@@ -45,6 +45,9 @@ import type {
   BuilderSection,
   BuilderSectionSettings,
   BuilderSectionType,
+  BuilderTextFont,
+  BuilderTextSettings,
+  BuilderTextSize,
   BuilderViewport,
   Note,
   Project,
@@ -153,6 +156,50 @@ const blockTypes: BuilderBlockType[] = [
   "quote",
   "stats"
 ];
+
+type TextStyleBlock = Extract<
+  BuilderBlock,
+  { type: "heading" | "paragraph" | "button" | "quote" | "stats" }
+>;
+
+const textFontOptions: Array<{
+  label: string;
+  value: BuilderTextFont | "auto";
+}> = [
+  { label: "기본", value: "auto" },
+  { label: "산세리프", value: "sans" },
+  { label: "디스플레이", value: "display" },
+  { label: "세리프", value: "serif" },
+  { label: "모노", value: "mono" }
+];
+
+const textSizeOptions: Array<{
+  label: string;
+  value: BuilderTextSize | "auto";
+}> = [
+  { label: "기본", value: "auto" },
+  { label: "XS", value: "xs" },
+  { label: "S", value: "sm" },
+  { label: "M", value: "base" },
+  { label: "L", value: "lg" },
+  { label: "XL", value: "xl" },
+  { label: "2XL", value: "2xl" },
+  { label: "3XL", value: "3xl" },
+  { label: "4XL", value: "4xl" },
+  { label: "5XL", value: "5xl" },
+  { label: "6XL", value: "6xl" },
+  { label: "7XL", value: "7xl" }
+];
+
+function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
+  return (
+    block.type === "heading" ||
+    block.type === "paragraph" ||
+    block.type === "button" ||
+    block.type === "quote" ||
+    block.type === "stats"
+  );
+}
 
 const inputClass =
   "w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-950 transition placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-600";
@@ -2382,7 +2429,79 @@ function UploadButton({
   );
 }
 
+function TextStyleFields({
+  block,
+  onChange
+}: {
+  block: TextStyleBlock;
+  onChange: (block: TextStyleBlock) => void;
+}) {
+  const updateSettings = (settings: Partial<BuilderTextSettings>) => {
+    onChange({
+      ...block,
+      settings: {
+        ...block.settings,
+        ...settings
+      } as TextStyleBlock["settings"]
+    } as TextStyleBlock);
+  };
+
+  return (
+    <div className="grid gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        글자 스타일
+      </p>
+      <label className={labelClass}>
+        폰트
+        <select
+          className={inputClass}
+          onChange={(event) =>
+            updateSettings({
+              fontFamily:
+                event.target.value === "auto"
+                  ? undefined
+                  : (event.target.value as BuilderTextFont)
+            })
+          }
+          value={block.settings.fontFamily ?? "auto"}
+        >
+          {textFontOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={labelClass}>
+        크기
+        <select
+          className={inputClass}
+          onChange={(event) =>
+            updateSettings({
+              fontSize:
+                event.target.value === "auto"
+                  ? undefined
+                  : (event.target.value as BuilderTextSize)
+            })
+          }
+          value={block.settings.fontSize ?? "auto"}
+        >
+          {textSizeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
 function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
+  const textStyleFields = isTextStyleBlock(block) ? (
+    <TextStyleFields block={block} onChange={(nextBlock) => onChange(nextBlock)} />
+  ) : null;
+
   switch (block.type) {
     case "heading":
       return (
@@ -2420,6 +2539,7 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
               <option value={3}>H3</option>
             </select>
           </label>
+          {textStyleFields}
         </>
       );
     case "paragraph":
@@ -2458,6 +2578,7 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
               <option value="wide">넓게</option>
             </select>
           </label>
+          {textStyleFields}
         </>
       );
     case "image":
@@ -2605,6 +2726,7 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
               value={block.content.href}
             />
           </label>
+          {textStyleFields}
         </>
       );
     case "divider":
@@ -2696,6 +2818,7 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
               value={block.content.author ?? ""}
             />
           </label>
+          {textStyleFields}
         </>
       );
     case "stats":
@@ -2727,6 +2850,7 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
               value={block.content.label}
             />
           </label>
+          {textStyleFields}
         </>
       );
   }
