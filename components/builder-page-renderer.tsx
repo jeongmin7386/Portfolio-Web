@@ -3,10 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  createElement,
   type FocusEvent,
   type FormEvent,
-  type KeyboardEvent
+  type HTMLAttributes,
+  type KeyboardEvent,
+  useEffect,
+  useRef
 } from "react";
 
 import { ProjectCard } from "@/components/project-card";
@@ -154,35 +156,70 @@ function InlineEditableText({
   onChange,
   onFocus
 }: InlineEditableTextProps) {
-  return createElement(
-    as,
-    {
-      "aria-label": placeholder,
-      "aria-multiline": multiline || undefined,
-      className: `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`,
-      contentEditable: true,
-      "data-placeholder": placeholder ?? "",
-      onBlur: (event: FocusEvent<HTMLElement>) => {
-        const nextValue = event.currentTarget.textContent ?? "";
+  const elementRef = useRef<HTMLElement | null>(null);
+  const editableClassName = `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`;
 
-        if (nextValue !== value) {
-          onChange(nextValue);
-        }
-      },
-      onFocus,
-      onInput: (event: FormEvent<HTMLElement>) =>
-        onChange(event.currentTarget.textContent ?? ""),
-      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-        if (!multiline && event.key === "Enter") {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-      },
-      role: "textbox",
-      suppressContentEditableWarning: true
+  useEffect(() => {
+    const element = elementRef.current;
+
+    if (!element || document.activeElement === element) {
+      return;
+    }
+
+    if (element.textContent !== value) {
+      element.textContent = value;
+    }
+  }, [value]);
+
+  const editableProps: HTMLAttributes<HTMLElement> & {
+    "data-placeholder": string;
+  } = {
+    "aria-label": placeholder,
+    "aria-multiline": multiline || undefined,
+    className: editableClassName,
+    contentEditable: true,
+    "data-placeholder": placeholder ?? "",
+    dir: "ltr",
+    onBlur: (event: FocusEvent<HTMLElement>) => {
+      const nextValue = event.currentTarget.textContent ?? "";
+
+      if (nextValue !== value) {
+        onChange(nextValue);
+      }
     },
-    value
-  );
+    onFocus,
+    onInput: (event: FormEvent<HTMLElement>) =>
+      onChange(event.currentTarget.textContent ?? ""),
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (!multiline && event.key === "Enter") {
+        event.preventDefault();
+        event.currentTarget.blur();
+      }
+    },
+    role: "textbox",
+    suppressContentEditableWarning: true
+  };
+
+  const setElementRef = (element: HTMLElement | null) => {
+    elementRef.current = element;
+  };
+
+  switch (as) {
+    case "cite":
+      return <cite {...editableProps} ref={setElementRef} />;
+    case "figcaption":
+      return <figcaption {...editableProps} ref={setElementRef} />;
+    case "h1":
+      return <h1 {...editableProps} ref={setElementRef} />;
+    case "h2":
+      return <h2 {...editableProps} ref={setElementRef} />;
+    case "h3":
+      return <h3 {...editableProps} ref={setElementRef} />;
+    case "p":
+      return <p {...editableProps} ref={setElementRef} />;
+    case "span":
+      return <span {...editableProps} ref={setElementRef} />;
+  }
 }
 
 type FloatingBlockToolbarProps = {
