@@ -66,6 +66,7 @@ import type {
 
 type PageBuilderEditorProps = {
   authEnabled: boolean;
+  pageSlug?: "home" | "archive";
 };
 
 type BuilderHistory = {
@@ -1094,7 +1095,10 @@ async function uploadImage(file: File) {
   return body.url;
 }
 
-export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
+export function PageBuilderEditor({
+  authEnabled,
+  pageSlug = "home"
+}: PageBuilderEditorProps) {
   const [page, setPage] = useState<BuilderPage | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -1121,6 +1125,10 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       coordinateGetter: sortableKeyboardCoordinates
     })
   );
+  const pageApiPath = useMemo(
+    () => `/api/admin/page?slug=${pageSlug}`,
+    [pageSlug]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -1129,7 +1137,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       try {
         setIsLoading(true);
         const [pageResponse, contentResponse] = await Promise.all([
-          fetch("/api/admin/page", { cache: "no-store" }),
+          fetch(pageApiPath, { cache: "no-store" }),
           fetch("/api/admin/content", { cache: "no-store" })
         ]);
 
@@ -1174,7 +1182,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [pageApiPath]);
 
   useEffect(() => {
     pageRef.current = page;
@@ -1632,7 +1640,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       setIsSaving(true);
       setStatus("초안을 저장하는 중입니다.");
 
-      const response = await fetch("/api/admin/page", {
+      const response = await fetch(pageApiPath, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
@@ -1681,7 +1689,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       setIsSaving(true);
       setStatus("게시하는 중입니다.");
 
-      const response = await fetch("/api/admin/page?publish=true", {
+      const response = await fetch(`${pageApiPath}&publish=true`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
@@ -1703,11 +1711,11 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       pageRef.current = publishedPage;
       setPage(publishedPage);
       setHistory({ past: [], future: [] });
-      setStatus(
-        `게시되었습니다. 공개 주소: /${
-          publishedPage.publishedPublicSlug ?? publishedPage.publicSlug ?? ""
-        }`
-      );
+      const publicPath =
+        pageSlug === "archive"
+          ? "/archive"
+          : `/${publishedPage.publishedPublicSlug ?? publishedPage.publicSlug ?? ""}`;
+      setStatus(`게시되었습니다. 공개 주소: ${publicPath}`);
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "페이지를 게시하지 못했습니다."
@@ -1790,10 +1798,14 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   const draftPublicSlug = getPublicPortfolioSlug(
     page.publicSlug || page.publishName || page.title
   );
-  const publishedPublicPath = page.publishedPublicSlug
-    ? `/${page.publishedPublicSlug}`
-    : "";
-  const nextPublicPath = `/${draftPublicSlug}`;
+  const publishedPublicPath =
+    pageSlug === "archive"
+      ? "/archive"
+      : page.publishedPublicSlug
+        ? `/${page.publishedPublicSlug}`
+        : "";
+  const nextPublicPath =
+    pageSlug === "archive" ? "/archive" : `/${draftPublicSlug}`;
 
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">

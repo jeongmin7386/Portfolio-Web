@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminEditor } from "@/components/admin-editor";
+import { PageBuilderEditor } from "@/components/page-builder-editor";
 import { getAdminSession, isAdminAuthEnabled } from "@/lib/auth";
-import { getContentStorageMode } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +23,5 @@ export default async function AdminArchivePage() {
     redirect("/admin/login");
   }
 
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
-      <AdminEditor
-        authEnabled={authEnabled}
-        mode="notes"
-        storageMode={getContentStorageMode()}
-      />
-    </div>
-  );
+  return <PageBuilderEditor authEnabled={authEnabled} pageSlug="archive" />;
 }

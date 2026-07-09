@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import {
   getBuilderPage,
+  normalizeBuilderPageKind,
   publishBuilderPage,
   saveBuilderPage
 } from "@/lib/content";
@@ -32,14 +33,18 @@ function isBuilderPage(value: unknown): value is BuilderPage {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getAdminSession();
 
   if (!session.authenticated) {
     return unauthorized();
   }
 
-  const page = await getBuilderPage("home", getAdminContentOwnerKey(session));
+  const url = new URL(request.url);
+  const pageKind = normalizeBuilderPageKind(
+    url.searchParams.get("slug") ?? "home"
+  );
+  const page = await getBuilderPage(pageKind, getAdminContentOwnerKey(session));
 
   return NextResponse.json(page, {
     headers: {
@@ -57,6 +62,9 @@ export async function PUT(request: Request) {
 
   try {
     const url = new URL(request.url);
+    const pageKind = normalizeBuilderPageKind(
+      url.searchParams.get("slug") ?? "home"
+    );
     const shouldPublish = url.searchParams.get("publish") === "true";
     const body = (await request.json()) as unknown;
 
@@ -69,8 +77,12 @@ export async function PUT(request: Request) {
 
     const ownerKey = getAdminContentOwnerKey(session);
     const savedPage = shouldPublish
-      ? await publishBuilderPage(body, ownerKey)
-      : await saveBuilderPage({ ...body, status: "draft" }, ownerKey);
+      ? await publishBuilderPage(body, ownerKey, pageKind)
+      : await saveBuilderPage(
+          { ...body, status: "draft" },
+          ownerKey,
+          pageKind
+        );
 
     return NextResponse.json(savedPage, {
       headers: {

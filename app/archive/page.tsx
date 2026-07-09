@@ -1,18 +1,36 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+
+import { BuilderPageRenderer } from "@/components/builder-page-renderer";
+import {
+  getAllNotes,
+  getAllProjects,
+  getPublishedBuilderPage
+} from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Studio Archive 시작하기",
-  description:
-    "로그인 후 나만의 아카이브와 포트폴리오 페이지를 편집합니다.",
-  robots: {
-    index: false,
-    follow: false
-  }
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublishedBuilderPage("archive");
 
-export default function ArchivePage() {
-  redirect("/");
+  return {
+    title: page.seoTitle || page.title,
+    description: page.seoDescription
+  };
+}
+
+export default async function ArchivePage() {
+  const [page, projects, notes] = await Promise.all([
+    getPublishedBuilderPage("archive"),
+    getAllProjects(),
+    getAllNotes()
+  ]);
+
+  return (
+    <BuilderPageRenderer
+      notes={notes}
+      page={page}
+      projectBasePath="/projects"
+      projects={projects}
+    />
+  );
 }
