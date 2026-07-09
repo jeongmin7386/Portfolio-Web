@@ -272,18 +272,25 @@ export function BlockRenderer({
     images: ProjectImage[],
     index: number,
     aspectRatio: keyof typeof aspectRatioClass = "wide",
-    onChangeCaption?: (caption: string) => void
+    onChangeCaption?: (caption: string) => void,
+    fit: "cover" | "width" = "cover"
   ) => (
     <figure className="grid gap-3">
       <button
         aria-label={`이미지 크게 보기: ${image.alt}`}
-        className={`group overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-900 ${aspectRatioClass[aspectRatio]}`}
+        className={`group overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-900 ${
+          fit === "width" ? "w-full" : aspectRatioClass[aspectRatio]
+        }`}
         onClick={() => openLightbox(images, index)}
         type="button"
       >
         <Image
           alt={image.alt}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+          className={
+            fit === "width"
+              ? "h-auto w-full object-contain"
+              : "h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+          }
           height={900}
           sizes="(min-width: 768px) 50vw, 100vw"
           src={image.src}
@@ -402,18 +409,24 @@ export function BlockRenderer({
           <div className={`my-8 grid gap-4 ${columns}`}>
             {block.images.map((image, index) => (
               <div key={`${key}-${image.src}-${index}`}>
-                {renderImageFigure(image, block.images, index, "square", (caption) =>
-                  changeBlock(path, {
-                    ...block,
-                    images: block.images.map((currentImage, currentIndex) =>
-                      currentIndex === index
-                        ? {
-                            ...currentImage,
-                            caption: normalizeOptionalText(caption)
-                          }
-                        : currentImage
-                    )
-                  })
+                {renderImageFigure(
+                  image,
+                  block.images,
+                  index,
+                  "square",
+                  (caption) =>
+                    changeBlock(path, {
+                      ...block,
+                      images: block.images.map((currentImage, currentIndex) =>
+                        currentIndex === index
+                          ? {
+                              ...currentImage,
+                              caption: normalizeOptionalText(caption)
+                            }
+                          : currentImage
+                      )
+                    }),
+                  "width"
                 )}
               </div>
             ))}
