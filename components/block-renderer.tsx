@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 import {
   ImageLightbox,
@@ -134,6 +135,70 @@ export function BlockRenderer({ blocks }: BlockRendererProps) {
               </cite>
             ) : null}
           </blockquote>
+        );
+      case "button": {
+        const variant = block.variant ?? "primary";
+        const buttonClass =
+          variant === "primary"
+            ? "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800 dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
+            : variant === "secondary"
+              ? "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+              : "border-transparent bg-transparent px-0 text-neutral-950 underline-offset-4 hover:underline dark:text-neutral-50";
+
+        return (
+          <div className="my-8" key={key}>
+            <Link
+              className={`inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`}
+              href={block.href}
+            >
+              {block.label}
+            </Link>
+          </div>
+        );
+      }
+      case "divider":
+        return (
+          <div
+            className={
+              block.spacing === "lg"
+                ? "py-10"
+                : block.spacing === "sm"
+                  ? "py-3"
+                  : "py-6"
+            }
+            key={key}
+          >
+            {block.style === "blank" ? null : (
+              <div
+                className={`border-t border-neutral-200 dark:border-neutral-800 ${
+                  block.style === "dashed" ? "border-dashed" : ""
+                }`}
+              />
+            )}
+          </div>
+        );
+      case "embed":
+        return (
+          <div
+            className={`my-8 overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 ${
+              block.ratio === "square" ? "aspect-square" : "aspect-video"
+            }`}
+            key={key}
+          >
+            <iframe
+              className="h-full w-full"
+              src={block.url}
+              title={block.provider || "임베드 콘텐츠"}
+            />
+          </div>
+        );
+      case "spacer":
+        return (
+          <div
+            aria-hidden
+            key={key}
+            style={{ height: block.height ?? 48 }}
+          />
         );
       case "twoColumn":
         return (

@@ -42,6 +42,27 @@ export type ProjectBlock =
       cite?: string;
     }
   | {
+      type: "button";
+      label: string;
+      href: string;
+      variant?: "primary" | "secondary" | "text";
+    }
+  | {
+      type: "divider";
+      spacing?: "sm" | "md" | "lg";
+      style?: "line" | "dashed" | "blank";
+    }
+  | {
+      type: "embed";
+      url: string;
+      provider?: string;
+      ratio?: "wide" | "square";
+    }
+  | {
+      type: "spacer";
+      height?: number;
+    }
+  | {
       type: "twoColumn";
       left: ProjectBlock[];
       right: ProjectBlock[];

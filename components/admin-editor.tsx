@@ -52,8 +52,12 @@ const blockLabels: Record<ProjectBlock["type"], string> = {
   heading: "제목",
   paragraph: "본문",
   image: "이미지",
-  imageGrid: "이미지 그리드",
+  imageGrid: "갤러리",
   quote: "인용",
+  button: "버튼",
+  divider: "구분선",
+  embed: "임베드",
+  spacer: "여백",
   twoColumn: "2단 구성",
   stats: "지표",
   process: "과정",
@@ -65,7 +69,11 @@ const blockAddTypes: ProjectBlock["type"][] = [
   "paragraph",
   "image",
   "imageGrid",
+  "button",
   "quote",
+  "divider",
+  "spacer",
+  "embed",
   "twoColumn",
   "stats",
   "process",
@@ -172,6 +180,19 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
       };
     case "quote":
       return { type, quote: "핵심 문장을 입력하세요.", cite: "" };
+    case "button":
+      return { type, label: "자세히 보기", href: "/", variant: "primary" };
+    case "divider":
+      return { type, spacing: "md", style: "line" };
+    case "embed":
+      return {
+        type,
+        url: "https://www.youtube.com/embed/",
+        provider: "YouTube",
+        ratio: "wide"
+      };
+    case "spacer":
+      return { type, height: 48 };
     case "twoColumn":
       return {
         type,
@@ -578,6 +599,147 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
             />
           </label>
         </div>
+      );
+    case "button":
+      return (
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className={labelClass}>
+            라벨
+            <input
+              className={inputClass}
+              onChange={(event) =>
+                onChange({ ...block, label: event.target.value })
+              }
+              value={block.label}
+            />
+          </label>
+          <label className={labelClass}>
+            링크
+            <input
+              className={inputClass}
+              onChange={(event) =>
+                onChange({ ...block, href: event.target.value })
+              }
+              value={block.href}
+            />
+          </label>
+          <label className={labelClass}>
+            형태
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  variant: event.target.value as
+                    | "primary"
+                    | "secondary"
+                    | "text"
+                })
+              }
+              value={block.variant ?? "primary"}
+            >
+              <option value="primary">채움</option>
+              <option value="secondary">선</option>
+              <option value="text">텍스트</option>
+            </select>
+          </label>
+        </div>
+      );
+    case "divider":
+      return (
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className={labelClass}>
+            간격
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  spacing: event.target.value as "sm" | "md" | "lg"
+                })
+              }
+              value={block.spacing ?? "md"}
+            >
+              <option value="sm">작게</option>
+              <option value="md">보통</option>
+              <option value="lg">넓게</option>
+            </select>
+          </label>
+          <label className={labelClass}>
+            스타일
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  style: event.target.value as "line" | "dashed" | "blank"
+                })
+              }
+              value={block.style ?? "line"}
+            >
+              <option value="line">실선</option>
+              <option value="dashed">점선</option>
+              <option value="blank">빈 여백</option>
+            </select>
+          </label>
+        </div>
+      );
+    case "embed":
+      return (
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className={`${labelClass} md:col-span-2`}>
+            임베드 URL
+            <input
+              className={inputClass}
+              onChange={(event) =>
+                onChange({ ...block, url: event.target.value })
+              }
+              placeholder="https://www.youtube.com/embed/..."
+              value={block.url}
+            />
+          </label>
+          <label className={labelClass}>
+            제공처
+            <input
+              className={inputClass}
+              onChange={(event) =>
+                onChange({ ...block, provider: event.target.value })
+              }
+              value={block.provider ?? ""}
+            />
+          </label>
+          <label className={labelClass}>
+            비율
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  ratio: event.target.value as "wide" | "square"
+                })
+              }
+              value={block.ratio ?? "wide"}
+            >
+              <option value="wide">가로형</option>
+              <option value="square">정방형</option>
+            </select>
+          </label>
+        </div>
+      );
+    case "spacer":
+      return (
+        <label className={labelClass}>
+          높이
+          <input
+            className={inputClass}
+            min={0}
+            onChange={(event) =>
+              onChange({ ...block, height: Number(event.target.value) })
+            }
+            type="number"
+            value={block.height ?? 48}
+          />
+        </label>
       );
     case "twoColumn":
       return (
