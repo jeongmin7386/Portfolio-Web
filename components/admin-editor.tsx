@@ -33,7 +33,11 @@ import {
 } from "lucide-react";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
-import { BlockRenderer } from "@/components/block-renderer";
+import {
+  BlockRenderer,
+  InlineEditableText,
+  type ProjectBlockPath
+} from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
 import type {
   Note,
@@ -239,6 +243,37 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
     case "result":
       return { type, title: "결과", items: ["성과를 입력하세요."] };
   }
+}
+
+function replaceProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath,
+  nextBlock: ProjectBlock
+): ProjectBlock[] {
+  const [blockIndex, side, ...childPath] = path;
+
+  if (typeof blockIndex !== "number") {
+    return blocks;
+  }
+
+  return blocks.map((block, currentIndex) => {
+    if (currentIndex !== blockIndex) {
+      return block;
+    }
+
+    if (path.length === 1) {
+      return nextBlock;
+    }
+
+    if (block.type !== "twoColumn" || (side !== "left" && side !== "right")) {
+      return block;
+    }
+
+    return {
+      ...block,
+      [side]: replaceProjectBlockAtPath(block[side], childPath, nextBlock)
+    };
+  });
 }
 
 type ImageFieldsProps = {
@@ -1066,16 +1101,22 @@ type AdminLivePreviewProps = {
   activePanel: "projects" | "notes";
   note?: Note;
   project?: Project;
+  selectedProjectBlockPath?: ProjectBlockPath;
+  onSelectProjectBlock?: (path: ProjectBlockPath) => void;
+  onChangeProject?: (project: Project) => void;
+  onChangeProjectBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
 };
 
 function PreviewMetaItem({
   label,
-  value
+  value,
+  onChange
 }: {
   label: string;
   value?: string;
+  onChange?: (value: string) => void;
 }) {
-  if (!value) {
+  if (!value && !onChange) {
     return null;
   }
 
@@ -1085,14 +1126,39 @@ function PreviewMetaItem({
         {label}
       </dt>
       <dd className="text-sm leading-6 text-neutral-800 dark:text-neutral-200">
-        {value}
+        {onChange ? (
+          <InlineEditableText
+            as="span"
+            onChange={onChange}
+            placeholder={label}
+            value={value ?? ""}
+          />
+        ) : (
+          value
+        )}
       </dd>
     </div>
   );
 }
 
-function ProjectLivePreview({ project }: { project: Project }) {
+function ProjectLivePreview({
+  project,
+  selectedBlockPath,
+  onSelectBlock,
+  onChangeProject,
+  onChangeBlock
+}: {
+  project: Project;
+  selectedBlockPath?: ProjectBlockPath;
+  onSelectBlock?: (path: ProjectBlockPath) => void;
+  onChangeProject?: (project: Project) => void;
+  onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
+}) {
   const coverImage = project.coverImage || "/images/placeholder-atlas.svg";
+  const editable = Boolean(onChangeProject || onChangeBlock || onSelectBlock);
+  const updateProject = (projectPatch: Partial<Project>) => {
+    onChangeProject?.({ ...project, ...projectPatch });
+  };
 
   return (
     <div className="grid gap-5">
@@ -1120,8 +1186,49 @@ function ProjectLivePreview({ project }: { project: Project }) {
             width={960}
           />
         </div>
-        <div className="grid gap-3">
-          <div className="flex items-start justify-between gap-3">
+        <div
+          className={`grid gap-3 ${
+            editable ? "[&_.project-preview-readonly]:hidden" : ""
+          }`}
+        >
+          {editable ? (
+            <div className="grid gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <InlineEditableText
+                    as="p"
+                    className="text-xs font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300"
+                    onChange={(category) => updateProject({ category })}
+                    placeholder="카테고리"
+                    value={project.category}
+                  />
+                  <InlineEditableText
+                    as="h3"
+                    className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
+                    onChange={(title) => updateProject({ title })}
+                    placeholder="프로젝트 제목"
+                    value={project.title}
+                  />
+                </div>
+                <InlineEditableText
+                  as="span"
+                  className="text-sm text-neutral-500 dark:text-neutral-500"
+                  onChange={(year) => updateProject({ year })}
+                  placeholder="연도"
+                  value={project.year}
+                />
+              </div>
+              <InlineEditableText
+                as="p"
+                className="text-sm leading-7 text-neutral-600 dark:text-neutral-400"
+                multiline
+                onChange={(subtitle) => updateProject({ subtitle })}
+                placeholder="짧은 소개"
+                value={project.subtitle}
+              />
+            </div>
+          ) : null}
+          <div className="project-preview-readonly flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
                 {project.category || "카테고리"}
@@ -1134,7 +1241,7 @@ function ProjectLivePreview({ project }: { project: Project }) {
               {project.year}
             </span>
           </div>
-          <p className="text-sm leading-7 text-neutral-600 dark:text-neutral-400">
+          <p className="project-preview-readonly text-sm leading-7 text-neutral-600 dark:text-neutral-400">
             {project.subtitle}
           </p>
           <TagList compact tags={project.tags.slice(0, 4)} />
@@ -1150,7 +1257,38 @@ function ProjectLivePreview({ project }: { project: Project }) {
             프로젝트 정보
           </h3>
         </div>
-        <dl className="grid gap-0">
+        {editable ? (
+          <dl className="grid gap-0">
+            <PreviewMetaItem
+              label="역할"
+              onChange={(role) => updateProject({ role })}
+              value={project.role}
+            />
+            <PreviewMetaItem
+              label="기간"
+              onChange={(period) => updateProject({ period })}
+              value={project.period}
+            />
+            <PreviewMetaItem
+              label="클라이언트"
+              onChange={(client) => updateProject({ client })}
+              value={project.client}
+            />
+            <PreviewMetaItem
+              label="툴"
+              onChange={(tools) => updateProject({ tools: textToList(tools) })}
+              value={project.tools.join(", ")}
+            />
+            <PreviewMetaItem
+              label="결과물"
+              onChange={(deliverables) =>
+                updateProject({ deliverables: textToList(deliverables) })
+              }
+              value={project.deliverables.join(", ")}
+            />
+          </dl>
+        ) : null}
+        <dl className={editable ? "hidden" : "grid gap-0"}>
           <PreviewMetaItem label="역할" value={project.role} />
           <PreviewMetaItem label="기간" value={project.period} />
           <PreviewMetaItem label="클라이언트" value={project.client} />
@@ -1160,13 +1298,28 @@ function ProjectLivePreview({ project }: { project: Project }) {
             value={project.deliverables.join(", ")}
           />
         </dl>
-        {project.description ? (
+        {editable ? (
+          <InlineEditableText
+            as="p"
+            className="whitespace-pre-line text-sm leading-7 text-neutral-600 dark:text-neutral-400"
+            multiline
+            onChange={(description) => updateProject({ description })}
+            placeholder="프로젝트 설명"
+            value={project.description}
+          />
+        ) : project.description ? (
           <p className="whitespace-pre-line text-sm leading-7 text-neutral-600 dark:text-neutral-400">
             {project.description}
           </p>
         ) : null}
         <div className="border-t border-neutral-200 pt-1 dark:border-neutral-800 [&_blockquote]:my-6 [&_blockquote]:text-lg [&_h2]:mt-8 [&_h2]:text-2xl [&_h3]:mt-6 [&_h3]:text-xl [&_p]:text-sm [&_p]:leading-7">
-          <BlockRenderer blocks={project.blocks} />
+          <BlockRenderer
+            blocks={project.blocks}
+            editable={editable}
+            onChangeBlock={onChangeBlock}
+            onSelectBlock={onSelectBlock}
+            selectedBlockPath={selectedBlockPath}
+          />
         </div>
       </section>
     </div>
@@ -1217,10 +1370,22 @@ function NoteLivePreview({ note }: { note: Note }) {
 function AdminLivePreview({
   activePanel,
   note,
-  project
+  project,
+  selectedProjectBlockPath,
+  onSelectProjectBlock,
+  onChangeProject,
+  onChangeProjectBlock
 }: AdminLivePreviewProps) {
   if (activePanel === "projects" && project) {
-    return <ProjectLivePreview project={project} />;
+    return (
+      <ProjectLivePreview
+        onChangeBlock={onChangeProjectBlock}
+        onChangeProject={onChangeProject}
+        onSelectBlock={onSelectProjectBlock}
+        project={project}
+        selectedBlockPath={selectedProjectBlockPath}
+      />
+    );
   }
 
   if (activePanel === "notes" && note) {
@@ -1279,6 +1444,8 @@ export function AdminEditor({
 }: AdminEditorProps) {
   const [content, setContent] = useState<StudioArchiveContent | null>(null);
   const [selectedProjectSlug, setSelectedProjectSlug] = useState("");
+  const [selectedProjectBlockPath, setSelectedProjectBlockPath] =
+    useState<ProjectBlockPath>([]);
   const [selectedNoteSlug, setSelectedNoteSlug] = useState("");
   const [activePanel, setActivePanel] = useState<"projects" | "notes">(
     mode === "notes" ? "notes" : "projects"
@@ -1386,6 +1553,21 @@ export function AdminEditor({
     setSelectedProjectSlug(project.slug);
   };
 
+  const updateSelectedProjectBlock = (
+    path: ProjectBlockPath,
+    block: ProjectBlock
+  ) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    setSelectedProjectBlockPath(path);
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: replaceProjectBlockAtPath(selectedProject.blocks, path, block)
+    });
+  };
+
   const updateSelectedNote = (note: Note) => {
     const currentSlug = selectedNoteSlug;
 
@@ -1437,6 +1619,7 @@ export function AdminEditor({
     const nextContent = (await response.json()) as StudioArchiveContent;
     setContent(nextContent);
     setSelectedProjectSlug(nextContent.projects[0]?.slug ?? "");
+    setSelectedProjectBlockPath([]);
     setSelectedNoteSlug(nextContent.notes[0]?.slug ?? "");
     setStatus("최신 콘텐츠를 불러왔습니다.");
     setIsLoading(false);
@@ -1709,6 +1892,7 @@ export function AdminEditor({
                     projects: orderProjects([project, ...currentContent.projects])
                   }));
                   setSelectedProjectSlug(project.slug);
+                  setSelectedProjectBlockPath([]);
                   setActivePanel("projects");
                 }}
                 type="button"
@@ -1735,6 +1919,7 @@ export function AdminEditor({
                       key={project.slug}
                       onSelect={() => {
                         setSelectedProjectSlug(project.slug);
+                        setSelectedProjectBlockPath([]);
                         setActivePanel("projects");
                       }}
                       project={project}
@@ -1806,7 +1991,11 @@ export function AdminEditor({
               <AdminLivePreview
                 activePanel={activePanel}
                 note={selectedNote}
+                onChangeProject={updateSelectedProject}
+                onChangeProjectBlock={updateSelectedProjectBlock}
+                onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
+                selectedProjectBlockPath={selectedProjectBlockPath}
               />
             </div>
           </section>
@@ -1843,6 +2032,7 @@ export function AdminEditor({
                       );
 
                       setSelectedProjectSlug(projects[0]?.slug ?? "");
+                      setSelectedProjectBlockPath([]);
 
                       return {
                         ...currentContent,
@@ -2218,7 +2408,11 @@ export function AdminEditor({
             <AdminLivePreview
               activePanel={activePanel}
               note={selectedNote}
+              onChangeProject={updateSelectedProject}
+              onChangeProjectBlock={updateSelectedProjectBlock}
+              onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}
+              selectedProjectBlockPath={selectedProjectBlockPath}
             />
           </aside>
         ) : null}
