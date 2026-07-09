@@ -2680,6 +2680,30 @@ function TextStyleFields({
           }
         />
       </label>
+      <label className={labelClass}>
+        글씨 색
+        <div className="grid gap-2 sm:grid-cols-[48px_1fr]">
+          <input
+            aria-label="글씨 색 선택"
+            className="h-10 w-12 cursor-pointer rounded-md border border-neutral-200 bg-transparent p-1 dark:border-neutral-800"
+            onChange={(event) => updateSettings({ color: event.target.value })}
+            type="color"
+            value={
+              /^#[0-9a-fA-F]{6}$/.test(block.settings.color ?? "")
+                ? block.settings.color
+                : "#111111"
+            }
+          />
+          <input
+            className={inputClass}
+            onChange={(event) =>
+              updateSettings({ color: event.target.value || undefined })
+            }
+            placeholder="#111111"
+            value={block.settings.color ?? ""}
+          />
+        </div>
+      </label>
     </div>
   );
 }

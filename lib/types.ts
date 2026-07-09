@@ -174,6 +174,7 @@ export type BuilderTextSettings = {
   fontFamily?: BuilderTextFont;
   fontSize?: BuilderTextSize;
   fontSizePt?: number;
+  color?: string;
 };
 
 export type BuilderSectionSettings = {

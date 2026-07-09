@@ -9,7 +9,8 @@ import {
   type HTMLAttributes,
   type KeyboardEvent,
   useEffect,
-  useRef
+  useRef,
+  useState
 } from "react";
 
 import { ProjectCard } from "@/components/project-card";
@@ -152,6 +153,10 @@ function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined 
     whiteSpace: "pre-line"
   };
 
+  if (settings.color) {
+    style.color = settings.color;
+  }
+
   if (settings.fontFamily) {
     style.fontFamily = textFontFamily[settings.fontFamily];
   }
@@ -166,6 +171,10 @@ function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined 
   }
 
   return Object.keys(style).length ? style : undefined;
+}
+
+function getColorPickerValue(color?: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(color ?? "") ? color! : "#111111";
 }
 
 function getSectionStyle(section: BuilderSection): CSSProperties {
@@ -455,6 +464,7 @@ function AlignControls({
 }
 
 function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
+  const [isColorOpen, setIsColorOpen] = useState(false);
   const frameClass =
     "absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95";
 
@@ -527,6 +537,55 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
                 : undefined)
             }
           />
+          <div className="relative">
+            <ToolbarButton
+              active={isColorOpen || Boolean(block.settings.color)}
+              onClick={() => setIsColorOpen((current) => !current)}
+            >
+              색
+            </ToolbarButton>
+            {isColorOpen ? (
+              <div
+                className="absolute left-0 top-10 z-50 grid w-56 gap-3 rounded-md border border-neutral-200 bg-white p-3 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                onClick={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
+              >
+                <label className="grid gap-2 text-xs font-medium text-neutral-500">
+                  글씨 색
+                  <input
+                    aria-label="글씨 색 선택"
+                    className="h-16 w-full cursor-pointer rounded-md border border-neutral-200 bg-transparent p-1 dark:border-neutral-800"
+                    onChange={(event) =>
+                      updateTextSettings({ color: event.target.value })
+                    }
+                    type="color"
+                    value={getColorPickerValue(block.settings.color)}
+                  />
+                </label>
+                <label className="grid gap-2 text-xs font-medium text-neutral-500">
+                  색상값
+                  <input
+                    className="h-8 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+                    onChange={(event) =>
+                      updateTextSettings({
+                        color: event.target.value || undefined
+                      })
+                    }
+                    placeholder="#111111"
+                    value={block.settings.color ?? ""}
+                  />
+                </label>
+                <button
+                  className="inline-flex h-8 items-center justify-center rounded-sm border border-neutral-200 px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 dark:border-neutral-800 dark:text-neutral-200"
+                  onClick={() => updateTextSettings({ color: undefined })}
+                  type="button"
+                >
+                  기본색
+                </button>
+              </div>
+            ) : null}
+          </div>
         </>
       ) : null}
 
