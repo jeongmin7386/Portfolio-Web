@@ -98,6 +98,7 @@ export type Project = {
   client: string;
   category: string;
   tags: string[];
+  order?: number;
   coverImage: string;
   description: string;
   tools: string[];

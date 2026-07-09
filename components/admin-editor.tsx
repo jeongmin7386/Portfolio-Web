@@ -1,10 +1,28 @@
 "use client";
 
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  type DragEndEvent,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
+  GripVertical,
   LogOut,
   Loader2,
   Plus,
@@ -13,7 +31,7 @@ import {
   Trash2,
   Upload
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { BlockRenderer } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
@@ -89,6 +107,13 @@ function textToList(value: string) {
 
 function listToText(value: string[]) {
   return value.join(", ");
+}
+
+function orderProjects(projects: Project[]) {
+  return projects.map((project, index) => ({
+    ...project,
+    order: index
+  }));
 }
 
 function slugify(value: string) {
@@ -225,6 +250,67 @@ type ImageFieldsProps = {
 type UploadImageInputProps = {
   onUploaded: (url: string) => void;
 };
+
+type SortableProjectRowProps = {
+  active: boolean;
+  project: Project;
+  onSelect: () => void;
+};
+
+function SortableProjectRow({
+  active,
+  project,
+  onSelect
+}: SortableProjectRowProps) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition
+  } = useSortable({ id: project.slug });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
+
+  return (
+    <div
+      className={`grid grid-cols-[34px_1fr] overflow-hidden rounded-md border text-sm transition ${
+        active
+          ? "border-neutral-950 bg-neutral-950 text-white dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
+          : "border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+      } ${isDragging ? "opacity-60" : ""}`}
+      ref={setNodeRef}
+      style={style}
+    >
+      <button
+        aria-label={`${project.title} 순서 변경`}
+        className={`flex h-full min-h-14 items-center justify-center border-r transition ${
+          active
+            ? "border-white/20 text-white/70 dark:border-neutral-950/20 dark:text-neutral-700"
+            : "border-neutral-200 text-neutral-400 hover:text-neutral-800 dark:border-neutral-800 dark:hover:text-neutral-100"
+        }`}
+        type="button"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical aria-hidden size={15} />
+      </button>
+      <button
+        className="min-w-0 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-500"
+        onClick={onSelect}
+        type="button"
+      >
+        <span className="block truncate font-medium">{project.title}</span>
+        <span className="mt-1 block truncate text-xs opacity-70">
+          {project.category} · {project.year}
+        </span>
+      </button>
+    </div>
+  );
+}
 
 function UploadImageInput({ onUploaded }: UploadImageInputProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -1199,6 +1285,16 @@ export function AdminEditor({
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
   const copy = editorCopy[mode];
   const showProjects = mode !== "notes";
   const showNotes = mode !== "projects";
@@ -1297,6 +1393,31 @@ export function AdminEditor({
       )
     }));
     setSelectedNoteSlug(note.slug);
+  };
+
+  const handleProjectDragEnd = (event: DragEndEvent) => {
+    if (!content || !event.over || event.active.id === event.over.id) {
+      return;
+    }
+
+    const oldIndex = content.projects.findIndex(
+      (project) => project.slug === event.active.id
+    );
+    const newIndex = content.projects.findIndex(
+      (project) => project.slug === event.over?.id
+    );
+
+    if (oldIndex < 0 || newIndex < 0) {
+      return;
+    }
+
+    updateContent((currentContent) => ({
+      ...currentContent,
+      projects: orderProjects(
+        arrayMove(currentContent.projects, oldIndex, newIndex)
+      )
+    }));
+    setStatus("프로젝트 순서를 변경했습니다. 저장하면 공개 목록에도 반영됩니다.");
   };
 
   const reloadContent = async () => {
@@ -1582,7 +1703,7 @@ export function AdminEditor({
 
                   updateContent((currentContent) => ({
                     ...currentContent,
-                    projects: [project, ...currentContent.projects]
+                    projects: orderProjects([project, ...currentContent.projects])
                   }));
                   setSelectedProjectSlug(project.slug);
                   setActivePanel("projects");
@@ -1592,34 +1713,33 @@ export function AdminEditor({
                 <Plus aria-hidden size={15} />
               </button>
             </div>
-            <div className={listClass}>
-              {content.projects.map((project) => {
-                const active =
-                  activePanel === "projects" &&
-                  selectedProjectSlug === project.slug;
-
-                return (
-                  <button
-                    className={`rounded-md border px-3 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
-                      active
-                        ? "border-neutral-950 bg-neutral-950 text-white dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
-                        : "border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
-                    }`}
-                    key={project.slug}
-                    onClick={() => {
-                      setSelectedProjectSlug(project.slug);
-                      setActivePanel("projects");
-                    }}
-                    type="button"
-                  >
-                    <span className="block font-medium">{project.title}</span>
-                    <span className="mt-1 block text-xs opacity-70">
-                      {project.category} · {project.year}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleProjectDragEnd}
+              sensors={sensors}
+            >
+              <SortableContext
+                items={content.projects.map((project) => project.slug)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className={listClass}>
+                  {content.projects.map((project) => (
+                    <SortableProjectRow
+                      active={
+                        activePanel === "projects" &&
+                        selectedProjectSlug === project.slug
+                      }
+                      key={project.slug}
+                      onSelect={() => {
+                        setSelectedProjectSlug(project.slug);
+                        setActivePanel("projects");
+                      }}
+                      project={project}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
             </section>
           ) : null}
 
@@ -1697,8 +1817,10 @@ export function AdminEditor({
                     }
 
                     updateContent((currentContent) => {
-                      const projects = currentContent.projects.filter(
-                        (project) => project.slug !== selectedProject.slug
+                      const projects = orderProjects(
+                        currentContent.projects.filter(
+                          (project) => project.slug !== selectedProject.slug
+                        )
                       );
 
                       setSelectedProjectSlug(projects[0]?.slug ?? "");

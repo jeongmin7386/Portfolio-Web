@@ -48,6 +48,21 @@ async function readJsonDirectory<T>(directory: string): Promise<T[]> {
 
 function sortProjects(projects: Project[]) {
   return [...projects].sort((a, b) => {
+    const firstOrder = Number.isFinite(a.order) ? a.order : undefined;
+    const secondOrder = Number.isFinite(b.order) ? b.order : undefined;
+
+    if (firstOrder !== undefined && secondOrder !== undefined) {
+      return firstOrder - secondOrder;
+    }
+
+    if (firstOrder !== undefined) {
+      return -1;
+    }
+
+    if (secondOrder !== undefined) {
+      return 1;
+    }
+
     const yearDelta = Number(b.year) - Number(a.year);
     return yearDelta || a.title.localeCompare(b.title);
   });
