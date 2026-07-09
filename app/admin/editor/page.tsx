@@ -19,7 +19,7 @@ export default async function AdminEditorPage() {
   const authEnabled = isAdminAuthEnabled();
   const session = await getAdminSession();
 
-  if (authEnabled && !session.authenticated) {
+  if (!session.authenticated) {
     redirect("/admin/login");
   }
 

@@ -129,15 +129,7 @@ export function isOwnerPasswordConfigured() {
 }
 
 export function isAdminAuthEnabled() {
-  if (process.env.STUDIO_ARCHIVE_DISABLE_ADMIN_AUTH === "true") {
-    return false;
-  }
-
-  return (
-    Boolean(getAdminPassword()) ||
-    process.env.STUDIO_ARCHIVE_ENABLE_ACCOUNT_LOGIN === "true" ||
-    process.env.NODE_ENV === "production"
-  );
+  return true;
 }
 
 export function verifyAdminPassword(password: string) {
@@ -161,14 +153,6 @@ export async function verifyAdminAccount(email: string, password: string) {
 }
 
 export async function getAdminSession(): Promise<AdminSession> {
-  if (!isAdminAuthEnabled()) {
-    return {
-      authEnabled: false,
-      authenticated: true,
-      isOwner: true
-    };
-  }
-
   const cookieStore = await cookies();
   const token = cookieStore.get(adminCookieName)?.value;
   const payload = token ? verifySessionToken(token) : null;

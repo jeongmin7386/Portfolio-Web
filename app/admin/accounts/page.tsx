@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminAccountsManager } from "@/components/admin-accounts-manager";
-import { getAdminSession, isAdminAuthEnabled } from "@/lib/auth";
+import { getAdminSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +16,13 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminAccountsPage() {
-  const authEnabled = isAdminAuthEnabled();
   const session = await getAdminSession();
 
-  if (authEnabled && !session.authenticated) {
+  if (!session.authenticated) {
     redirect("/admin/login");
   }
 
-  if (authEnabled && !session.isOwner) {
+  if (!session.isOwner) {
     return (
       <div className="min-h-screen bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
         <div className="mx-auto max-w-xl rounded-md border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">

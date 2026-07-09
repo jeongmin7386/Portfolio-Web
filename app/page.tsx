@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminLoginForm } from "@/components/admin-login-form";
-import {
-  getAdminSession,
-  isAdminAuthEnabled,
-  isOwnerPasswordConfigured
-} from "@/lib/auth";
+import { getAdminSession, isOwnerPasswordConfigured } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const authEnabled = isAdminAuthEnabled();
   const session = await getAdminSession();
 
-  if (authEnabled && session.authenticated) {
-    redirect("/admin");
-  }
-
-  if (!authEnabled) {
+  if (session.authenticated) {
     redirect("/admin");
   }
 
