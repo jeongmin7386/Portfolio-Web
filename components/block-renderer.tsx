@@ -19,7 +19,11 @@ import {
   ImageLightbox,
   type LightboxImage
 } from "@/components/image-lightbox";
-import type { ProjectBlock, ProjectImage } from "@/lib/types";
+import type {
+  ProjectBlock,
+  ProjectImage,
+  ProjectTextSettings
+} from "@/lib/types";
 
 export type ProjectBlockPath = Array<number | "left" | "right">;
 
@@ -54,6 +58,43 @@ const aspectRatioClass = {
   square: "aspect-square",
   portrait: "aspect-[4/5]"
 };
+
+const projectTextFontFamily: Record<NonNullable<ProjectTextSettings["fontFamily"]>, string> = {
+  display:
+    "var(--font-display), Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+  mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
+  sans:
+    "Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+  serif: "ui-serif, Georgia, Cambria, Times New Roman, Times, serif"
+};
+
+const projectAlignClass = {
+  center: "text-center mx-auto",
+  left: "text-left",
+  right: "text-right ml-auto"
+};
+
+function getProjectTextStyle(settings: ProjectTextSettings): CSSProperties | undefined {
+  const style: CSSProperties = {
+    whiteSpace: "pre-line"
+  };
+
+  if (settings.color) {
+    style.color = settings.color;
+  }
+
+  if (settings.fontFamily) {
+    style.fontFamily = projectTextFontFamily[settings.fontFamily];
+  }
+
+  if (settings.fontSizePt) {
+    style.fontSize = `${settings.fontSizePt}pt`;
+    style.lineHeight =
+      settings.fontSizePt >= 32 ? "1.08" : settings.fontSizePt >= 20 ? "1.2" : "1.6";
+  }
+
+  return Object.keys(style).length ? style : undefined;
+}
 
 function pathKey(path: ProjectBlockPath) {
   return path.join(".");
@@ -274,10 +315,12 @@ export function BlockRenderer({
     switch (block.type) {
       case "heading": {
         const HeadingTag = block.level === 3 ? "h3" : "h2";
-        const className =
+        const textStyle = getProjectTextStyle(block);
+        const className = `${
           block.level === 3
             ? "mt-8 text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
-            : "mt-14 text-3xl font-semibold text-neutral-950 dark:text-neutral-50";
+            : "mt-14 text-3xl font-semibold text-neutral-950 dark:text-neutral-50"
+        } ${projectAlignClass[block.align ?? "left"]}`;
 
         return wrapEditableBlock(
           editable ? (
@@ -287,35 +330,45 @@ export function BlockRenderer({
               onChange={(text) => changeBlock(path, { ...block, text })}
               onFocus={() => selectBlock(path)}
               placeholder="제목 입력"
+              style={textStyle}
               value={block.text}
             />
           ) : (
-            <HeadingTag className={className}>{block.text}</HeadingTag>
+            <HeadingTag className={className} style={textStyle}>
+              {block.text}
+            </HeadingTag>
           ),
           path,
           key
         );
       }
-      case "paragraph":
+      case "paragraph": {
+        const textStyle = getProjectTextStyle(block);
+        const className = `max-w-3xl whitespace-pre-line text-base leading-8 text-neutral-700 dark:text-neutral-300 ${
+          projectAlignClass[block.align ?? "left"]
+        }`;
+
         return wrapEditableBlock(
           editable ? (
             <InlineEditableText
               as="p"
-              className="max-w-3xl whitespace-pre-line text-base leading-8 text-neutral-700 dark:text-neutral-300"
+              className={className}
               multiline
               onChange={(text) => changeBlock(path, { ...block, text })}
               onFocus={() => selectBlock(path)}
               placeholder="본문 입력"
+              style={textStyle}
               value={block.text}
             />
           ) : (
-            <p className="max-w-3xl whitespace-pre-line text-base leading-8 text-neutral-700 dark:text-neutral-300">
+            <p className={className} style={textStyle}>
               {block.text}
             </p>
           ),
           path,
           key
         );
+      }
       case "image": {
         const image = {
           src: block.src,
@@ -369,9 +422,16 @@ export function BlockRenderer({
           key
         );
       }
-      case "quote":
+      case "quote": {
+        const quoteTextStyle = getProjectTextStyle(block);
+
         return wrapEditableBlock(
-          <blockquote className="my-10 max-w-3xl border-l-2 border-emerald-600 pl-6 text-2xl leading-10 text-neutral-900 dark:border-emerald-400 dark:text-neutral-100">
+          <blockquote
+            className={`my-10 max-w-3xl border-l-2 border-emerald-600 pl-6 text-2xl leading-10 text-neutral-900 dark:border-emerald-400 dark:text-neutral-100 ${
+              projectAlignClass[block.align ?? "left"]
+            }`}
+            style={quoteTextStyle}
+          >
             {editable ? (
               <InlineEditableText
                 as="p"
@@ -379,6 +439,7 @@ export function BlockRenderer({
                 onChange={(quote) => changeBlock(path, { ...block, quote })}
                 onFocus={() => selectBlock(path)}
                 placeholder="인용문 입력"
+                style={quoteTextStyle}
                 value={block.quote}
               />
             ) : (
@@ -407,7 +468,9 @@ export function BlockRenderer({
           path,
           key
         );
+      }
       case "button": {
+        const textStyle = getProjectTextStyle(block);
         const variant = block.variant ?? "primary";
         const buttonClass =
           variant === "primary"
@@ -418,19 +481,20 @@ export function BlockRenderer({
         const className = `inline-flex min-h-10 items-center rounded-md border px-4 py-2 text-sm font-medium transition ${buttonClass}`;
 
         return wrapEditableBlock(
-          <div className="my-8">
+          <div className={`my-8 ${projectAlignClass[block.align ?? "left"]}`}>
             {editable ? (
-              <span className={className}>
+              <span className={className} style={textStyle}>
                 <InlineEditableText
                   as="span"
                   onChange={(label) => changeBlock(path, { ...block, label })}
                   onFocus={() => selectBlock(path)}
                   placeholder="버튼 문구"
+                  style={textStyle}
                   value={block.label}
                 />
               </span>
             ) : (
-              <Link className={className} href={block.href}>
+              <Link className={className} href={block.href} style={textStyle}>
                 {block.label}
               </Link>
             )}

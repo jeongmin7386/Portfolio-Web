@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import {
   type CSSProperties,
+  type KeyboardEvent,
   useEffect,
   useMemo,
   useState
@@ -55,6 +56,8 @@ import type {
   Project,
   ProjectBlock,
   ProjectImage,
+  ProjectTextFont,
+  ProjectTextSettings,
   StudioArchiveContent
 } from "@/lib/types";
 
@@ -82,6 +85,31 @@ const previewPanelClass =
   "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
+const projectTextFontOptions: Array<{ label: string; value: ProjectTextFont | "auto" }> = [
+  { label: "자동", value: "auto" },
+  { label: "Sans", value: "sans" },
+  { label: "Display", value: "display" },
+  { label: "Serif", value: "serif" },
+  { label: "Mono", value: "mono" }
+];
+
+function getColorInputValue(color?: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(color ?? "") ? color! : "#111111";
+}
+
+function isTextStyleProjectBlock(
+  block: ProjectBlock
+): block is Extract<
+  ProjectBlock,
+  { type: "heading" | "paragraph" | "quote" | "button" }
+> {
+  return (
+    block.type === "heading" ||
+    block.type === "paragraph" ||
+    block.type === "quote" ||
+    block.type === "button"
+  );
+}
 
 const blockLabels: Record<ProjectBlock["type"], string> = {
   heading: "제목",
@@ -113,6 +141,118 @@ const blockAddTypes: ProjectBlock["type"][] = [
   "stats",
   "process",
   "result"
+];
+
+type ProjectInsertOption = {
+  command: string;
+  description: string;
+  keywords: string[];
+  label: string;
+  type: ProjectBlock["type"];
+  overrides?: Partial<ProjectBlock>;
+};
+
+const projectSlashCommandOptions: ProjectInsertOption[] = [
+  {
+    command: "/h2",
+    description: "큰 제목 블록을 추가합니다.",
+    keywords: ["heading", "title", "제목"],
+    label: "제목 H2",
+    type: "heading",
+    overrides: { level: 2 } as Partial<ProjectBlock>
+  },
+  {
+    command: "/h3",
+    description: "작은 제목 블록을 추가합니다.",
+    keywords: ["heading", "subtitle", "소제목"],
+    label: "제목 H3",
+    type: "heading",
+    overrides: { level: 3 } as Partial<ProjectBlock>
+  },
+  {
+    command: "/text",
+    description: "본문 블록을 추가합니다.",
+    keywords: ["paragraph", "body", "본문"],
+    label: "본문",
+    type: "paragraph"
+  },
+  {
+    command: "/image",
+    description: "이미지 블록을 추가합니다.",
+    keywords: ["image", "photo", "이미지"],
+    label: "이미지",
+    type: "image"
+  },
+  {
+    command: "/gallery",
+    description: "이미지 갤러리를 추가합니다.",
+    keywords: ["gallery", "grid", "갤러리"],
+    label: "갤러리",
+    type: "imageGrid"
+  },
+  {
+    command: "/quote",
+    description: "인용 블록을 추가합니다.",
+    keywords: ["quote", "인용"],
+    label: "인용",
+    type: "quote"
+  },
+  {
+    command: "/button",
+    description: "버튼 블록을 추가합니다.",
+    keywords: ["button", "link", "버튼"],
+    label: "버튼",
+    type: "button"
+  },
+  {
+    command: "/divider",
+    description: "구분선을 추가합니다.",
+    keywords: ["divider", "line", "구분선"],
+    label: "구분선",
+    type: "divider"
+  },
+  {
+    command: "/embed",
+    description: "외부 콘텐츠 임베드를 추가합니다.",
+    keywords: ["embed", "iframe", "임베드"],
+    label: "임베드",
+    type: "embed"
+  },
+  {
+    command: "/spacer",
+    description: "여백 블록을 추가합니다.",
+    keywords: ["spacer", "space", "여백"],
+    label: "여백",
+    type: "spacer"
+  },
+  {
+    command: "/columns",
+    description: "2열 구성 블록을 추가합니다.",
+    keywords: ["columns", "layout", "2열"],
+    label: "2열 구성",
+    type: "twoColumn"
+  },
+  {
+    command: "/stats",
+    description: "지표 블록을 추가합니다.",
+    keywords: ["stats", "number", "지표"],
+    label: "지표",
+    type: "stats"
+  },
+  {
+    command: "/process",
+    description: "과정 블록을 추가합니다.",
+    keywords: ["process", "step", "과정"],
+    label: "과정",
+    type: "process"
+  },
+  {
+    command: "/result",
+    description: "결과 블록을 추가합니다.",
+    keywords: ["result", "outcome", "결과"],
+    label: "결과",
+    type: "result"
+  }
 ];
 
 function textToList(value: string) {
@@ -256,6 +396,13 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
   }
 }
 
+function createProjectBlockFromOption(option: ProjectInsertOption) {
+  return {
+    ...createBlock(option.type),
+    ...(option.overrides ?? {})
+  } as ProjectBlock;
+}
+
 function replaceProjectBlockAtPath(
   blocks: ProjectBlock[],
   path: ProjectBlockPath,
@@ -285,6 +432,48 @@ function replaceProjectBlockAtPath(
       [side]: replaceProjectBlockAtPath(block[side], childPath, nextBlock)
     };
   });
+}
+
+function insertProjectBlockAfterPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath,
+  nextBlock: ProjectBlock
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  const [blockIndex, side, ...childPath] = path;
+
+  if (typeof blockIndex !== "number") {
+    return {
+      blocks: [...blocks, nextBlock],
+      path: [blocks.length]
+    };
+  }
+
+  if (
+    childPath.length > 0 &&
+    (side === "left" || side === "right") &&
+    blocks[blockIndex]?.type === "twoColumn"
+  ) {
+    const block = blocks[blockIndex];
+    const inserted = insertProjectBlockAfterPath(block[side], childPath, nextBlock);
+
+    return {
+      blocks: blocks.map((currentBlock, currentIndex) =>
+        currentIndex === blockIndex && currentBlock.type === "twoColumn"
+          ? { ...currentBlock, [side]: inserted.blocks }
+          : currentBlock
+      ),
+      path: [blockIndex, side, ...inserted.path]
+    };
+  }
+
+  const insertIndex = Math.min(blockIndex + 1, blocks.length);
+  const nextBlocks = [...blocks];
+  nextBlocks.splice(insertIndex, 0, nextBlock);
+
+  return {
+    blocks: nextBlocks,
+    path: [insertIndex]
+  };
 }
 
 type ImageFieldsProps = {
@@ -545,6 +734,8 @@ type BlockListEditorProps = {
 };
 
 function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
   const updateBlock = (index: number, block: ProjectBlock) => {
     onChange(blocks.map((item, itemIndex) => (itemIndex === index ? block : item)));
   };
@@ -566,12 +757,36 @@ function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
     onChange(nextBlocks);
   };
 
+  const reorderBlock = (targetIndex: number) => {
+    if (
+      draggingIndex === null ||
+      draggingIndex === targetIndex ||
+      draggingIndex < 0 ||
+      draggingIndex >= blocks.length
+    ) {
+      return;
+    }
+
+    onChange(arrayMove(blocks, draggingIndex, targetIndex));
+    setDraggingIndex(null);
+  };
+
   return (
     <div className={nested ? "grid gap-3" : "grid gap-4"}>
       {blocks.map((block, index) => (
         <section
-          className="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950 sm:p-4"
+          className={`rounded-md border border-neutral-200 bg-white p-3 transition dark:border-neutral-800 dark:bg-neutral-950 sm:p-4 ${
+            draggingIndex === index ? "opacity-60" : ""
+          }`}
+          draggable
           key={`${block.type}-${index}`}
+          onDragEnd={() => setDraggingIndex(null)}
+          onDragOver={(event) => event.preventDefault()}
+          onDragStart={() => setDraggingIndex(index)}
+          onDrop={(event) => {
+            event.preventDefault();
+            reorderBlock(index);
+          }}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -637,7 +852,117 @@ type BlockFieldsProps = {
   onChange: (block: ProjectBlock) => void;
 };
 
+type TextStyleProjectBlock = Extract<
+  ProjectBlock,
+  { type: "heading" | "paragraph" | "quote" | "button" }
+>;
+
+function ProjectTextStyleFields({
+  block,
+  onChange
+}: {
+  block: TextStyleProjectBlock;
+  onChange: (block: TextStyleProjectBlock) => void;
+}) {
+  const updateTextSettings = (settings: Partial<ProjectTextSettings>) => {
+    onChange({
+      ...block,
+      ...settings
+    } as TextStyleProjectBlock);
+  };
+
+  return (
+    <div className="grid gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        글씨 스타일
+      </p>
+      <label className={labelClass}>
+        폰트
+        <select
+          className={inputClass}
+          onChange={(event) =>
+            updateTextSettings({
+              fontFamily:
+                event.target.value === "auto"
+                  ? undefined
+                  : (event.target.value as ProjectTextFont)
+            })
+          }
+          value={block.fontFamily ?? "auto"}
+        >
+          {projectTextFontOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={labelClass}>
+        크기(pt)
+        <input
+          className={inputClass}
+          max={160}
+          min={6}
+          onChange={(event) =>
+            updateTextSettings({
+              fontSizePt: event.target.value
+                ? Number(event.target.value)
+                : undefined
+            })
+          }
+          placeholder="자동"
+          type="number"
+          value={block.fontSizePt ?? ""}
+        />
+      </label>
+      <label className={labelClass}>
+        글씨 색
+        <div className="grid gap-2 sm:grid-cols-[48px_1fr]">
+          <input
+            aria-label="글씨 색 선택"
+            className="h-10 w-12 cursor-pointer rounded-md border border-neutral-200 bg-transparent p-1 dark:border-neutral-800"
+            onChange={(event) => updateTextSettings({ color: event.target.value })}
+            type="color"
+            value={getColorInputValue(block.color)}
+          />
+          <input
+            className={inputClass}
+            onChange={(event) =>
+              updateTextSettings({ color: event.target.value || undefined })
+            }
+            placeholder="#111111"
+            value={block.color ?? ""}
+          />
+        </div>
+      </label>
+      <label className={labelClass}>
+        정렬
+        <select
+          className={inputClass}
+          onChange={(event) =>
+            updateTextSettings({
+              align: event.target.value as ProjectTextSettings["align"]
+            })
+          }
+          value={block.align ?? "left"}
+        >
+          <option value="left">왼쪽</option>
+          <option value="center">가운데</option>
+          <option value="right">오른쪽</option>
+        </select>
+      </label>
+    </div>
+  );
+}
+
 function BlockFields({ block, onChange }: BlockFieldsProps) {
+  const textStyleFields = isTextStyleProjectBlock(block) ? (
+    <ProjectTextStyleFields
+      block={block}
+      onChange={(nextBlock) => onChange(nextBlock)}
+    />
+  ) : null;
+
   switch (block.type) {
     case "heading":
       return (
@@ -665,10 +990,12 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
               value={block.text}
             />
           </label>
+          <div className="md:col-span-2">{textStyleFields}</div>
         </div>
       );
     case "paragraph":
       return (
+        <div className="grid gap-3">
         <label className={labelClass}>
           본문
           <textarea
@@ -677,6 +1004,8 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
             value={block.text}
           />
         </label>
+        {textStyleFields}
+        </div>
       );
     case "image":
       return (
@@ -784,6 +1113,7 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
               value={block.cite ?? ""}
             />
           </label>
+          {textStyleFields}
         </div>
       );
     case "button":
@@ -829,6 +1159,7 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
               <option value="text">텍스트</option>
             </select>
           </label>
+          <div className="md:col-span-2">{textStyleFields}</div>
         </div>
       );
     case "divider":
@@ -1389,6 +1720,111 @@ function ProjectLivePreview({
   );
 }
 
+type ProjectCommandBarProps = {
+  commandMatches: ProjectInsertOption[];
+  commandValue: string;
+  isAddMenuOpen: boolean;
+  isCommandOpen: boolean;
+  selectedCommandIndex: number;
+  onCommandFocus: () => void;
+  onCommandKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onCommandValueChange: (value: string) => void;
+  onInsert: (option: ProjectInsertOption) => void;
+  onToggleAddMenu: () => void;
+};
+
+function ProjectCommandBar({
+  commandMatches,
+  commandValue,
+  isAddMenuOpen,
+  isCommandOpen,
+  selectedCommandIndex,
+  onCommandFocus,
+  onCommandKeyDown,
+  onCommandValueChange,
+  onInsert,
+  onToggleAddMenu
+}: ProjectCommandBarProps) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
+      <div className="pointer-events-auto relative flex w-full max-w-xl items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+        {(isCommandOpen || isAddMenuOpen) ? (
+          <div className="absolute bottom-[calc(100%+8px)] left-0 grid max-h-80 w-full gap-1 overflow-y-auto rounded-md border border-neutral-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+            {isCommandOpen ? (
+              commandMatches.length > 0 ? (
+                commandMatches.map((option, index) => {
+                  const active = index === selectedCommandIndex;
+
+                  return (
+                    <button
+                      className={`grid gap-1 rounded-sm px-3 py-2 text-left text-sm transition ${
+                        active
+                          ? "bg-neutral-950 text-white dark:bg-neutral-50 dark:text-neutral-950"
+                          : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
+                      }`}
+                      key={option.command}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => onInsert(option)}
+                      type="button"
+                    >
+                      <span className="font-medium">{option.label}</span>
+                      <span className="text-xs opacity-70">
+                        {option.command} · {option.description}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="px-3 py-2 text-sm text-neutral-500">
+                  맞는 명령어가 없습니다.
+                </p>
+              )
+            ) : (
+              <div className="grid gap-3">
+                <div>
+                  <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                    기본 블록
+                  </p>
+                  <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+                    {projectSlashCommandOptions.map((option) => (
+                      <button
+                        className="rounded-sm border border-neutral-200 px-3 py-2 text-left text-sm text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:text-neutral-200 dark:hover:border-neutral-600"
+                        key={option.command}
+                        onClick={() => onInsert(option)}
+                        type="button"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <button
+          aria-expanded={isAddMenuOpen}
+          aria-label="블록 추가 메뉴"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+          onClick={onToggleAddMenu}
+          type="button"
+        >
+          <Plus aria-hidden size={18} />
+        </button>
+        <input
+          className="h-10 min-w-0 flex-1 rounded-md border border-transparent bg-neutral-100 px-3 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-300 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 dark:bg-neutral-900 dark:text-neutral-50 dark:focus:border-neutral-700 dark:focus:bg-neutral-950"
+          onChange={(event) => onCommandValueChange(event.target.value)}
+          onFocus={onCommandFocus}
+          onKeyDown={onCommandKeyDown}
+          placeholder="/ 입력으로 블록 추가"
+          value={commandValue}
+        />
+      </div>
+    </div>
+  );
+}
+
 function NoteLivePreview({ note }: { note: Note }) {
   return (
     <div className="grid gap-5">
@@ -1509,6 +1945,11 @@ export function AdminEditor({
   const [selectedProjectSlug, setSelectedProjectSlug] = useState("");
   const [selectedProjectBlockPath, setSelectedProjectBlockPath] =
     useState<ProjectBlockPath>([]);
+  const [projectCommandValue, setProjectCommandValue] = useState("");
+  const [isProjectCommandOpen, setIsProjectCommandOpen] = useState(false);
+  const [isProjectAddMenuOpen, setIsProjectAddMenuOpen] = useState(false);
+  const [selectedProjectCommandIndex, setSelectedProjectCommandIndex] =
+    useState(0);
   const [selectedNoteSlug, setSelectedNoteSlug] = useState("");
   const [activePanel, setActivePanel] = useState<"projects" | "notes">(
     mode === "notes" ? "notes" : "projects"
@@ -1595,6 +2036,31 @@ export function AdminEditor({
     () => content?.notes.find((note) => note.slug === selectedNoteSlug),
     [content, selectedNoteSlug]
   );
+  const projectCommandQuery = projectCommandValue.trimStart().startsWith("/")
+    ? projectCommandValue.trimStart().slice(1).trim().toLowerCase()
+    : "";
+  const projectCommandMatches = useMemo(() => {
+    if (!projectCommandValue.trimStart().startsWith("/")) {
+      return [];
+    }
+
+    if (!projectCommandQuery) {
+      return projectSlashCommandOptions;
+    }
+
+    return projectSlashCommandOptions.filter((option) => {
+      const haystack = [
+        option.command,
+        option.description,
+        option.label,
+        ...option.keywords
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(projectCommandQuery);
+    });
+  }, [projectCommandQuery, projectCommandValue]);
 
   const updateContent = (
     updater: (currentContent: StudioArchiveContent) => StudioArchiveContent
@@ -1629,6 +2095,81 @@ export function AdminEditor({
       ...selectedProject,
       blocks: replaceProjectBlockAtPath(selectedProject.blocks, path, block)
     });
+  };
+
+  const insertProjectBlockOption = (option: ProjectInsertOption) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const nextBlock = createProjectBlockFromOption(option);
+    const insertion = insertProjectBlockAfterPath(
+      selectedProject.blocks,
+      selectedProjectBlockPath,
+      nextBlock
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setProjectCommandValue("");
+    setIsProjectCommandOpen(false);
+    setIsProjectAddMenuOpen(false);
+    setSelectedProjectCommandIndex(0);
+    setStatus(`${option.label} 블록을 추가했습니다.`);
+  };
+
+  const handleProjectCommandValueChange = (value: string) => {
+    setProjectCommandValue(value);
+    setSelectedProjectCommandIndex(0);
+
+    if (value.trimStart().startsWith("/")) {
+      setIsProjectCommandOpen(true);
+      return;
+    }
+
+    setIsProjectCommandOpen(false);
+  };
+
+  const handleProjectCommandKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Escape") {
+      setIsProjectCommandOpen(false);
+      setIsProjectAddMenuOpen(false);
+      return;
+    }
+
+    if (!isProjectCommandOpen || projectCommandMatches.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSelectedProjectCommandIndex((currentIndex) =>
+        currentIndex >= projectCommandMatches.length - 1 ? 0 : currentIndex + 1
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelectedProjectCommandIndex((currentIndex) =>
+        currentIndex <= 0 ? projectCommandMatches.length - 1 : currentIndex - 1
+      );
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      insertProjectBlockOption(
+        projectCommandMatches[
+          Math.min(selectedProjectCommandIndex, projectCommandMatches.length - 1)
+        ]
+      );
+    }
   };
 
   const updateSelectedNote = (note: Note) => {
@@ -2507,6 +3048,28 @@ export function AdminEditor({
           </aside>
         ) : null}
       </div>
+
+      {isProjectBuilderMode && selectedProject ? (
+        <ProjectCommandBar
+          commandMatches={projectCommandMatches}
+          commandValue={projectCommandValue}
+          isAddMenuOpen={isProjectAddMenuOpen}
+          isCommandOpen={isProjectCommandOpen}
+          onCommandFocus={() => {
+            if (projectCommandValue.trimStart().startsWith("/")) {
+              setIsProjectCommandOpen(true);
+            }
+          }}
+          onCommandKeyDown={handleProjectCommandKeyDown}
+          onCommandValueChange={handleProjectCommandValueChange}
+          onInsert={insertProjectBlockOption}
+          onToggleAddMenu={() => {
+            setIsProjectAddMenuOpen((current) => !current);
+            setIsProjectCommandOpen(false);
+          }}
+          selectedCommandIndex={selectedProjectCommandIndex}
+        />
+      ) : null}
     </div>
   );
 }

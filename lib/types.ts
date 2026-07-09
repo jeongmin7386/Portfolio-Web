@@ -14,16 +14,25 @@ export type ProjectImage = {
   caption?: string;
 };
 
+export type ProjectTextFont = "sans" | "display" | "serif" | "mono";
+
+export type ProjectTextSettings = {
+  fontFamily?: ProjectTextFont;
+  fontSizePt?: number;
+  color?: string;
+  align?: "left" | "center" | "right";
+};
+
 export type ProjectBlock =
-  | {
+  | ({
       type: "heading";
       text: string;
       level?: 2 | 3;
-    }
-  | {
+    } & ProjectTextSettings)
+  | ({
       type: "paragraph";
       text: string;
-    }
+    } & ProjectTextSettings)
   | {
       type: "image";
       src: string;
@@ -36,17 +45,17 @@ export type ProjectBlock =
       images: ProjectImage[];
       columns?: 2 | 3;
     }
-  | {
+  | ({
       type: "quote";
       quote: string;
       cite?: string;
-    }
-  | {
+    } & ProjectTextSettings)
+  | ({
       type: "button";
       label: string;
       href: string;
       variant?: "primary" | "secondary" | "text";
-    }
+    } & ProjectTextSettings)
   | {
       type: "divider";
       spacing?: "sm" | "md" | "lg";
