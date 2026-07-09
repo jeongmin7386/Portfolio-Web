@@ -7,13 +7,18 @@ import type { Project } from "@/lib/types";
 type ProjectCardProps = {
   project: Project;
   priority?: boolean;
+  projectBasePath?: string;
 };
 
-export function ProjectCard({ project, priority = false }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  priority = false,
+  projectBasePath = "/projects"
+}: ProjectCardProps) {
   return (
     <Link
       className="group block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500"
-      href={`/projects/${project.slug}`}
+      href={`${projectBasePath}/${project.slug}`}
     >
       <article className="grid gap-4">
         <div className="aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">

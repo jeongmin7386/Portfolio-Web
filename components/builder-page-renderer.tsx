@@ -29,6 +29,7 @@ type BuilderPageRendererProps = {
   page: BuilderPage;
   projects: Project[];
   notes: Note[];
+  projectBasePath?: string;
   editable?: boolean;
   selectedSectionId?: string;
   selectedBlockId?: string;
@@ -1167,7 +1168,11 @@ function BuilderBlockRenderer({
   }
 }
 
-function renderProjectList(section: BuilderSection, projects: Project[]) {
+function renderProjectList(
+  section: BuilderSection,
+  projects: Project[],
+  projectBasePath = "/projects"
+) {
   const sourceProjects =
     section.settings.projectSource === "all"
       ? projects
@@ -1188,7 +1193,7 @@ function renderProjectList(section: BuilderSection, projects: Project[]) {
         {visibleProjects.map((project) => (
           <Link
             className="grid gap-4 py-5 transition hover:text-emerald-700 dark:hover:text-emerald-300 md:grid-cols-[1fr_160px_120px]"
-            href={`/projects/${project.slug}`}
+            href={`${projectBasePath}/${project.slug}`}
             key={project.slug}
           >
             <div>
@@ -1217,7 +1222,11 @@ function renderProjectList(section: BuilderSection, projects: Project[]) {
   return (
     <div className={gridStyle}>
       {visibleProjects.map((project) => (
-        <ProjectCard key={project.slug} project={project} />
+        <ProjectCard
+          key={project.slug}
+          project={project}
+          projectBasePath={projectBasePath}
+        />
       ))}
     </div>
   );
@@ -1260,6 +1269,7 @@ function SectionRenderer({
   section,
   projects,
   notes,
+  projectBasePath,
   editable,
   selectedSectionId,
   selectedBlockId,
@@ -1305,7 +1315,9 @@ function SectionRenderer({
           blockList
         )}
         {section.type === "projectGrid" ? (
-          <div className="mt-8">{renderProjectList(section, projects)}</div>
+          <div className="mt-8">
+            {renderProjectList(section, projects, projectBasePath)}
+          </div>
         ) : null}
         {section.type === "archiveList" ? (
           <div className="mt-8">{renderArchiveList(notes)}</div>
@@ -1319,6 +1331,7 @@ export function BuilderPageRenderer({
   page,
   projects,
   notes,
+  projectBasePath,
   editable,
   selectedSectionId,
   selectedBlockId,
@@ -1340,6 +1353,7 @@ export function BuilderPageRenderer({
             onSelectBlock={onSelectBlock}
             onSelectSection={onSelectSection}
             page={page}
+            projectBasePath={projectBasePath}
             projects={projects}
             section={section}
             selectedBlockId={selectedBlockId}

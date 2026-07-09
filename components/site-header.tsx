@@ -14,6 +14,18 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const userMatch = pathname.match(/^\/u\/([^/]+)/);
+  const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
+  const visibleNavItems = navItems.map((item) => {
+    if (!userBasePath || item.href === "/about") {
+      return item;
+    }
+
+    return {
+      ...item,
+      href: item.href === "/" ? userBasePath : `${userBasePath}${item.href}`
+    };
+  });
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-stone-50/90 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/90">
@@ -26,9 +38,11 @@ export function SiteHeader() {
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
           <nav aria-label="주요 메뉴" className="flex items-center gap-1">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active =
-                item.href === "/"
+                userBasePath && item.href === userBasePath
+                  ? pathname === userBasePath
+                  : item.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(item.href);
 

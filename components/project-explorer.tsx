@@ -12,11 +12,13 @@ import type { Project } from "@/lib/types";
 type ProjectExplorerProps = {
   categories: string[];
   projects: Project[];
+  projectBasePath?: string;
 };
 
 export function ProjectExplorer({
   categories,
-  projects
+  projects,
+  projectBasePath = "/projects"
 }: ProjectExplorerProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategorySelection>("전체");
@@ -56,7 +58,10 @@ export function ProjectExplorer({
         onChange={setSelectedCategory}
         selected={selectedCategory}
       />
-      <ProjectGrid projects={filteredProjects} />
+      <ProjectGrid
+        projectBasePath={projectBasePath}
+        projects={filteredProjects}
+      />
     </>
   );
 }

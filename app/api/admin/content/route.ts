@@ -4,7 +4,7 @@ import {
   getStudioArchiveContent,
   saveStudioArchiveContent
 } from "@/lib/content";
-import { requireAdminAccess } from "@/lib/auth";
+import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import type { StudioArchiveContent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +31,13 @@ function unauthorized() {
 }
 
 export async function GET() {
-  if (!(await requireAdminAccess())) {
+  const session = await getAdminSession();
+
+  if (!session.authenticated) {
     return unauthorized();
   }
 
-  const content = await getStudioArchiveContent();
+  const content = await getStudioArchiveContent(getAdminContentOwnerKey(session));
 
   return NextResponse.json(content, {
     headers: {
@@ -45,7 +47,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!(await requireAdminAccess())) {
+  const session = await getAdminSession();
+
+  if (!session.authenticated) {
     return unauthorized();
   }
 
@@ -58,7 +62,10 @@ export async function PUT(request: Request) {
     );
   }
 
-  const savedContent = await saveStudioArchiveContent(body);
+  const savedContent = await saveStudioArchiveContent(
+    body,
+    getAdminContentOwnerKey(session)
+  );
 
   return NextResponse.json(savedContent, {
     headers: {

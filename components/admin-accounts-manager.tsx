@@ -213,6 +213,14 @@ export function AdminAccountsManager() {
                         ? ` · 승인일 ${new Date(user.approvedAt).toLocaleDateString("ko-KR")}`
                         : ""}
                     </p>
+                    {user.status === "approved" ? (
+                      <Link
+                        className="mt-3 inline-flex text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-300"
+                        href={`/u/${user.id}`}
+                      >
+                        공개 페이지 보기
+                      </Link>
+                    ) : null}
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                     <button

@@ -227,6 +227,10 @@ export async function requireOwnerAccess() {
   return session.authenticated && session.isOwner;
 }
 
+export function getAdminContentOwnerKey(session: AdminSession) {
+  return session.isOwner ? "owner" : (session.user?.id ?? "owner");
+}
+
 export async function setAdminSessionCookie(user?: PublicAdminUser) {
   const cookieStore = await cookies();
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAccess } from "@/lib/auth";
+import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import {
   getBuilderPage,
   publishBuilderPage,
@@ -33,11 +33,13 @@ function isBuilderPage(value: unknown): value is BuilderPage {
 }
 
 export async function GET() {
-  if (!(await requireAdminAccess())) {
+  const session = await getAdminSession();
+
+  if (!session.authenticated) {
     return unauthorized();
   }
 
-  const page = await getBuilderPage("home");
+  const page = await getBuilderPage("home", getAdminContentOwnerKey(session));
 
   return NextResponse.json(page, {
     headers: {
@@ -47,7 +49,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!(await requireAdminAccess())) {
+  const session = await getAdminSession();
+
+  if (!session.authenticated) {
     return unauthorized();
   }
 
@@ -62,9 +66,10 @@ export async function PUT(request: Request) {
     );
   }
 
+  const ownerKey = getAdminContentOwnerKey(session);
   const savedPage = shouldPublish
-    ? await publishBuilderPage(body)
-    : await saveBuilderPage({ ...body, status: "draft" });
+    ? await publishBuilderPage(body, ownerKey)
+    : await saveBuilderPage({ ...body, status: "draft" }, ownerKey);
 
   return NextResponse.json(savedPage, {
     headers: {

@@ -19,6 +19,7 @@ const contentRoot = path.join(process.cwd(), "content");
 const projectsRoot = path.join(contentRoot, "projects");
 const notesRoot = path.join(contentRoot, "notes");
 const contentRowId = "studio-archive";
+export const defaultContentOwnerKey = "owner";
 
 const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
   ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
@@ -31,6 +32,52 @@ const databaseUrl =
 let pool: Pool | undefined;
 let contentTableReady = false;
 let pageTableReady = false;
+
+export function normalizeContentOwnerKey(ownerKey = defaultContentOwnerKey) {
+  const normalized = ownerKey
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || defaultContentOwnerKey;
+}
+
+export function getOwnerHomeSlug(ownerKey = defaultContentOwnerKey) {
+  const normalizedOwnerKey = normalizeContentOwnerKey(ownerKey);
+  return normalizedOwnerKey === defaultContentOwnerKey
+    ? "home"
+    : `user-${normalizedOwnerKey}-home`;
+}
+
+function getOwnerPageId(ownerKey = defaultContentOwnerKey) {
+  const normalizedOwnerKey = normalizeContentOwnerKey(ownerKey);
+  return normalizedOwnerKey === defaultContentOwnerKey
+    ? "page-home"
+    : `page-${normalizedOwnerKey}-home`;
+}
+
+function getContentRowId(ownerKey = defaultContentOwnerKey) {
+  const normalizedOwnerKey = normalizeContentOwnerKey(ownerKey);
+  return normalizedOwnerKey === defaultContentOwnerKey
+    ? contentRowId
+    : `${contentRowId}:${normalizedOwnerKey}`;
+}
+
+function getEditableContentPath(ownerKey = defaultContentOwnerKey) {
+  const normalizedOwnerKey = normalizeContentOwnerKey(ownerKey);
+  return normalizedOwnerKey === defaultContentOwnerKey
+    ? editableContentPath
+    : path.join(dataRoot, `studio-archive-content-${normalizedOwnerKey}.json`);
+}
+
+function getEditablePagePath(ownerKey = defaultContentOwnerKey) {
+  const normalizedOwnerKey = normalizeContentOwnerKey(ownerKey);
+  return normalizedOwnerKey === defaultContentOwnerKey
+    ? editablePagePath
+    : path.join(dataRoot, `studio-archive-page-home-${normalizedOwnerKey}.json`);
+}
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const file = await fs.readFile(filePath, "utf8");
@@ -428,10 +475,12 @@ async function getSeedBuilderPage(): Promise<BuilderPage> {
   };
 }
 
-async function readFileContent(): Promise<StudioArchiveContent> {
+async function readFileContent(
+  ownerKey = defaultContentOwnerKey
+): Promise<StudioArchiveContent> {
   try {
     const content =
-      await readJsonFile<StudioArchiveContent>(editableContentPath);
+      await readJsonFile<StudioArchiveContent>(getEditableContentPath(ownerKey));
     return normalizeContent(content);
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
@@ -445,7 +494,8 @@ async function readFileContent(): Promise<StudioArchiveContent> {
 }
 
 async function saveFileContent(
-  content: StudioArchiveContent
+  content: StudioArchiveContent,
+  ownerKey = defaultContentOwnerKey
 ): Promise<StudioArchiveContent> {
   const nextContent = normalizeContent({
     ...content,
@@ -454,7 +504,7 @@ async function saveFileContent(
 
   await fs.mkdir(dataRoot, { recursive: true });
   await fs.writeFile(
-    editableContentPath,
+    getEditableContentPath(ownerKey),
     JSON.stringify(nextContent, null, 2),
     "utf8"
   );
@@ -462,12 +512,15 @@ async function saveFileContent(
   return nextContent;
 }
 
-async function readDatabaseContent(): Promise<StudioArchiveContent> {
+async function readDatabaseContent(
+  ownerKey = defaultContentOwnerKey
+): Promise<StudioArchiveContent> {
   await ensureContentTable();
+  const rowId = getContentRowId(ownerKey);
 
   const result = await getPool().query<{ content: StudioArchiveContent }>(
     "select content from studio_archive_content where id = $1",
-    [contentRowId]
+    [rowId]
   );
 
   const content = result.rows[0]?.content;
@@ -476,14 +529,16 @@ async function readDatabaseContent(): Promise<StudioArchiveContent> {
     return normalizeContent(content);
   }
 
-  const seedContent = await readFileContent();
-  return saveDatabaseContent(seedContent);
+  const seedContent = await readFileContent(ownerKey);
+  return saveDatabaseContent(seedContent, ownerKey);
 }
 
 async function saveDatabaseContent(
-  content: StudioArchiveContent
+  content: StudioArchiveContent,
+  ownerKey = defaultContentOwnerKey
 ): Promise<StudioArchiveContent> {
   await ensureContentTable();
+  const rowId = getContentRowId(ownerKey);
 
   const nextContent = normalizeContent({
     ...content,
@@ -497,36 +552,52 @@ async function saveDatabaseContent(
       on conflict (id)
       do update set content = excluded.content, updated_at = now()
     `,
-    [contentRowId, JSON.stringify(nextContent)]
+    [rowId, JSON.stringify(nextContent)]
   );
 
   return nextContent;
 }
 
-async function readFileBuilderPage(): Promise<BuilderPage> {
+async function readFileBuilderPage(
+  ownerKey = defaultContentOwnerKey
+): Promise<BuilderPage> {
   try {
-    const page = await readJsonFile<BuilderPage>(editablePagePath);
-    return normalizeBuilderPage(page);
+    const page = await readJsonFile<BuilderPage>(getEditablePagePath(ownerKey));
+    return normalizeBuilderPage({
+      ...page,
+      id: getOwnerPageId(ownerKey),
+      slug: getOwnerHomeSlug(ownerKey)
+    });
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
 
     if (nodeError.code === "ENOENT") {
-      return getSeedBuilderPage();
+      const seedPage = await getSeedBuilderPage();
+      return normalizeBuilderPage({
+        ...seedPage,
+        id: getOwnerPageId(ownerKey),
+        slug: getOwnerHomeSlug(ownerKey)
+      });
     }
 
     throw error;
   }
 }
 
-async function saveFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
+async function saveFileBuilderPage(
+  page: BuilderPage,
+  ownerKey = defaultContentOwnerKey
+): Promise<BuilderPage> {
   const nextPage = normalizeBuilderPage({
     ...page,
+    id: getOwnerPageId(ownerKey),
+    slug: getOwnerHomeSlug(ownerKey),
     updatedAt: new Date().toISOString()
   });
 
   await fs.mkdir(dataRoot, { recursive: true });
   await fs.writeFile(
-    editablePagePath,
+    getEditablePagePath(ownerKey),
     JSON.stringify(nextPage, null, 2),
     "utf8"
   );
@@ -534,10 +605,15 @@ async function saveFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
   return nextPage;
 }
 
-async function publishFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
+async function publishFileBuilderPage(
+  page: BuilderPage,
+  ownerKey = defaultContentOwnerKey
+): Promise<BuilderPage> {
   const now = new Date().toISOString();
   const nextPage = normalizeBuilderPage({
     ...page,
+    id: getOwnerPageId(ownerKey),
+    slug: getOwnerHomeSlug(ownerKey),
     status: "published",
     publishedSections: page.sections,
     publishedSeoTitle: page.seoTitle,
@@ -548,7 +624,7 @@ async function publishFileBuilderPage(page: BuilderPage): Promise<BuilderPage> {
 
   await fs.mkdir(dataRoot, { recursive: true });
   await fs.writeFile(
-    editablePagePath,
+    getEditablePagePath(ownerKey),
     JSON.stringify(nextPage, null, 2),
     "utf8"
   );
@@ -612,8 +688,12 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
     });
   }
 
-  const seedPage = await readFileBuilderPage();
-  return saveDatabaseBuilderPage({ ...seedPage, slug });
+  const seedPage = await getSeedBuilderPage();
+  return saveDatabaseBuilderPage({
+    ...seedPage,
+    id: `page-${slug}`,
+    slug
+  });
 }
 
 async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> {
@@ -737,61 +817,85 @@ export function getContentStorageMode(): ContentStorageMode {
   return databaseUrl ? "database" : "file";
 }
 
-export async function getStudioArchiveContent(): Promise<StudioArchiveContent> {
+export async function getStudioArchiveContent(
+  ownerKey = defaultContentOwnerKey
+): Promise<StudioArchiveContent> {
   noStore();
 
   if (getContentStorageMode() === "database") {
-    return readDatabaseContent();
+    return readDatabaseContent(ownerKey);
   }
 
-  return readFileContent();
+  return readFileContent(ownerKey);
 }
 
 export async function saveStudioArchiveContent(
-  content: StudioArchiveContent
+  content: StudioArchiveContent,
+  ownerKey = defaultContentOwnerKey
 ): Promise<StudioArchiveContent> {
   if (getContentStorageMode() === "database") {
-    return saveDatabaseContent(content);
+    return saveDatabaseContent(content, ownerKey);
   }
 
-  return saveFileContent(content);
+  return saveFileContent(content, ownerKey);
 }
 
-export async function getBuilderPage(slug = "home"): Promise<BuilderPage> {
+export async function getBuilderPage(
+  slug = "home",
+  ownerKey = defaultContentOwnerKey
+): Promise<BuilderPage> {
   noStore();
+  const pageSlug =
+    normalizeContentOwnerKey(ownerKey) === defaultContentOwnerKey
+      ? slug
+      : getOwnerHomeSlug(ownerKey);
 
   if (getContentStorageMode() === "database") {
-    return readDatabaseBuilderPage(slug);
+    return readDatabaseBuilderPage(pageSlug);
   }
 
-  const page = await readFileBuilderPage();
-  return page.slug === slug ? page : { ...page, slug };
+  return readFileBuilderPage(ownerKey);
 }
 
 export async function saveBuilderPage(
-  page: BuilderPage
+  page: BuilderPage,
+  ownerKey = defaultContentOwnerKey
 ): Promise<BuilderPage> {
+  const nextPage = {
+    ...page,
+    id: getOwnerPageId(ownerKey),
+    slug: getOwnerHomeSlug(ownerKey)
+  };
+
   if (getContentStorageMode() === "database") {
-    return saveDatabaseBuilderPage(page);
+    return saveDatabaseBuilderPage(nextPage);
   }
 
-  return saveFileBuilderPage(page);
+  return saveFileBuilderPage(nextPage, ownerKey);
 }
 
 export async function publishBuilderPage(
-  page: BuilderPage
+  page: BuilderPage,
+  ownerKey = defaultContentOwnerKey
 ): Promise<BuilderPage> {
+  const nextPage = {
+    ...page,
+    id: getOwnerPageId(ownerKey),
+    slug: getOwnerHomeSlug(ownerKey)
+  };
+
   if (getContentStorageMode() === "database") {
-    return publishDatabaseBuilderPage(page);
+    return publishDatabaseBuilderPage(nextPage);
   }
 
-  return publishFileBuilderPage(page);
+  return publishFileBuilderPage(nextPage, ownerKey);
 }
 
 export async function getPublishedBuilderPage(
-  slug = "home"
+  slug = "home",
+  ownerKey = defaultContentOwnerKey
 ): Promise<BuilderPage> {
-  const page = await getBuilderPage(slug);
+  const page = await getBuilderPage(slug, ownerKey);
 
   return normalizeBuilderPage({
     ...page,
@@ -802,33 +906,41 @@ export async function getPublishedBuilderPage(
   });
 }
 
-export async function getAllCategories(): Promise<string[]> {
-  const content = await getStudioArchiveContent();
+export async function getAllCategories(
+  ownerKey = defaultContentOwnerKey
+): Promise<string[]> {
+  const content = await getStudioArchiveContent(ownerKey);
   return content.categories;
 }
 
-export async function getAllProjects(): Promise<Project[]> {
-  const content = await getStudioArchiveContent();
+export async function getAllProjects(
+  ownerKey = defaultContentOwnerKey
+): Promise<Project[]> {
+  const content = await getStudioArchiveContent(ownerKey);
   return content.projects;
 }
 
-export async function getFeaturedProjects(): Promise<Project[]> {
-  const projects = await getAllProjects();
+export async function getFeaturedProjects(
+  ownerKey = defaultContentOwnerKey
+): Promise<Project[]> {
+  const projects = await getAllProjects(ownerKey);
   const featured = projects.filter((project) => project.featured);
   return (featured.length ? featured : projects).slice(0, 6);
 }
 
 export async function getProjectBySlug(
-  slug: string
+  slug: string,
+  ownerKey = defaultContentOwnerKey
 ): Promise<Project | undefined> {
-  const projects = await getAllProjects();
+  const projects = await getAllProjects(ownerKey);
   return projects.find((project) => project.slug === slug);
 }
 
 export async function getProjectsByCategory(
-  category: string
+  category: string,
+  ownerKey = defaultContentOwnerKey
 ): Promise<Project[]> {
-  const projects = await getAllProjects();
+  const projects = await getAllProjects(ownerKey);
   return projects.filter((project) => project.category === category);
 }
 
@@ -850,12 +962,17 @@ export function getProjectNeighbors(projects: Project[], slug: string) {
   };
 }
 
-export async function getAllNotes(): Promise<Note[]> {
-  const content = await getStudioArchiveContent();
+export async function getAllNotes(
+  ownerKey = defaultContentOwnerKey
+): Promise<Note[]> {
+  const content = await getStudioArchiveContent(ownerKey);
   return content.notes;
 }
 
-export async function getRecentNotes(limit = 4): Promise<Note[]> {
-  const notes = await getAllNotes();
+export async function getRecentNotes(
+  limit = 4,
+  ownerKey = defaultContentOwnerKey
+): Promise<Note[]> {
+  const notes = await getAllNotes(ownerKey);
   return notes.slice(0, limit);
 }
