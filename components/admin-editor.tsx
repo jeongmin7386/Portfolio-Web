@@ -22,6 +22,7 @@ import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
+  Clipboard,
   GripVertical,
   LogOut,
   Loader2,
@@ -31,7 +32,12 @@ import {
   Trash2,
   Upload
 } from "lucide-react";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 
 import {
   BlockRenderer,
@@ -39,6 +45,11 @@ import {
   type ProjectBlockPath
 } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
+import {
+  getImageFileFromDataTransfer,
+  readClipboardImageFile,
+  uploadAdminImage
+} from "@/lib/client-uploads";
 import type {
   Note,
   Project,
@@ -387,8 +398,26 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
     }
   };
 
+  const handleClipboardUpload = async () => {
+    try {
+      const file = await readClipboardImageFile();
+
+      if (!file) {
+        window.alert("클립보드에 이미지가 없습니다.");
+        return;
+      }
+
+      await handleUpload(file);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "클립보드 이미지를 불러오지 못했습니다."
+      );
+    }
+  };
+
   return (
-    <label className={`${secondaryButtonClass} w-fit cursor-pointer`}>
+    <div className="flex flex-wrap gap-2">
+      <label className={`${secondaryButtonClass} w-fit cursor-pointer`}>
       {isUploading ? (
         <Loader2 aria-hidden className="animate-spin" size={15} />
       ) : (
@@ -410,7 +439,17 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
         }}
         type="file"
       />
-    </label>
+      </label>
+      <button
+        className={secondaryButtonClass}
+        disabled={isUploading}
+        onClick={() => void handleClipboardUpload()}
+        type="button"
+      >
+        <Clipboard aria-hidden size={15} />
+        클립보드 붙여넣기
+      </button>
+    </div>
   );
 }
 
@@ -423,11 +462,35 @@ function ImageFields({
     <div className="grid gap-3 sm:grid-cols-2">
       <label className={labelClass}>
         이미지 URL
-        <input
-          className={inputClass}
-          onChange={(event) => onChange({ ...image, src: event.target.value })}
-          value={image.src}
-        />
+            <input
+              className={inputClass}
+              onChange={(event) => onChange({ ...image, src: event.target.value })}
+              onPaste={(event) => {
+                const file = getImageFileFromDataTransfer(event.clipboardData);
+
+                if (!file) {
+                  return;
+                }
+
+                event.preventDefault();
+                void (async () => {
+                  try {
+                    const url = await uploadAdminImage(file);
+
+                    if (url) {
+                      onChange({ ...image, src: url });
+                    }
+                  } catch (error) {
+                    window.alert(
+                      error instanceof Error
+                        ? error.message
+                        : "이미지를 업로드하지 못했습니다."
+                    );
+                  }
+                })();
+              }}
+              value={image.src}
+            />
       </label>
       <label className={labelClass}>
         대체 텍스트
@@ -2174,6 +2237,33 @@ export function AdminEditor({
                         coverImage: event.target.value
                       })
                     }
+                    onPaste={(event) => {
+                      const file = getImageFileFromDataTransfer(event.clipboardData);
+
+                      if (!file) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      void (async () => {
+                        try {
+                          const url = await uploadAdminImage(file);
+
+                          if (url) {
+                            updateSelectedProject({
+                              ...selectedProject,
+                              coverImage: url
+                            });
+                          }
+                        } catch (error) {
+                          window.alert(
+                            error instanceof Error
+                              ? error.message
+                              : "이미지를 업로드하지 못했습니다."
+                          );
+                        }
+                      })();
+                    }}
                     value={selectedProject.coverImage}
                   />
                   <UploadImageInput

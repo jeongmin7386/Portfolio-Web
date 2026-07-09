@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Clipboard,
   Copy,
   Eye,
   GripVertical,
@@ -35,9 +36,19 @@ import {
   Undo2,
   Upload
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ClipboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
+import {
+  getImageFileFromDataTransfer,
+  readClipboardImageFile
+} from "@/lib/client-uploads";
 import type {
   BuilderBlock,
   BuilderBlockType,
@@ -1621,6 +1632,37 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     }
   };
 
+  const handleClipboardImageUpload = async (onUploaded: (url: string) => void) => {
+    try {
+      const file = await readClipboardImageFile();
+
+      if (!file) {
+        window.alert("클립보드에 이미지가 없습니다.");
+        return;
+      }
+
+      await handleImageUpload(onUploaded, file);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "클립보드 이미지를 불러오지 못했습니다."
+      );
+    }
+  };
+
+  const handleImagePaste = (
+    onUploaded: (url: string) => void,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => {
+    const file = getImageFileFromDataTransfer(event.clipboardData);
+
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    void handleImageUpload(onUploaded, file);
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
@@ -1914,6 +1956,8 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                 onChange={updateSelectedSection}
                 onDelete={deleteSelectedSection}
                 onDuplicate={duplicateSelectedSection}
+                onClipboardImageUpload={handleClipboardImageUpload}
+                onImagePaste={handleImagePaste}
                 onImageUpload={handleImageUpload}
                 section={selectedSection}
               />
@@ -1987,6 +2031,8 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
               <BlockInspector
                 block={selectedBlock}
                 onChange={updateSelectedBlock}
+                onClipboardImageUpload={handleClipboardImageUpload}
+                onImagePaste={handleImagePaste}
                 onImageUpload={handleImageUpload}
               />
             ) : null}
@@ -2168,6 +2214,11 @@ type SectionInspectorProps = {
   onChange: (section: BuilderSection) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onClipboardImageUpload: (onUploaded: (url: string) => void) => void;
+  onImagePaste: (
+    onUploaded: (url: string) => void,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => void;
   onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 };
 
@@ -2177,6 +2228,8 @@ function SectionInspector({
   onChange,
   onDelete,
   onDuplicate,
+  onClipboardImageUpload,
+  onImagePaste,
   onImageUpload
 }: SectionInspectorProps) {
   const updateSettings = (settings: Partial<BuilderSectionSettings>) => {
@@ -2280,11 +2333,18 @@ function SectionInspector({
               updateSettings({ backgroundImage: event.target.value })
             }
             placeholder="/images/cover.jpg 또는 https://..."
+            onPaste={(event) =>
+              onImagePaste(
+                (url) => updateSettings({ backgroundImage: url }),
+                event
+              )
+            }
             value={section.settings.backgroundImage ?? ""}
           />
         </label>
         <div className="flex flex-wrap gap-2">
           <UploadButton
+            onClipboardImageUpload={onClipboardImageUpload}
             onImageUpload={onImageUpload}
             onUploaded={(url) => updateSettings({ backgroundImage: url })}
           />
@@ -2470,12 +2530,19 @@ function SectionInspector({
 type BlockInspectorProps = {
   block: BuilderBlock;
   onChange: (block: BuilderBlock) => void;
+  onClipboardImageUpload: (onUploaded: (url: string) => void) => void;
+  onImagePaste: (
+    onUploaded: (url: string) => void,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => void;
   onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 };
 
 function BlockInspector({
   block,
   onChange,
+  onClipboardImageUpload,
+  onImagePaste,
   onImageUpload
 }: BlockInspectorProps) {
   return (
@@ -2488,11 +2555,13 @@ function BlockInspector({
           {blockLabels[block.type]}
         </p>
       </div>
-      <BlockFields
-        block={block}
-        onChange={onChange}
-        onImageUpload={onImageUpload}
-      />
+          <BlockFields
+            block={block}
+            onChange={onChange}
+            onClipboardImageUpload={onClipboardImageUpload}
+            onImagePaste={onImagePaste}
+            onImageUpload={onImageUpload}
+          />
     </section>
   );
 }
@@ -2500,18 +2569,26 @@ function BlockInspector({
 type BlockFieldsProps = {
   block: BuilderBlock;
   onChange: (block: BuilderBlock) => void;
+  onClipboardImageUpload: (onUploaded: (url: string) => void) => void;
+  onImagePaste: (
+    onUploaded: (url: string) => void,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => void;
   onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 };
 
 function UploadButton({
+  onClipboardImageUpload,
   onUploaded,
   onImageUpload
 }: {
+  onClipboardImageUpload: (onUploaded: (url: string) => void) => void;
   onUploaded: (url: string) => void;
   onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 }) {
   return (
-    <label className={`${buttonClass} w-fit cursor-pointer`}>
+    <div className="flex flex-wrap gap-2">
+      <label className={`${buttonClass} w-fit cursor-pointer`}>
       <Upload aria-hidden size={15} />
       이미지 업로드
       <input
@@ -2523,7 +2600,16 @@ function UploadButton({
         }}
         type="file"
       />
-    </label>
+      </label>
+      <button
+        className={buttonClass}
+        onClick={() => onClipboardImageUpload(onUploaded)}
+        type="button"
+      >
+        <Clipboard aria-hidden size={15} />
+        클립보드 붙여넣기
+      </button>
+    </div>
   );
 }
 
@@ -2598,7 +2684,13 @@ function TextStyleFields({
   );
 }
 
-function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
+function BlockFields({
+  block,
+  onChange,
+  onClipboardImageUpload,
+  onImagePaste,
+  onImageUpload
+}: BlockFieldsProps) {
   const textStyleFields = isTextStyleBlock(block) ? (
     <TextStyleFields block={block} onChange={(nextBlock) => onChange(nextBlock)} />
   ) : null;
@@ -2695,10 +2787,21 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
                   content: { ...block.content, src: event.target.value }
                 })
               }
+              onPaste={(event) =>
+                onImagePaste(
+                  (url) =>
+                    onChange({
+                      ...block,
+                      content: { ...block.content, src: url }
+                    }),
+                  event
+                )
+              }
               value={block.content.src}
             />
           </label>
           <UploadButton
+            onClipboardImageUpload={onClipboardImageUpload}
             onImageUpload={onImageUpload}
             onUploaded={(url) =>
               onChange({ ...block, content: { ...block.content, src: url } })
@@ -2756,10 +2859,25 @@ function BlockFields({ block, onChange, onImageUpload }: BlockFieldsProps) {
                       }
                     })
                   }
+                  onPaste={(event) =>
+                    onImagePaste(
+                      (url) =>
+                        onChange({
+                          ...block,
+                          content: {
+                            images: block.content.images.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, src: url } : item
+                            )
+                          }
+                        }),
+                      event
+                    )
+                  }
                   value={image.src}
                 />
               </label>
               <UploadButton
+                onClipboardImageUpload={onClipboardImageUpload}
                 onImageUpload={onImageUpload}
                 onUploaded={(url) =>
                   onChange({
