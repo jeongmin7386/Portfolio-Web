@@ -238,6 +238,61 @@ function getBlockSelectionClass(selected: boolean) {
     : "outline outline-0";
 }
 
+type ScrollSnapshot = {
+  containers: Array<{
+    element: HTMLElement;
+    scrollLeft: number;
+    scrollTop: number;
+  }>;
+  windowX: number;
+  windowY: number;
+};
+
+function captureScrollSnapshot(element: HTMLElement): ScrollSnapshot {
+  const containers: ScrollSnapshot["containers"] = [];
+  let parent = element.parentElement;
+
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    const overflow = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
+    const scrollable =
+      /(auto|scroll|overlay)/.test(overflow) &&
+      (parent.scrollHeight > parent.clientHeight ||
+        parent.scrollWidth > parent.clientWidth);
+
+    if (scrollable) {
+      containers.push({
+        element: parent,
+        scrollLeft: parent.scrollLeft,
+        scrollTop: parent.scrollTop
+      });
+    }
+
+    parent = parent.parentElement;
+  }
+
+  return {
+    containers,
+    windowX: window.scrollX,
+    windowY: window.scrollY
+  };
+}
+
+function restoreScrollSnapshot(snapshot: ScrollSnapshot) {
+  const restore = () => {
+    snapshot.containers.forEach(({ element, scrollLeft, scrollTop }) => {
+      element.scrollLeft = scrollLeft;
+      element.scrollTop = scrollTop;
+    });
+    window.scrollTo(snapshot.windowX, snapshot.windowY);
+  };
+
+  window.requestAnimationFrame(() => {
+    restore();
+    window.requestAnimationFrame(restore);
+  });
+}
+
 const builderInsertOptions: Array<{ label: string; type: BuilderBlockType }> = [
   { label: "제목", type: "heading" },
   { label: "본문", type: "paragraph" },
@@ -384,6 +439,8 @@ function InlineEditableText({
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
       if (event.key === "Enter" && event.shiftKey) {
         event.preventDefault();
+        const target = event.currentTarget;
+        const scrollSnapshot = captureScrollSnapshot(target);
 
         const selection = window.getSelection();
 
@@ -401,7 +458,8 @@ function InlineEditableText({
 
         selection.removeAllRanges();
         selection.addRange(range);
-        onChange(event.currentTarget.textContent ?? "");
+        onChange(target.textContent ?? "");
+        restoreScrollSnapshot(scrollSnapshot);
         return;
       }
 

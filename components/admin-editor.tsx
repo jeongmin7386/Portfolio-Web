@@ -2212,7 +2212,11 @@ export function AdminEditor({
       return;
     }
 
-    setSelectedProjectBlockPath(path);
+    setSelectedProjectBlockPath((currentPath) =>
+      projectBlockPathKey(currentPath) === projectBlockPathKey(path)
+        ? currentPath
+        : path
+    );
     updateSelectedProject({
       ...selectedProject,
       blocks: replaceProjectBlockAtPath(selectedProject.blocks, path, block)
