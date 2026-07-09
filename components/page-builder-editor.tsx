@@ -1442,6 +1442,43 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     setStatus(`${blockLabels[block.type]} 블록을 추가했습니다.`);
   };
 
+  const insertBlockAtPosition = (
+    sectionId: string,
+    insertIndex: number,
+    type: BuilderBlockType
+  ) => {
+    if (!page) {
+      return;
+    }
+
+    const block = createBlock(type);
+    const nextSections = sortedSections.map((section) => {
+      if (section.id !== sectionId) {
+        return section;
+      }
+
+      const sortedBlocks = section.blocks
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      const boundedIndex = Math.max(
+        0,
+        Math.min(insertIndex, sortedBlocks.length)
+      );
+      const nextBlocks = [...sortedBlocks];
+      nextBlocks.splice(boundedIndex, 0, block);
+
+      return {
+        ...section,
+        blocks: orderItems(nextBlocks)
+      };
+    });
+
+    commitPage({ ...page, sections: orderItems(nextSections) });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(block.id);
+    setStatus(`${blockLabels[type]} 블록을 추가했습니다.`);
+  };
+
   const deleteSelectedSection = () => {
     if (!page || !selectedSection) {
       return;
@@ -1965,6 +2002,7 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
               editable
               notes={notes}
               onChangeBlock={updateBlockInSection}
+              onInsertBlock={insertBlockAtPosition}
               onSelectBlock={(sectionId, blockId) => {
                 setSelectedSectionId(sectionId);
                 setSelectedBlockId(blockId);

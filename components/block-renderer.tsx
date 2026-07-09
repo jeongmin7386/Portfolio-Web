@@ -14,6 +14,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import {
   ImageLightbox,
@@ -33,6 +34,7 @@ type BlockRendererProps = {
   selectedBlockPath?: ProjectBlockPath;
   onSelectBlock?: (path: ProjectBlockPath) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
+  onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
 };
 
 type ActiveLightbox = {
@@ -58,6 +60,83 @@ const aspectRatioClass = {
   square: "aspect-square",
   portrait: "aspect-[4/5]"
 };
+
+const projectInsertOptions: Array<{
+  label: string;
+  type: ProjectBlock["type"];
+}> = [
+  { label: "제목", type: "heading" },
+  { label: "본문", type: "paragraph" },
+  { label: "이미지", type: "image" },
+  { label: "갤러리", type: "imageGrid" },
+  { label: "인용", type: "quote" },
+  { label: "버튼", type: "button" },
+  { label: "구분선", type: "divider" },
+  { label: "여백", type: "spacer" },
+  { label: "임베드", type: "embed" },
+  { label: "2열", type: "twoColumn" },
+  { label: "지표", type: "stats" },
+  { label: "과정", type: "process" },
+  { label: "결과", type: "result" }
+];
+
+function ProjectInsertionPoint({
+  onInsertBlock,
+  path
+}: {
+  onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  path: ProjectBlockPath;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!onInsertBlock) {
+    return null;
+  }
+
+  return (
+    <div
+      className="group relative z-20 -my-2 flex h-7 items-center justify-center"
+      onClick={(event) => event.stopPropagation()}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <div
+        className={`absolute inset-x-0 top-1/2 h-px bg-blue-500 transition ${
+          open ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      />
+      <button
+        aria-expanded={open}
+        aria-label="이 위치에 블록 추가"
+        className={`relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
+          open
+            ? "scale-100 opacity-100"
+            : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 focus:scale-100 focus:opacity-100"
+        }`}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <Plus aria-hidden size={18} />
+      </button>
+      {open ? (
+        <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-56 -translate-x-1/2 gap-1 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+          {projectInsertOptions.map((option) => (
+            <button
+              className="rounded-sm px-3 py-2 text-left text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:bg-neutral-900"
+              key={option.type}
+              onClick={() => {
+                onInsertBlock(path, option.type);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const projectTextFontFamily: Record<NonNullable<ProjectTextSettings["fontFamily"]>, string> = {
   display:
@@ -207,7 +286,8 @@ export function BlockRenderer({
   editable,
   selectedBlockPath,
   onSelectBlock,
-  onChangeBlock
+  onChangeBlock,
+  onInsertBlock
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
 
@@ -564,22 +644,10 @@ export function BlockRenderer({
         return wrapEditableBlock(
           <div className="my-10 grid gap-8 border-y border-neutral-200 py-8 dark:border-neutral-800 md:grid-cols-2">
             <div className="grid content-start gap-5">
-              {block.left.map((child, index) =>
-                renderBlock(child, `${key}-left-${index}`, [
-                  ...path,
-                  "left",
-                  index
-                ])
-              )}
+              {renderBlockList(block.left, [...path, "left"], `${key}-left`)}
             </div>
             <div className="grid content-start gap-5">
-              {block.right.map((child, index) =>
-                renderBlock(child, `${key}-right-${index}`, [
-                  ...path,
-                  "right",
-                  index
-                ])
-              )}
+              {renderBlockList(block.right, [...path, "right"], `${key}-right`)}
             </div>
           </div>,
           path,
@@ -789,9 +857,42 @@ export function BlockRenderer({
     }
   };
 
+  const renderInsertionPoint = (path: ProjectBlockPath, key: string) => {
+    if (!editable || !onInsertBlock) {
+      return null;
+    }
+
+    return (
+      <ProjectInsertionPoint
+        key={key}
+        onInsertBlock={onInsertBlock}
+        path={path}
+      />
+    );
+  };
+
+  const renderBlockList = (
+    blockList: ProjectBlock[],
+    pathPrefix: ProjectBlockPath,
+    keyPrefix: string
+  ) => (
+    <Fragment>
+      {renderInsertionPoint([...pathPrefix, 0], `${keyPrefix}-insert-0`)}
+      {blockList.map((block, index) => (
+        <Fragment key={`${keyPrefix}-${index}`}>
+          {renderBlock(block, `${keyPrefix}-${index}`, [...pathPrefix, index])}
+          {renderInsertionPoint(
+            [...pathPrefix, index + 1],
+            `${keyPrefix}-insert-${index + 1}`
+          )}
+        </Fragment>
+      ))}
+    </Fragment>
+  );
+
   return (
     <div className="grid gap-6">
-      {blocks.map((block, index) => renderBlock(block, `block-${index}`, [index]))}
+      {renderBlockList(blocks, [], "block")}
       <ImageLightbox
         activeIndex={lightbox?.index ?? null}
         images={lightbox?.images ?? []}

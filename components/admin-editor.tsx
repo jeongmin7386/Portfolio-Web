@@ -497,6 +497,48 @@ function insertProjectBlockAfterPath(
   };
 }
 
+function insertProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath,
+  nextBlock: ProjectBlock
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  const [insertIndex, side, ...childPath] = path;
+
+  if (typeof insertIndex !== "number") {
+    return {
+      blocks: [...blocks, nextBlock],
+      path: [blocks.length]
+    };
+  }
+
+  if (
+    childPath.length > 0 &&
+    (side === "left" || side === "right") &&
+    blocks[insertIndex]?.type === "twoColumn"
+  ) {
+    const block = blocks[insertIndex];
+    const inserted = insertProjectBlockAtPath(block[side], childPath, nextBlock);
+
+    return {
+      blocks: blocks.map((currentBlock, currentIndex) =>
+        currentIndex === insertIndex && currentBlock.type === "twoColumn"
+          ? { ...currentBlock, [side]: inserted.blocks }
+          : currentBlock
+      ),
+      path: [insertIndex, side, ...inserted.path]
+    };
+  }
+
+  const boundedIndex = Math.max(0, Math.min(insertIndex, blocks.length));
+  const nextBlocks = [...blocks];
+  nextBlocks.splice(boundedIndex, 0, nextBlock);
+
+  return {
+    blocks: nextBlocks,
+    path: [boundedIndex]
+  };
+}
+
 type ImageFieldsProps = {
   image: ProjectImage & { aspectRatio?: "wide" | "square" | "portrait" };
   showAspectRatio?: boolean;
@@ -1551,6 +1593,10 @@ type AdminLivePreviewProps = {
   onSelectProjectBlock?: (path: ProjectBlockPath) => void;
   onChangeProject?: (project: Project) => void;
   onChangeProjectBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
+  onInsertProjectBlock?: (
+    path: ProjectBlockPath,
+    type: ProjectBlock["type"]
+  ) => void;
 };
 
 function PreviewMetaItem({
@@ -1592,16 +1638,20 @@ function ProjectLivePreview({
   selectedBlockPath,
   onSelectBlock,
   onChangeProject,
-  onChangeBlock
+  onChangeBlock,
+  onInsertBlock
 }: {
   project: Project;
   selectedBlockPath?: ProjectBlockPath;
   onSelectBlock?: (path: ProjectBlockPath) => void;
   onChangeProject?: (project: Project) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
+  onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
 }) {
   const coverImage = project.coverImage || "/images/placeholder-atlas.svg";
-  const editable = Boolean(onChangeProject || onChangeBlock || onSelectBlock);
+  const editable = Boolean(
+    onChangeProject || onChangeBlock || onSelectBlock || onInsertBlock
+  );
   const updateProject = (projectPatch: Partial<Project>) => {
     onChangeProject?.({ ...project, ...projectPatch });
   };
@@ -1763,6 +1813,7 @@ function ProjectLivePreview({
             blocks={project.blocks}
             editable={editable}
             onChangeBlock={onChangeBlock}
+            onInsertBlock={onInsertBlock}
             onSelectBlock={onSelectBlock}
             selectedBlockPath={selectedBlockPath}
           />
@@ -1925,13 +1976,15 @@ function AdminLivePreview({
   selectedProjectBlockPath,
   onSelectProjectBlock,
   onChangeProject,
-  onChangeProjectBlock
+  onChangeProjectBlock,
+  onInsertProjectBlock
 }: AdminLivePreviewProps) {
   if (activePanel === "projects" && project) {
     return (
       <ProjectLivePreview
         onChangeBlock={onChangeProjectBlock}
         onChangeProject={onChangeProject}
+        onInsertBlock={onInsertProjectBlock}
         onSelectBlock={onSelectProjectBlock}
         project={project}
         selectedBlockPath={selectedProjectBlockPath}
@@ -2188,6 +2241,29 @@ export function AdminEditor({
     setIsProjectAddMenuOpen(false);
     setSelectedProjectCommandIndex(0);
     setStatus(`${option.label} 블록을 추가했습니다.`);
+  };
+
+  const insertProjectBlockAtPreviewPath = (
+    path: ProjectBlockPath,
+    type: ProjectBlock["type"]
+  ) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const nextBlock = createBlock(type);
+    const insertion = insertProjectBlockAtPath(
+      selectedProject.blocks,
+      path,
+      nextBlock
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setStatus(`${blockLabels[type]} 블록을 추가했습니다.`);
   };
 
   const handleProjectCommandValueChange = (value: string) => {
@@ -2666,6 +2742,7 @@ export function AdminEditor({
                 note={selectedNote}
                 onChangeProject={updateSelectedProject}
                 onChangeProjectBlock={updateSelectedProjectBlock}
+                onInsertProjectBlock={insertProjectBlockAtPreviewPath}
                 onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
                 selectedProjectBlockPath={selectedProjectBlockPath}
@@ -3111,6 +3188,7 @@ export function AdminEditor({
               note={selectedNote}
               onChangeProject={updateSelectedProject}
               onChangeProjectBlock={updateSelectedProjectBlock}
+              onInsertProjectBlock={insertProjectBlockAtPreviewPath}
               onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}
               selectedProjectBlockPath={selectedProjectBlockPath}

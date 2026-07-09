@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import {
+  Fragment,
   type CSSProperties,
   type FocusEvent,
   type FormEvent,
@@ -17,6 +19,7 @@ import { ProjectCard } from "@/components/project-card";
 import { TagList } from "@/components/tag-list";
 import type {
   BuilderBlock,
+  BuilderBlockType,
   BuilderPage,
   BuilderSection,
   BuilderTextFont,
@@ -37,6 +40,11 @@ type BuilderPageRendererProps = {
   onSelectSection?: (sectionId: string) => void;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
+  onInsertBlock?: (
+    sectionId: string,
+    insertIndex: number,
+    type: BuilderBlockType
+  ) => void;
 };
 
 const paddingYClass = {
@@ -228,6 +236,83 @@ function getBlockSelectionClass(selected: boolean) {
   return selected
     ? "outline outline-2 outline-offset-2 outline-blue-500"
     : "outline outline-0";
+}
+
+const builderInsertOptions: Array<{ label: string; type: BuilderBlockType }> = [
+  { label: "제목", type: "heading" },
+  { label: "본문", type: "paragraph" },
+  { label: "이미지", type: "image" },
+  { label: "갤러리", type: "gallery" },
+  { label: "버튼", type: "button" },
+  { label: "인용", type: "quote" },
+  { label: "구분선", type: "divider" },
+  { label: "여백", type: "spacer" },
+  { label: "임베드", type: "embed" },
+  { label: "지표", type: "stats" }
+];
+
+function BuilderInsertionPoint({
+  insertIndex,
+  onInsertBlock,
+  sectionId
+}: {
+  insertIndex: number;
+  onInsertBlock?: (
+    sectionId: string,
+    insertIndex: number,
+    type: BuilderBlockType
+  ) => void;
+  sectionId: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!onInsertBlock) {
+    return null;
+  }
+
+  return (
+    <div
+      className="group relative z-20 -my-2 flex h-7 items-center justify-center"
+      onClick={(event) => event.stopPropagation()}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <div
+        className={`absolute inset-x-0 top-1/2 h-px bg-blue-500 transition ${
+          open ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      />
+      <button
+        aria-expanded={open}
+        aria-label="이 위치에 블록 추가"
+        className={`relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
+          open
+            ? "scale-100 opacity-100"
+            : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 focus:scale-100 focus:opacity-100"
+        }`}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <Plus aria-hidden size={18} />
+      </button>
+      {open ? (
+        <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-56 -translate-x-1/2 gap-1 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+          {builderInsertOptions.map((option) => (
+            <button
+              className="rounded-sm px-3 py-2 text-left text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:bg-neutral-900"
+              key={option.type}
+              onClick={() => {
+                onInsertBlock(sectionId, insertIndex, option.type);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 type BlockRendererProps = {
@@ -1334,7 +1419,8 @@ function SectionRenderer({
   selectedBlockId,
   onSelectSection,
   onSelectBlock,
-  onChangeBlock
+  onChangeBlock,
+  onInsertBlock
 }: SectionRendererProps) {
   const selected = selectedSectionId === section.id;
   const blocks = [...section.blocks].sort((a, b) => a.order - b.order);
@@ -1351,16 +1437,31 @@ function SectionRenderer({
 
   const blockList = (
     <div className={`grid ${gap}`}>
-      {blocks.map((block) => (
-        <BuilderBlockRenderer
-          block={block}
-          editable={editable}
-          key={block.id}
-          onChangeBlock={onChangeBlock}
-          onSelectBlock={onSelectBlock}
+      {editable ? (
+        <BuilderInsertionPoint
+          insertIndex={0}
+          onInsertBlock={onInsertBlock}
           sectionId={section.id}
-          selected={selectedBlockId === block.id}
         />
+      ) : null}
+      {blocks.map((block, index) => (
+        <Fragment key={block.id}>
+          <BuilderBlockRenderer
+            block={block}
+            editable={editable}
+            onChangeBlock={onChangeBlock}
+            onSelectBlock={onSelectBlock}
+            sectionId={section.id}
+            selected={selectedBlockId === block.id}
+          />
+          {editable ? (
+            <BuilderInsertionPoint
+              insertIndex={index + 1}
+              onInsertBlock={onInsertBlock}
+              sectionId={section.id}
+            />
+          ) : null}
+        </Fragment>
       ))}
     </div>
   );
@@ -1396,7 +1497,8 @@ export function BuilderPageRenderer({
   selectedBlockId,
   onSelectSection,
   onSelectBlock,
-  onChangeBlock
+  onChangeBlock,
+  onInsertBlock
 }: BuilderPageRendererProps) {
   return (
     <div className={editable ? "bg-white dark:bg-neutral-950" : ""}>
@@ -1409,6 +1511,7 @@ export function BuilderPageRenderer({
             key={section.id}
             notes={notes}
             onChangeBlock={onChangeBlock}
+            onInsertBlock={onInsertBlock}
             onSelectBlock={onSelectBlock}
             onSelectSection={onSelectSection}
             page={page}
