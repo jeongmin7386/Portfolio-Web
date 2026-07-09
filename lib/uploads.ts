@@ -11,19 +11,19 @@ const allowedTypes = new Map([
   ["image/webp", ".webp"],
   ["image/avif", ".avif"],
   ["image/gif", ".gif"],
-  ["image/heic", ".heic"],
-  ["image/heic-sequence", ".heic"],
-  ["image/heif", ".heif"],
-  ["image/heif-sequence", ".heif"],
   ["image/svg+xml", ".svg"]
 ]);
 
+const allowedExtensions = new Set([...Array.from(allowedTypes.values()), ".jpeg"]);
 const maxUploadBytes = 10 * 1024 * 1024;
 const databaseUrl =
   process.env.STUDIO_ARCHIVE_DATABASE_URL ?? process.env.DATABASE_URL;
+const configuredUploadRoot = process.env.STUDIO_ARCHIVE_UPLOAD_DIR?.trim();
 
-export const uploadRoot = process.env.STUDIO_ARCHIVE_UPLOAD_DIR
-  ? path.resolve(process.env.STUDIO_ARCHIVE_UPLOAD_DIR)
+export type UploadStorageMode = "database" | "persistent-file" | "ephemeral-file";
+
+export const uploadRoot = configuredUploadRoot
+  ? path.resolve(configuredUploadRoot)
   : path.join(process.cwd(), "data", "uploads");
 
 let pool: Pool | undefined;
@@ -48,9 +48,12 @@ function getExtension(file: File) {
   }
 
   const extensionFromName = path.extname(file.name).toLowerCase();
-  return Array.from(allowedTypes.values()).includes(extensionFromName)
-    ? extensionFromName
-    : undefined;
+
+  if (!allowedExtensions.has(extensionFromName)) {
+    return undefined;
+  }
+
+  return extensionFromName === ".jpeg" ? ".jpg" : extensionFromName;
 }
 
 function getContentType(filePath: string) {
@@ -68,15 +71,59 @@ function getContentType(filePath: string) {
       return "image/avif";
     case ".gif":
       return "image/gif";
-    case ".heic":
-      return "image/heic";
-    case ".heif":
-      return "image/heif";
     case ".svg":
       return "image/svg+xml";
     default:
       return "application/octet-stream";
   }
+}
+
+export function getUploadStorageMode(): UploadStorageMode {
+  if (databaseUrl) {
+    return "database";
+  }
+
+  if (configuredUploadRoot) {
+    return "persistent-file";
+  }
+
+  return "ephemeral-file";
+}
+
+function assertStableUploadStorage() {
+  if (getUploadStorageMode() !== "ephemeral-file") {
+    return;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  throw new Error(
+    "이미지 저장소가 설정되지 않았습니다. Render에서는 DATABASE_URL 또는 STUDIO_ARCHIVE_DATABASE_URL을 연결한 뒤 다시 업로드해 주세요."
+  );
+}
+
+function validateUploadedImageBasics(file: File) {
+  if (file.type && !file.type.startsWith("image/")) {
+    throw new Error("이미지 파일만 업로드할 수 있습니다.");
+  }
+
+  if (file.size > maxUploadBytes) {
+    throw new Error("이미지는 10MB 이하로 업로드해 주세요.");
+  }
+}
+
+function assertSupportedImageExtension(
+  extension: string | undefined
+): asserts extension is string {
+  if (extension) {
+    return;
+  }
+
+  throw new Error(
+    "지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, AVIF, GIF, SVG로 변환한 뒤 업로드해 주세요."
+  );
 }
 
 function getDatabaseSsl(): PoolConfig["ssl"] {
@@ -187,19 +234,12 @@ async function readUploadedImageFromDatabase(fileName: string) {
 }
 
 export async function saveUploadedImage(file: File) {
-  if (file.type && !file.type.startsWith("image/")) {
-    throw new Error("이미지 파일만 업로드할 수 있습니다.");
-  }
-
-  if (file.size > maxUploadBytes) {
-    throw new Error("이미지는 10MB 이하로 업로드해 주세요.");
-  }
+  validateUploadedImageBasics(file);
 
   const extension = getExtension(file);
+  assertSupportedImageExtension(extension);
 
-  if (!extension) {
-    throw new Error("지원하지 않는 이미지 형식입니다.");
-  }
+  assertStableUploadStorage();
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const baseName = sanitizeName(path.basename(file.name, path.extname(file.name)));
