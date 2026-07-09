@@ -56,8 +56,6 @@ import type {
   Project,
   ProjectBlock,
   ProjectImage,
-  ProjectTextFont,
-  ProjectTextSettings,
   StudioArchiveContent
 } from "@/lib/types";
 
@@ -130,32 +128,6 @@ function isProjectEditorInteractiveTarget(target: EventTarget | null) {
         'a, button, input, select, textarea, [contenteditable="true"]'
       )
     )
-  );
-}
-
-const projectTextFontOptions: Array<{ label: string; value: ProjectTextFont | "auto" }> = [
-  { label: "자동", value: "auto" },
-  { label: "Sans", value: "sans" },
-  { label: "Display", value: "display" },
-  { label: "Serif", value: "serif" },
-  { label: "Mono", value: "mono" }
-];
-
-function getColorInputValue(color?: string) {
-  return /^#[0-9a-fA-F]{6}$/.test(color ?? "") ? color! : "#111111";
-}
-
-function isTextStyleProjectBlock(
-  block: ProjectBlock
-): block is Extract<
-  ProjectBlock,
-  { type: "heading" | "paragraph" | "quote" | "button" }
-> {
-  return (
-    block.type === "heading" ||
-    block.type === "paragraph" ||
-    block.type === "quote" ||
-    block.type === "button"
   );
 }
 
@@ -975,109 +947,6 @@ type BlockFieldsProps = {
   selectedPath?: ProjectBlockPath;
 };
 
-type TextStyleProjectBlock = Extract<
-  ProjectBlock,
-  { type: "heading" | "paragraph" | "quote" | "button" }
->;
-
-function ProjectTextStyleFields({
-  block,
-  onChange
-}: {
-  block: TextStyleProjectBlock;
-  onChange: (block: TextStyleProjectBlock) => void;
-}) {
-  const updateTextSettings = (settings: Partial<ProjectTextSettings>) => {
-    onChange({
-      ...block,
-      ...settings
-    } as TextStyleProjectBlock);
-  };
-
-  return (
-    <div className="grid gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
-        글씨 스타일
-      </p>
-      <label className={labelClass}>
-        폰트
-        <select
-          className={inputClass}
-          onChange={(event) =>
-            updateTextSettings({
-              fontFamily:
-                event.target.value === "auto"
-                  ? undefined
-                  : (event.target.value as ProjectTextFont)
-            })
-          }
-          value={block.fontFamily ?? "auto"}
-        >
-          {projectTextFontOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={labelClass}>
-        크기(pt)
-        <input
-          className={inputClass}
-          max={160}
-          min={6}
-          onChange={(event) =>
-            updateTextSettings({
-              fontSizePt: event.target.value
-                ? Number(event.target.value)
-                : undefined
-            })
-          }
-          placeholder="자동"
-          type="number"
-          value={block.fontSizePt ?? ""}
-        />
-      </label>
-      <label className={labelClass}>
-        글씨 색
-        <div className="grid gap-2 sm:grid-cols-[48px_1fr]">
-          <input
-            aria-label="글씨 색 선택"
-            className="h-10 w-12 cursor-pointer rounded-md border border-neutral-200 bg-transparent p-1 dark:border-neutral-800"
-            onChange={(event) => updateTextSettings({ color: event.target.value })}
-            type="color"
-            value={getColorInputValue(block.color)}
-          />
-          <input
-            className={inputClass}
-            onChange={(event) =>
-              updateTextSettings({ color: event.target.value || undefined })
-            }
-            placeholder="#111111"
-            value={block.color ?? ""}
-          />
-        </div>
-      </label>
-      <label className={labelClass}>
-        정렬
-        <select
-          className={inputClass}
-          onChange={(event) =>
-            updateTextSettings({
-              align: event.target.value as ProjectTextSettings["align"]
-            })
-          }
-          value={block.align ?? "left"}
-        >
-          <option value="left">왼쪽</option>
-          <option value="center">가운데</option>
-          <option value="right">오른쪽</option>
-        </select>
-      </label>
-    </div>
-  );
-}
-
 function BlockFields({
   block,
   onChange,
@@ -1085,13 +954,6 @@ function BlockFields({
   path,
   selectedPath
 }: BlockFieldsProps) {
-  const textStyleFields = isTextStyleProjectBlock(block) ? (
-    <ProjectTextStyleFields
-      block={block}
-      onChange={(nextBlock) => onChange(nextBlock)}
-    />
-  ) : null;
-
   switch (block.type) {
     case "heading":
       return (
@@ -1119,7 +981,6 @@ function BlockFields({
               value={block.text}
             />
           </label>
-          <div className="md:col-span-2">{textStyleFields}</div>
         </div>
       );
     case "paragraph":
@@ -1133,7 +994,6 @@ function BlockFields({
             value={block.text}
           />
         </label>
-        {textStyleFields}
         </div>
       );
     case "image":
@@ -1242,7 +1102,6 @@ function BlockFields({
               value={block.cite ?? ""}
             />
           </label>
-          {textStyleFields}
         </div>
       );
     case "button":
@@ -1288,7 +1147,6 @@ function BlockFields({
               <option value="text">텍스트</option>
             </select>
           </label>
-          <div className="md:col-span-2">{textStyleFields}</div>
         </div>
       );
     case "divider":
