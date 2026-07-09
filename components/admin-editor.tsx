@@ -44,7 +44,7 @@ const panelClass =
 const editorPanelClass =
   "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:gap-6 sm:p-5 lg:p-6";
 const previewPanelClass =
-  "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:overscroll-contain";
+  "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
 
@@ -1206,7 +1206,7 @@ export function AdminEditor({
   const editorLayoutClass =
     mode === "all"
       ? "grid items-start gap-4 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]"
-      : "grid items-start gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
+      : "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)_minmax(280px,320px)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
 
   useEffect(() => {
     let mounted = true;
