@@ -2375,12 +2375,18 @@ export function AdminEditor({
               전체 관리
             </Link>
             <Link
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              href="/admin/editor"
+            >
+              홈 빌더
+            </Link>
+            <Link
               className={`w-full sm:w-auto ${
                 mode === "projects" ? primaryButtonClass : secondaryButtonClass
               }`}
               href="/admin/projects"
             >
-              프로젝트 편집
+              프로젝트
             </Link>
             <Link
               className={`w-full sm:w-auto ${
@@ -2388,10 +2394,7 @@ export function AdminEditor({
               }`}
               href="/admin/archive"
             >
-              아카이브 편집
-            </Link>
-            <Link className={`${secondaryButtonClass} w-full sm:w-auto`} href="/admin/editor">
-              홈 빌더
+              아카이브
             </Link>
             <Link
               className={`${secondaryButtonClass} w-full sm:w-auto`}
