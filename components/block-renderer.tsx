@@ -97,7 +97,6 @@ function ProjectInsertionPoint({
     <div
       className="group relative z-20 -my-2 flex h-7 items-center justify-center"
       onClick={(event) => event.stopPropagation()}
-      onMouseLeave={() => setOpen(false)}
     >
       <div
         className={`absolute inset-x-0 top-1/2 h-px bg-blue-500 transition ${
