@@ -10,18 +10,19 @@ export const metadata: Metadata = {
     default: "Studio Archive",
     template: "%s | Studio Archive"
   },
-  description: "이미지 중심 작업과 케이스 스터디, 과정 노트를 담은 미니멀 포트폴리오 아카이브.",
+  description:
+    "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio Archive 작업 공간입니다.",
   keywords: [
-    "포트폴리오",
-    "디자인 포트폴리오",
-    "케이스 스터디",
-    "브랜딩",
-    "UI UX",
-    "에디토리얼 디자인"
+    "포트폴리오 빌더",
+    "포트폴리오 편집",
+    "디자이너 포트폴리오",
+    "프로젝트 아카이브",
+    "Studio Archive"
   ],
   openGraph: {
     title: "Studio Archive",
-    description: "이미지 중심 작업과 케이스 스터디, 과정 노트를 담은 미니멀 포트폴리오 아카이브.",
+    description:
+      "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio Archive 작업 공간입니다.",
     siteName: "Studio Archive",
     type: "website"
   }
