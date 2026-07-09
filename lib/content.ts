@@ -20,6 +20,7 @@ const projectsRoot = path.join(contentRoot, "projects");
 const notesRoot = path.join(contentRoot, "notes");
 const contentRowId = "studio-archive";
 export const defaultContentOwnerKey = "owner";
+export const publicPortfolioSuffix = "portfoilo";
 
 const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
   ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
@@ -32,6 +33,68 @@ const databaseUrl =
 let pool: Pool | undefined;
 let contentTableReady = false;
 let pageTableReady = false;
+
+export type PublishedPortfolio = {
+  ownerKey: string;
+  page: BuilderPage;
+  publicSlug: string;
+};
+
+function isAsciiLetterOrNumber(value: string) {
+  const code = value.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 97 && code <= 122) ||
+    (code >= 65 && code <= 90)
+  );
+}
+
+function isHangul(value: string) {
+  const code = value.charCodeAt(0);
+  return code >= 0xac00 && code <= 0xd7a3;
+}
+
+export function normalizePublicPortfolioName(value: string) {
+  const normalized = value.trim().toLowerCase().normalize("NFKC");
+  let nextValue = "";
+
+  for (const character of normalized) {
+    if (
+      isAsciiLetterOrNumber(character) ||
+      isHangul(character) ||
+      character === "_"
+    ) {
+      nextValue += character;
+      continue;
+    }
+
+    if (character === "-" || /\s/.test(character)) {
+      nextValue += "-";
+    }
+  }
+
+  return nextValue.replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function getPublicPortfolioSlug(value: string) {
+  const normalizedName = normalizePublicPortfolioName(value);
+  const name = normalizedName || "my";
+  const suffix = `-${publicPortfolioSuffix}`;
+
+  return name.endsWith(suffix) ? name : `${name}${suffix}`;
+}
+
+function getOwnerKeyFromPageSlug(slug: string) {
+  if (slug === "home") {
+    return defaultContentOwnerKey;
+  }
+
+  if (slug.startsWith("user-") && slug.endsWith("-home")) {
+    return normalizeContentOwnerKey(slug.slice(5, -5));
+  }
+
+  return defaultContentOwnerKey;
+}
 
 export function normalizeContentOwnerKey(ownerKey = defaultContentOwnerKey) {
   const normalized = ownerKey
@@ -158,10 +221,17 @@ function sortBuilderSections(sections: BuilderSection[]) {
 }
 
 function normalizeBuilderPage(page: BuilderPage): BuilderPage {
+  const publishName = page.publishName ?? "";
+  const publicSlug =
+    page.publicSlug ??
+    (publishName ? getPublicPortfolioSlug(publishName) : undefined);
+
   return {
     ...page,
     seoTitle: page.seoTitle ?? page.title,
     seoDescription: page.seoDescription ?? "",
+    publishName,
+    publicSlug,
     status: page.status ?? "published",
     sections: sortBuilderSections(page.sections),
     publishedSections: page.publishedSections
@@ -170,6 +240,7 @@ function normalizeBuilderPage(page: BuilderPage): BuilderPage {
     publishedSeoTitle: page.publishedSeoTitle ?? page.seoTitle ?? page.title,
     publishedSeoDescription:
       page.publishedSeoDescription ?? page.seoDescription ?? "",
+    publishedPublicSlug: page.publishedPublicSlug ?? undefined,
     updatedAt: page.updatedAt ?? new Date().toISOString()
   };
 }
@@ -246,7 +317,15 @@ async function ensurePageTable() {
       add column if not exists published_sections jsonb,
       add column if not exists published_seo_title text,
       add column if not exists published_seo_description text,
+      add column if not exists publish_name text,
+      add column if not exists public_slug text,
+      add column if not exists published_public_slug text,
       add column if not exists published_at timestamptz
+  `);
+  await getPool().query(`
+    create unique index if not exists studio_archive_pages_published_public_slug_idx
+      on studio_archive_pages (published_public_slug)
+      where published_public_slug is not null
   `);
 
   pageTableReady = true;
@@ -584,6 +663,68 @@ async function readFileBuilderPage(
   }
 }
 
+async function readFilePublishedPortfolioByPublicSlug(
+  publicSlug: string
+): Promise<PublishedPortfolio | undefined> {
+  const pages: Array<{ filePath: string; ownerKey: string }> = [
+    {
+      filePath: editablePagePath,
+      ownerKey: defaultContentOwnerKey
+    }
+  ];
+
+  try {
+    const files = await fs.readdir(dataRoot);
+
+    for (const file of files) {
+      const match = file.match(/^studio-archive-page-home-(.+)\.json$/);
+
+      if (match?.[1]) {
+        pages.push({
+          filePath: path.join(dataRoot, file),
+          ownerKey: normalizeContentOwnerKey(match[1])
+        });
+      }
+    }
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  for (const candidate of pages) {
+    try {
+      const page = normalizeBuilderPage(
+        await readJsonFile<BuilderPage>(candidate.filePath)
+      );
+
+      if (page.publishedPublicSlug === publicSlug) {
+        return {
+          ownerKey: candidate.ownerKey,
+          page: normalizeBuilderPage({
+            ...page,
+            seoTitle: page.publishedSeoTitle ?? page.seoTitle,
+            seoDescription: page.publishedSeoDescription ?? page.seoDescription,
+            sections: page.publishedSections ?? page.sections,
+            status: "published"
+          }),
+          publicSlug
+        };
+      }
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 async function saveFileBuilderPage(
   page: BuilderPage,
   ownerKey = defaultContentOwnerKey
@@ -610,14 +751,19 @@ async function publishFileBuilderPage(
   ownerKey = defaultContentOwnerKey
 ): Promise<BuilderPage> {
   const now = new Date().toISOString();
+  const publishName = page.publishName?.trim() || page.title || "my";
+  const publicSlug = getPublicPortfolioSlug(publishName);
   const nextPage = normalizeBuilderPage({
     ...page,
     id: getOwnerPageId(ownerKey),
     slug: getOwnerHomeSlug(ownerKey),
+    publishName,
+    publicSlug,
     status: "published",
     publishedSections: page.sections,
     publishedSeoTitle: page.seoTitle,
     publishedSeoDescription: page.seoDescription,
+    publishedPublicSlug: publicSlug,
     publishedAt: now,
     updatedAt: now
   });
@@ -641,11 +787,14 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
     title: string;
     seoTitle: string | null;
     seoDescription: string | null;
+    publishName: string | null;
+    publicSlug: string | null;
     status: BuilderPage["status"];
     sections: BuilderSection[];
     publishedSections: BuilderSection[] | null;
     publishedSeoTitle: string | null;
     publishedSeoDescription: string | null;
+    publishedPublicSlug: string | null;
     publishedAt: Date | null;
     updatedAt: Date;
   }>(
@@ -656,11 +805,14 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
         title,
         seo_title as "seoTitle",
         seo_description as "seoDescription",
+        publish_name as "publishName",
+        public_slug as "publicSlug",
         status,
         sections,
         published_sections as "publishedSections",
         published_seo_title as "publishedSeoTitle",
         published_seo_description as "publishedSeoDescription",
+        published_public_slug as "publishedPublicSlug",
         published_at as "publishedAt",
         updated_at as "updatedAt"
       from studio_archive_pages
@@ -678,11 +830,14 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
       title: row.title,
       seoTitle: row.seoTitle ?? row.title,
       seoDescription: row.seoDescription ?? "",
+      publishName: row.publishName ?? "",
+      publicSlug: row.publicSlug ?? undefined,
       status: row.status,
       sections: row.sections,
       publishedSections: row.publishedSections ?? undefined,
       publishedSeoTitle: row.publishedSeoTitle ?? undefined,
       publishedSeoDescription: row.publishedSeoDescription ?? undefined,
+      publishedPublicSlug: row.publishedPublicSlug ?? undefined,
       publishedAt: row.publishedAt?.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     });
@@ -694,6 +849,83 @@ async function readDatabaseBuilderPage(slug = "home"): Promise<BuilderPage> {
     id: `page-${slug}`,
     slug
   });
+}
+
+async function readDatabasePublishedPortfolioByPublicSlug(
+  publicSlug: string
+): Promise<PublishedPortfolio | undefined> {
+  await ensurePageTable();
+
+  const result = await getPool().query<{
+    id: string;
+    slug: string;
+    title: string;
+    seoTitle: string | null;
+    seoDescription: string | null;
+    publishName: string | null;
+    publicSlug: string | null;
+    status: BuilderPage["status"];
+    sections: BuilderSection[];
+    publishedSections: BuilderSection[] | null;
+    publishedSeoTitle: string | null;
+    publishedSeoDescription: string | null;
+    publishedPublicSlug: string | null;
+    publishedAt: Date | null;
+    updatedAt: Date;
+  }>(
+    `
+      select
+        id,
+        slug,
+        title,
+        seo_title as "seoTitle",
+        seo_description as "seoDescription",
+        publish_name as "publishName",
+        public_slug as "publicSlug",
+        status,
+        sections,
+        published_sections as "publishedSections",
+        published_seo_title as "publishedSeoTitle",
+        published_seo_description as "publishedSeoDescription",
+        published_public_slug as "publishedPublicSlug",
+        published_at as "publishedAt",
+        updated_at as "updatedAt"
+      from studio_archive_pages
+      where published_public_slug = $1
+      limit 1
+    `,
+    [publicSlug]
+  );
+
+  const row = result.rows[0];
+
+  if (!row?.publishedPublicSlug) {
+    return undefined;
+  }
+
+  const page = normalizeBuilderPage({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    seoTitle: row.publishedSeoTitle ?? row.seoTitle ?? row.title,
+    seoDescription: row.publishedSeoDescription ?? row.seoDescription ?? "",
+    publishName: row.publishName ?? "",
+    publicSlug: row.publicSlug ?? undefined,
+    status: "published",
+    sections: row.publishedSections ?? row.sections,
+    publishedSections: row.publishedSections ?? undefined,
+    publishedSeoTitle: row.publishedSeoTitle ?? undefined,
+    publishedSeoDescription: row.publishedSeoDescription ?? undefined,
+    publishedPublicSlug: row.publishedPublicSlug,
+    publishedAt: row.publishedAt?.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
+  });
+
+  return {
+    ownerKey: getOwnerKeyFromPageSlug(row.slug),
+    page,
+    publicSlug: row.publishedPublicSlug
+  };
 }
 
 async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> {
@@ -712,20 +944,25 @@ async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> 
         title,
         seo_title,
         seo_description,
+        publish_name,
+        public_slug,
         status,
         sections,
         published_sections,
         published_seo_title,
         published_seo_description,
+        published_public_slug,
         published_at,
         updated_at
       )
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11::timestamptz, now())
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14::timestamptz, now())
       on conflict (slug)
       do update set
         title = excluded.title,
         seo_title = excluded.seo_title,
         seo_description = excluded.seo_description,
+        publish_name = excluded.publish_name,
+        public_slug = excluded.public_slug,
         status = excluded.status,
         sections = excluded.sections,
         updated_at = now()
@@ -736,6 +973,8 @@ async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> 
       nextPage.title,
       nextPage.seoTitle,
       nextPage.seoDescription,
+      nextPage.publishName ?? "",
+      nextPage.publicSlug ?? null,
       nextPage.status,
       JSON.stringify(nextPage.sections),
       nextPage.publishedSections
@@ -743,11 +982,31 @@ async function saveDatabaseBuilderPage(page: BuilderPage): Promise<BuilderPage> 
         : null,
       nextPage.publishedSeoTitle ?? null,
       nextPage.publishedSeoDescription ?? null,
+      nextPage.publishedPublicSlug ?? null,
       nextPage.publishedAt ?? null
     ]
   );
 
   return nextPage;
+}
+
+async function assertPublicSlugAvailable(publicSlug: string, pageSlug: string) {
+  await ensurePageTable();
+
+  const result = await getPool().query<{ slug: string }>(
+    `
+      select slug
+      from studio_archive_pages
+      where published_public_slug = $1
+        and slug <> $2
+      limit 1
+    `,
+    [publicSlug, pageSlug]
+  );
+
+  if (result.rows[0]) {
+    throw new Error("이미 사용 중인 게시 주소입니다. 다른 설정명을 입력해 주세요.");
+  }
 }
 
 async function publishDatabaseBuilderPage(
@@ -756,15 +1015,22 @@ async function publishDatabaseBuilderPage(
   await ensurePageTable();
 
   const now = new Date().toISOString();
+  const publishName = page.publishName?.trim() || page.title || "my";
+  const publicSlug = getPublicPortfolioSlug(publishName);
   const nextPage = normalizeBuilderPage({
     ...page,
+    publishName,
+    publicSlug,
     status: "published",
     publishedSections: page.sections,
     publishedSeoTitle: page.seoTitle,
     publishedSeoDescription: page.seoDescription,
+    publishedPublicSlug: publicSlug,
     publishedAt: now,
     updatedAt: now
   });
+
+  await assertPublicSlugAvailable(publicSlug, nextPage.slug);
 
   await getPool().query(
     `
@@ -774,25 +1040,31 @@ async function publishDatabaseBuilderPage(
         title,
         seo_title,
         seo_description,
+        publish_name,
+        public_slug,
         status,
         sections,
         published_sections,
         published_seo_title,
         published_seo_description,
+        published_public_slug,
         published_at,
         updated_at
       )
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, now(), now())
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, now(), now())
       on conflict (slug)
       do update set
         title = excluded.title,
         seo_title = excluded.seo_title,
         seo_description = excluded.seo_description,
+        publish_name = excluded.publish_name,
+        public_slug = excluded.public_slug,
         status = excluded.status,
         sections = excluded.sections,
         published_sections = excluded.published_sections,
         published_seo_title = excluded.published_seo_title,
         published_seo_description = excluded.published_seo_description,
+        published_public_slug = excluded.published_public_slug,
         published_at = now(),
         updated_at = now()
     `,
@@ -802,11 +1074,14 @@ async function publishDatabaseBuilderPage(
       nextPage.title,
       nextPage.seoTitle,
       nextPage.seoDescription,
+      nextPage.publishName ?? "",
+      nextPage.publicSlug ?? null,
       nextPage.status,
       JSON.stringify(nextPage.sections),
       JSON.stringify(nextPage.publishedSections ?? nextPage.sections),
       nextPage.publishedSeoTitle ?? nextPage.seoTitle,
-      nextPage.publishedSeoDescription ?? nextPage.seoDescription
+      nextPage.publishedSeoDescription ?? nextPage.seoDescription,
+      nextPage.publishedPublicSlug ?? null
     ]
   );
 
@@ -904,6 +1179,26 @@ export async function getPublishedBuilderPage(
     sections: page.publishedSections ?? page.sections,
     status: "published"
   });
+}
+
+export async function getPublishedPortfolioByPublicSlug(
+  value: string
+): Promise<PublishedPortfolio | undefined> {
+  noStore();
+
+  const normalizedValue = normalizePublicPortfolioName(value);
+
+  if (!normalizedValue.endsWith(`-${publicPortfolioSuffix}`)) {
+    return undefined;
+  }
+
+  const publicSlug = getPublicPortfolioSlug(normalizedValue);
+
+  if (getContentStorageMode() === "database") {
+    return readDatabasePublishedPortfolioByPublicSlug(publicSlug);
+  }
+
+  return readFilePublishedPortfolioByPublicSlug(publicSlug);
 }
 
 export async function getAllCategories(

@@ -7,10 +7,13 @@ export function SiteFooter() {
   const pathname = usePathname();
   const userMatch = pathname.match(/^\/u\/([^/]+)/);
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
-  const footerLinks = userBasePath
+  const portfolioMatch = pathname.match(/^\/([^/]+-portfoilo)(?:\/|$)/);
+  const portfolioBasePath = portfolioMatch ? `/${portfolioMatch[1]}` : "";
+  const publicBasePath = userBasePath || portfolioBasePath;
+  const footerLinks = publicBasePath
     ? [
-        { href: `${userBasePath}/projects`, label: "프로젝트" },
-        { href: `${userBasePath}/archive`, label: "아카이브" }
+        { href: `${publicBasePath}/projects`, label: "프로젝트" },
+        { href: `${publicBasePath}/archive`, label: "아카이브" }
       ]
     : [
         { href: "/", label: "시작하기" },

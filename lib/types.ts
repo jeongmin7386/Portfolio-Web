@@ -333,11 +333,14 @@ export type BuilderPage = {
   title: string;
   seoTitle: string;
   seoDescription: string;
+  publishName?: string;
+  publicSlug?: string;
   status: BuilderPageStatus;
   sections: BuilderSection[];
   publishedSections?: BuilderSection[];
   publishedSeoTitle?: string;
   publishedSeoDescription?: string;
+  publishedPublicSlug?: string;
   publishedAt?: string;
   updatedAt: string;
 };

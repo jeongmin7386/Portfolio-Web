@@ -218,6 +218,40 @@ const primaryButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-neutral-950 bg-neutral-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200";
 const dangerButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800";
+const publicPortfolioSuffix = "portfoilo";
+
+function normalizePublicPortfolioName(value: string) {
+  const normalized = value.trim().toLowerCase().normalize("NFKC");
+  let nextValue = "";
+
+  for (const character of normalized) {
+    const code = character.charCodeAt(0);
+    const isLetterOrNumber =
+      (code >= 48 && code <= 57) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 65 && code <= 90);
+    const isHangul = code >= 0xac00 && code <= 0xd7a3;
+
+    if (isLetterOrNumber || isHangul || character === "_") {
+      nextValue += character;
+      continue;
+    }
+
+    if (character === "-" || /\s/.test(character)) {
+      nextValue += "-";
+    }
+  }
+
+  return nextValue.replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function getPublicPortfolioSlug(value: string) {
+  const normalizedName = normalizePublicPortfolioName(value);
+  const name = normalizedName || "my";
+  const suffix = `-${publicPortfolioSuffix}`;
+
+  return name.endsWith(suffix) ? name : `${name}${suffix}`;
+}
 
 function createId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -1572,11 +1606,18 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
   };
 
   const publishPage = async () => {
-    const pageToPublish = pageRef.current;
+    const currentPage = pageRef.current;
 
-    if (!pageToPublish) {
+    if (!currentPage) {
       return;
     }
+
+    const pageToPublish = {
+      ...currentPage,
+      publicSlug: getPublicPortfolioSlug(
+        currentPage.publicSlug || currentPage.publishName || currentPage.title
+      )
+    };
 
     try {
       setIsSaving(true);
@@ -1604,7 +1645,11 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       pageRef.current = publishedPage;
       setPage(publishedPage);
       setHistory({ past: [], future: [] });
-      setStatus("게시되었습니다. 공개 페이지에 반영됩니다.");
+      setStatus(
+        `게시되었습니다. 공개 주소: /${
+          publishedPage.publishedPublicSlug ?? publishedPage.publicSlug ?? ""
+        }`
+      );
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "페이지를 게시하지 못했습니다."
@@ -1684,6 +1729,14 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
     );
   }
 
+  const draftPublicSlug = getPublicPortfolioSlug(
+    page.publicSlug || page.publishName || page.title
+  );
+  const publishedPublicPath = page.publishedPublicSlug
+    ? `/${page.publishedPublicSlug}`
+    : "";
+  const nextPublicPath = `/${draftPublicSlug}`;
+
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
       <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
@@ -1755,7 +1808,13 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
           </button>
           <button
             className={buttonClass}
-            onClick={() => window.open("/", "_blank", "noopener,noreferrer")}
+            onClick={() =>
+              window.open(
+                publishedPublicPath || nextPublicPath,
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
             type="button"
           >
             <Eye aria-hidden size={16} />
@@ -1946,6 +2005,47 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
                   value={page.seoDescription}
                 />
               </label>
+              <label className={labelClass}>
+                게시 설정명
+                <input
+                  className={inputClass}
+                  onChange={(event) => {
+                    const publishName = event.target.value;
+
+                    updatePage((currentPage) => ({
+                      ...currentPage,
+                      publishName,
+                      publicSlug: getPublicPortfolioSlug(
+                        publishName || currentPage.title
+                      )
+                    }));
+                  }}
+                  placeholder="예: jeongmin"
+                  value={page.publishName ?? ""}
+                />
+              </label>
+              <div className="grid gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs leading-6 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  게시 후 공개 주소
+                </span>
+                <code className="break-all rounded-sm bg-white px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-950 dark:text-neutral-200">
+                  https://studio-archive.onrender.com{nextPublicPath}
+                </code>
+                {page.publishedPublicSlug ? (
+                  <span>
+                    현재 게시 주소:{" "}
+                    <Link
+                      className="font-medium text-emerald-700 underline underline-offset-4 dark:text-emerald-300"
+                      href={publishedPublicPath}
+                      target="_blank"
+                    >
+                      /{page.publishedPublicSlug}
+                    </Link>
+                  </span>
+                ) : (
+                  <span>아직 게시된 공개 주소가 없습니다.</span>
+                )}
+              </div>
             </section>
 
             {selectedSection ? (

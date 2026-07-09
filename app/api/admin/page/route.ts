@@ -55,25 +55,37 @@ export async function PUT(request: Request) {
     return unauthorized();
   }
 
-  const url = new URL(request.url);
-  const shouldPublish = url.searchParams.get("publish") === "true";
-  const body = (await request.json()) as unknown;
+  try {
+    const url = new URL(request.url);
+    const shouldPublish = url.searchParams.get("publish") === "true";
+    const body = (await request.json()) as unknown;
 
-  if (!isBuilderPage(body)) {
+    if (!isBuilderPage(body)) {
+      return NextResponse.json(
+        { message: "저장할 페이지 형식이 올바르지 않습니다." },
+        { status: 400 }
+      );
+    }
+
+    const ownerKey = getAdminContentOwnerKey(session);
+    const savedPage = shouldPublish
+      ? await publishBuilderPage(body, ownerKey)
+      : await saveBuilderPage({ ...body, status: "draft" }, ownerKey);
+
+    return NextResponse.json(savedPage, {
+      headers: {
+        "Cache-Control": "no-store"
+      }
+    });
+  } catch (error) {
     return NextResponse.json(
-      { message: "저장할 페이지 형식이 올바르지 않습니다." },
+      {
+        message:
+          error instanceof Error
+            ? error.message
+            : "페이지를 저장하지 못했습니다."
+      },
       { status: 400 }
     );
   }
-
-  const ownerKey = getAdminContentOwnerKey(session);
-  const savedPage = shouldPublish
-    ? await publishBuilderPage(body, ownerKey)
-    : await saveBuilderPage({ ...body, status: "draft" }, ownerKey);
-
-  return NextResponse.json(savedPage, {
-    headers: {
-      "Cache-Control": "no-store"
-    }
-  });
 }

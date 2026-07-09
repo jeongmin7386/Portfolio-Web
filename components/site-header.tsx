@@ -28,12 +28,15 @@ export function SiteHeader() {
   const pathname = usePathname();
   const userMatch = pathname.match(/^\/u\/([^/]+)/);
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
+  const portfolioMatch = pathname.match(/^\/([^/]+-portfoilo)(?:\/|$)/);
+  const portfolioBasePath = portfolioMatch ? `/${portfolioMatch[1]}` : "";
+  const publicBasePath = userBasePath || portfolioBasePath;
   const isAdminPath = pathname.startsWith("/admin");
 
-  const visibleNavItems = userBasePath
+  const visibleNavItems = publicBasePath
     ? portfolioNavItems.map((item) => ({
         ...item,
-        href: item.href === "/" ? userBasePath : `${userBasePath}${item.href}`
+        href: item.href === "/" ? publicBasePath : `${publicBasePath}${item.href}`
       }))
     : isAdminPath
       ? adminNavItems
@@ -44,7 +47,7 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           className="rounded-md font-display text-sm font-semibold uppercase tracking-[0.16em] text-neutral-950 outline-none transition hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:text-neutral-50 dark:hover:text-emerald-300"
-          href={userBasePath || "/"}
+          href={publicBasePath || "/"}
         >
           Studio Archive
         </Link>
@@ -55,8 +58,8 @@ export function SiteHeader() {
           >
             {visibleNavItems.map((item) => {
               const active =
-                userBasePath && item.href === userBasePath
-                  ? pathname === userBasePath
+                publicBasePath && item.href === publicBasePath
+                  ? pathname === publicBasePath
                   : item.href === "/admin"
                     ? pathname === "/admin"
                   : item.href === "/"
