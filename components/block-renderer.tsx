@@ -23,6 +23,7 @@ import {
 import type {
   ProjectBlock,
   ProjectImage,
+  ProjectTextFont,
   ProjectTextSettings
 } from "@/lib/types";
 
@@ -146,6 +147,17 @@ const projectTextFontFamily: Record<NonNullable<ProjectTextSettings["fontFamily"
   serif: "ui-serif, Georgia, Cambria, Times New Roman, Times, serif"
 };
 
+const projectTextFontOptions: Array<{
+  label: string;
+  value: ProjectTextFont | "auto";
+}> = [
+  { label: "자동", value: "auto" },
+  { label: "Sans", value: "sans" },
+  { label: "Display", value: "display" },
+  { label: "Serif", value: "serif" },
+  { label: "Mono", value: "mono" }
+];
+
 const projectAlignClass = {
   center: "text-center mx-auto",
   left: "text-left",
@@ -180,6 +192,26 @@ function pathKey(path: ProjectBlockPath) {
 
 function normalizeOptionalText(value: string) {
   return value.trim() ? value : undefined;
+}
+
+function getColorPickerValue(color?: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(color ?? "") ? color! : "#111111";
+}
+
+type TextStyleProjectBlock = Extract<
+  ProjectBlock,
+  { type: "heading" | "paragraph" | "quote" | "button" }
+>;
+
+function isTextStyleProjectBlock(
+  block: ProjectBlock
+): block is TextStyleProjectBlock {
+  return (
+    block.type === "heading" ||
+    block.type === "paragraph" ||
+    block.type === "quote" ||
+    block.type === "button"
+  );
 }
 
 type ScrollSnapshot = {
@@ -338,6 +370,254 @@ export function InlineEditableText({
   }
 }
 
+function ProjectToolbarButton({
+  active,
+  children,
+  onClick
+}: {
+  active?: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-xs font-medium transition ${
+        active
+          ? "border-neutral-950 bg-neutral-950 text-white dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
+          : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ProjectToolbarSelect({
+  label,
+  value,
+  children,
+  onChange
+}: {
+  label: string;
+  value: string | number;
+  children: ReactNode;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs text-neutral-500">
+      {label}
+      <select
+        className="h-8 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function ProjectToolbarNumberInput({
+  label,
+  max,
+  min,
+  placeholder,
+  value,
+  onChange
+}: {
+  label: string;
+  max?: number;
+  min?: number;
+  placeholder?: string;
+  value?: number;
+  onChange: (value: number | undefined) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-xs text-neutral-500">
+      {label}
+      <input
+        className="h-8 w-16 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+        max={max}
+        min={min}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          onChange(nextValue ? Number(nextValue) : undefined);
+        }}
+        placeholder={placeholder}
+        type="number"
+        value={value ?? ""}
+      />
+      <span>pt</span>
+    </label>
+  );
+}
+
+function ProjectAlignControls({
+  value,
+  onChange
+}: {
+  value: NonNullable<ProjectTextSettings["align"]>;
+  onChange: (value: NonNullable<ProjectTextSettings["align"]>) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {(["left", "center", "right"] as const).map((align) => (
+        <ProjectToolbarButton
+          active={value === align}
+          key={align}
+          onClick={() => onChange(align)}
+        >
+          {align === "left" ? "좌" : align === "center" ? "중" : "우"}
+        </ProjectToolbarButton>
+      ))}
+    </div>
+  );
+}
+
+function FloatingProjectBlockToolbar({
+  block,
+  onChange
+}: {
+  block: ProjectBlock;
+  onChange: (block: ProjectBlock) => void;
+}) {
+  const [isColorOpen, setIsColorOpen] = useState(false);
+
+  if (!isTextStyleProjectBlock(block)) {
+    return null;
+  }
+
+  const updateTextSettings = (settings: Partial<ProjectTextSettings>) => {
+    onChange({
+      ...block,
+      ...settings
+    } as TextStyleProjectBlock);
+  };
+
+  return (
+    <div
+      className="absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
+    >
+      <ProjectToolbarSelect
+        label="폰트"
+        onChange={(fontFamily) =>
+          updateTextSettings({
+            fontFamily:
+              fontFamily === "auto" ? undefined : (fontFamily as ProjectTextFont)
+          })
+        }
+        value={block.fontFamily ?? "auto"}
+      >
+        {projectTextFontOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </ProjectToolbarSelect>
+      <ProjectToolbarNumberInput
+        label="크기"
+        max={160}
+        min={6}
+        onChange={(fontSizePt) => updateTextSettings({ fontSizePt })}
+        placeholder="자동"
+        value={block.fontSizePt}
+      />
+      <div className="relative">
+        <ProjectToolbarButton
+          active={isColorOpen || Boolean(block.color)}
+          onClick={() => setIsColorOpen((current) => !current)}
+        >
+          색
+        </ProjectToolbarButton>
+        {isColorOpen ? (
+          <div
+            className="absolute left-0 top-10 z-50 grid w-56 gap-3 rounded-md border border-neutral-200 bg-white p-3 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+          >
+            <label className="grid gap-2 text-xs font-medium text-neutral-500">
+              글자 색
+              <input
+                aria-label="글자 색 선택"
+                className="h-16 w-full cursor-pointer rounded-md border border-neutral-200 bg-transparent p-1 dark:border-neutral-800"
+                onChange={(event) =>
+                  updateTextSettings({ color: event.target.value })
+                }
+                type="color"
+                value={getColorPickerValue(block.color)}
+              />
+            </label>
+            <label className="grid gap-2 text-xs font-medium text-neutral-500">
+              색상값
+              <input
+                className="h-8 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
+                onChange={(event) =>
+                  updateTextSettings({
+                    color: event.target.value || undefined
+                  })
+                }
+                placeholder="#111111"
+                value={block.color ?? ""}
+              />
+            </label>
+            <button
+              className="inline-flex h-8 items-center justify-center rounded-sm border border-neutral-200 px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 dark:border-neutral-800 dark:text-neutral-200"
+              onClick={() => updateTextSettings({ color: undefined })}
+              type="button"
+            >
+              기본값
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <ProjectAlignControls
+        onChange={(align) => updateTextSettings({ align })}
+        value={block.align ?? "left"}
+      />
+      {block.type === "heading" ? (
+        <div className="flex items-center gap-1">
+          {[2, 3].map((level) => (
+            <ProjectToolbarButton
+              active={(block.level ?? 2) === level}
+              key={level}
+              onClick={() =>
+                onChange({
+                  ...block,
+                  level: level as 2 | 3
+                })
+              }
+            >
+              H{level}
+            </ProjectToolbarButton>
+          ))}
+        </div>
+      ) : null}
+      {block.type === "button" ? (
+        <ProjectToolbarSelect
+          label="형태"
+          onChange={(variant) =>
+            onChange({
+              ...block,
+              variant: variant as "primary" | "secondary" | "text"
+            })
+          }
+          value={block.variant ?? "primary"}
+        >
+          <option value="primary">채움</option>
+          <option value="secondary">외곽</option>
+          <option value="text">텍스트</option>
+        </ProjectToolbarSelect>
+      ) : null}
+    </div>
+  );
+}
+
 export function BlockRenderer({
   blocks,
   editable,
@@ -369,7 +649,8 @@ export function BlockRenderer({
   const wrapEditableBlock = (
     children: ReactNode,
     path: ProjectBlockPath,
-    key: string
+    key: string,
+    block: ProjectBlock
   ) => {
     if (!editable) {
       return <Fragment key={key}>{children}</Fragment>;
@@ -399,6 +680,12 @@ export function BlockRenderer({
           selectBlock(path);
         }}
       >
+        {selected && onChangeBlock ? (
+          <FloatingProjectBlockToolbar
+            block={block}
+            onChange={(nextBlock) => changeBlock(path, nextBlock)}
+          />
+        ) : null}
         {children}
       </div>
     );
@@ -483,7 +770,8 @@ export function BlockRenderer({
             </HeadingTag>
           ),
           path,
-          key
+          key,
+          block
         );
       }
       case "paragraph": {
@@ -510,7 +798,8 @@ export function BlockRenderer({
             </p>
           ),
           path,
-          key
+          key,
+          block
         );
       }
       case "image": {
@@ -535,7 +824,8 @@ export function BlockRenderer({
             )}
           </div>,
           path,
-          key
+          key,
+          block
         );
       }
       case "imageGrid": {
@@ -569,7 +859,8 @@ export function BlockRenderer({
             ))}
           </div>,
           path,
-          key
+          key,
+          block
         );
       }
       case "quote": {
@@ -616,7 +907,8 @@ export function BlockRenderer({
             ) : null}
           </blockquote>,
           path,
-          key
+          key,
+          block
         );
       }
       case "button": {
@@ -650,7 +942,8 @@ export function BlockRenderer({
             )}
           </div>,
           path,
-          key
+          key,
+          block
         );
       }
       case "divider":
@@ -673,7 +966,8 @@ export function BlockRenderer({
             )}
           </div>,
           path,
-          key
+          key,
+          block
         );
       case "embed":
         return wrapEditableBlock(
@@ -689,13 +983,15 @@ export function BlockRenderer({
             />
           </div>,
           path,
-          key
+          key,
+          block
         );
       case "spacer":
         return wrapEditableBlock(
           <div aria-hidden style={{ height: block.height ?? 48 }} />,
           path,
-          key
+          key,
+          block
         );
       case "twoColumn":
         return wrapEditableBlock(
@@ -708,7 +1004,8 @@ export function BlockRenderer({
             </div>
           </div>,
           path,
-          key
+          key,
+          block
         );
       case "stats":
         return wrapEditableBlock(
@@ -795,7 +1092,8 @@ export function BlockRenderer({
             ))}
           </div>,
           path,
-          key
+          key,
+          block
         );
       case "process":
         return wrapEditableBlock(
@@ -861,7 +1159,8 @@ export function BlockRenderer({
             ))}
           </ol>,
           path,
-          key
+          key,
+          block
         );
       case "result":
         return wrapEditableBlock(
@@ -907,7 +1206,8 @@ export function BlockRenderer({
             )}
           </section>,
           path,
-          key
+          key,
+          block
         );
       default:
         return null;

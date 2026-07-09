@@ -106,6 +106,33 @@ function scrollProjectBlockEditorIntoView(path: ProjectBlockPath) {
   });
 }
 
+function scrollProjectPreviewBlockIntoView(path: ProjectBlockPath) {
+  const key = projectBlockPathKey(path);
+
+  if (!key) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    document.querySelector(`[data-project-block="${key}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest"
+    });
+  });
+}
+
+function isProjectEditorInteractiveTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'a, button, input, select, textarea, [contenteditable="true"]'
+      )
+    )
+  );
+}
+
 const projectTextFontOptions: Array<{ label: string; value: ProjectTextFont | "auto" }> = [
   { label: "자동", value: "auto" },
   { label: "Sans", value: "sans" },
@@ -794,6 +821,7 @@ type BlockListEditorProps = {
   blocks: ProjectBlock[];
   nested?: boolean;
   onChange: (blocks: ProjectBlock[]) => void;
+  onSelect?: (path: ProjectBlockPath) => void;
   pathPrefix?: ProjectBlockPath;
   selectedPath?: ProjectBlockPath;
 };
@@ -802,6 +830,7 @@ function BlockListEditor({
   blocks,
   nested,
   onChange,
+  onSelect,
   pathPrefix = [],
   selectedPath
 }: BlockListEditorProps) {
@@ -860,6 +889,13 @@ function BlockListEditor({
             data-project-block-editor={currentPathKey}
             draggable
             key={`${block.type}-${index}`}
+            onClick={(event) => {
+              if (isProjectEditorInteractiveTarget(event.target)) {
+                return;
+              }
+
+              onSelect?.(currentPath);
+            }}
             onDragEnd={() => setDraggingIndex(null)}
             onDragOver={(event) => event.preventDefault()}
             onDragStart={() => setDraggingIndex(index)}
@@ -907,6 +943,7 @@ function BlockListEditor({
           <BlockFields
             block={block}
             onChange={(nextBlock) => updateBlock(index, nextBlock)}
+            onSelect={onSelect}
             path={currentPath}
             selectedPath={selectedPath}
           />
@@ -933,6 +970,7 @@ function BlockListEditor({
 type BlockFieldsProps = {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  onSelect?: (path: ProjectBlockPath) => void;
   path: ProjectBlockPath;
   selectedPath?: ProjectBlockPath;
 };
@@ -1043,6 +1081,7 @@ function ProjectTextStyleFields({
 function BlockFields({
   block,
   onChange,
+  onSelect,
   path,
   selectedPath
 }: BlockFieldsProps) {
@@ -1359,6 +1398,7 @@ function BlockFields({
               blocks={block.left}
               nested
               onChange={(left) => onChange({ ...block, left })}
+              onSelect={onSelect}
               pathPrefix={[...path, "left"]}
               selectedPath={selectedPath}
             />
@@ -1371,6 +1411,7 @@ function BlockFields({
               blocks={block.right}
               nested
               onChange={(right) => onChange({ ...block, right })}
+              onSelect={onSelect}
               pathPrefix={[...path, "right"]}
               selectedPath={selectedPath}
             />
@@ -2270,6 +2311,11 @@ export function AdminEditor({
     setStatus(`${blockLabels[type]} 블록을 추가했습니다.`);
   };
 
+  const selectProjectBlockFromSettings = (path: ProjectBlockPath) => {
+    setSelectedProjectBlockPath(path);
+    scrollProjectPreviewBlockIntoView(path);
+  };
+
   const handleProjectCommandValueChange = (value: string) => {
     setProjectCommandValue(value);
     setSelectedProjectCommandIndex(0);
@@ -3051,6 +3097,7 @@ export function AdminEditor({
                   onChange={(blocks) =>
                     updateSelectedProject({ ...selectedProject, blocks })
                   }
+                  onSelect={selectProjectBlockFromSettings}
                   selectedPath={selectedProjectBlockPath}
                 />
               </div>
