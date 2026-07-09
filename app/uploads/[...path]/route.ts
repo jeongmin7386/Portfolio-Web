@@ -20,7 +20,10 @@ export async function GET(_request: Request, { params }: UploadRouteProps) {
     return new Response(image.buffer, {
       headers: {
         "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Type": image.contentType
+        "Content-Disposition": "inline",
+        "Content-Length": String(image.size),
+        "Content-Type": image.contentType,
+        "X-Content-Type-Options": "nosniff"
       }
     });
   } catch {
