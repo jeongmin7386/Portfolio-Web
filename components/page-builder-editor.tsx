@@ -79,6 +79,16 @@ type SortableRowProps = {
   children: React.ReactNode;
 };
 
+function scrollEditorElementIntoView(selector: string) {
+  window.requestAnimationFrame(() => {
+    document.querySelector(selector)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest"
+    });
+  });
+}
+
 type SectionPreset = {
   id: string;
   label: string;
@@ -1033,6 +1043,7 @@ function SortableRow({ id, active, children }: SortableRowProps) {
           ? "border-neutral-950 dark:border-neutral-50"
           : "border-neutral-200 dark:border-neutral-800"
       } ${isDragging ? "opacity-60" : ""}`}
+      data-builder-block-row={id}
       ref={setNodeRef}
       style={style}
     >
@@ -1205,6 +1216,16 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
       return haystack.includes(commandQuery);
     });
   }, [commandQuery, commandValue]);
+
+  useEffect(() => {
+    if (!selectedBlockId) {
+      return;
+    }
+
+    scrollEditorElementIntoView(
+      `[data-builder-block-inspector="${selectedBlockId}"], [data-builder-block-row="${selectedBlockId}"]`
+    );
+  }, [selectedBlockId, selectedSectionId]);
 
   const commitPage = (nextPage: BuilderPage) => {
     const currentPage = pageRef.current;
@@ -2128,13 +2149,15 @@ export function PageBuilderEditor({ authEnabled }: PageBuilderEditorProps) {
             ) : null}
 
             {selectedBlock ? (
-              <BlockInspector
-                block={selectedBlock}
-                onChange={updateSelectedBlock}
-                onClipboardImageUpload={handleClipboardImageUpload}
-                onImagePaste={handleImagePaste}
-                onImageUpload={handleImageUpload}
-              />
+              <div data-builder-block-inspector={selectedBlock.id}>
+                <BlockInspector
+                  block={selectedBlock}
+                  onChange={updateSelectedBlock}
+                  onClipboardImageUpload={handleClipboardImageUpload}
+                  onImagePaste={handleImagePaste}
+                  onImageUpload={handleImageUpload}
+                />
+              </div>
             ) : null}
           </div>
         </aside>

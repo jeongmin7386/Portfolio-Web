@@ -85,6 +85,27 @@ const previewPanelClass =
   "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
+
+function projectBlockPathKey(path: ProjectBlockPath) {
+  return path.join(".");
+}
+
+function scrollProjectBlockEditorIntoView(path: ProjectBlockPath) {
+  const key = projectBlockPathKey(path);
+
+  if (!key) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    document.querySelector(`[data-project-block-editor="${key}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest"
+    });
+  });
+}
+
 const projectTextFontOptions: Array<{ label: string; value: ProjectTextFont | "auto" }> = [
   { label: "자동", value: "auto" },
   { label: "Sans", value: "sans" },
@@ -731,10 +752,19 @@ type BlockListEditorProps = {
   blocks: ProjectBlock[];
   nested?: boolean;
   onChange: (blocks: ProjectBlock[]) => void;
+  pathPrefix?: ProjectBlockPath;
+  selectedPath?: ProjectBlockPath;
 };
 
-function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
+function BlockListEditor({
+  blocks,
+  nested,
+  onChange,
+  pathPrefix = [],
+  selectedPath
+}: BlockListEditorProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const selectedPathKey = selectedPath ? projectBlockPathKey(selectedPath) : "";
 
   const updateBlock = (index: number, block: ProjectBlock) => {
     onChange(blocks.map((item, itemIndex) => (itemIndex === index ? block : item)));
@@ -773,21 +803,29 @@ function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
 
   return (
     <div className={nested ? "grid gap-3" : "grid gap-4"}>
-      {blocks.map((block, index) => (
-        <section
-          className={`rounded-md border border-neutral-200 bg-white p-3 transition dark:border-neutral-800 dark:bg-neutral-950 sm:p-4 ${
-            draggingIndex === index ? "opacity-60" : ""
-          }`}
-          draggable
-          key={`${block.type}-${index}`}
-          onDragEnd={() => setDraggingIndex(null)}
-          onDragOver={(event) => event.preventDefault()}
-          onDragStart={() => setDraggingIndex(index)}
-          onDrop={(event) => {
-            event.preventDefault();
-            reorderBlock(index);
-          }}
-        >
+      {blocks.map((block, index) => {
+        const currentPath: ProjectBlockPath = [...pathPrefix, index];
+        const currentPathKey = projectBlockPathKey(currentPath);
+        const active = selectedPathKey === currentPathKey;
+
+        return (
+          <section
+            className={`rounded-md border bg-white p-3 transition dark:bg-neutral-950 sm:p-4 ${
+              active
+                ? "border-neutral-950 ring-2 ring-emerald-500/30 dark:border-neutral-50"
+                : "border-neutral-200 dark:border-neutral-800"
+            } ${draggingIndex === index ? "opacity-60" : ""}`}
+            data-project-block-editor={currentPathKey}
+            draggable
+            key={`${block.type}-${index}`}
+            onDragEnd={() => setDraggingIndex(null)}
+            onDragOver={(event) => event.preventDefault()}
+            onDragStart={() => setDraggingIndex(index)}
+            onDrop={(event) => {
+              event.preventDefault();
+              reorderBlock(index);
+            }}
+          >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
@@ -827,9 +865,12 @@ function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
           <BlockFields
             block={block}
             onChange={(nextBlock) => updateBlock(index, nextBlock)}
+            path={currentPath}
+            selectedPath={selectedPath}
           />
         </section>
-      ))}
+        );
+      })}
       <div className="flex flex-wrap gap-2">
         {blockAddTypes.map((type) => (
           <button
@@ -850,6 +891,8 @@ function BlockListEditor({ blocks, nested, onChange }: BlockListEditorProps) {
 type BlockFieldsProps = {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  path: ProjectBlockPath;
+  selectedPath?: ProjectBlockPath;
 };
 
 type TextStyleProjectBlock = Extract<
@@ -955,7 +998,12 @@ function ProjectTextStyleFields({
   );
 }
 
-function BlockFields({ block, onChange }: BlockFieldsProps) {
+function BlockFields({
+  block,
+  onChange,
+  path,
+  selectedPath
+}: BlockFieldsProps) {
   const textStyleFields = isTextStyleProjectBlock(block) ? (
     <ProjectTextStyleFields
       block={block}
@@ -1269,6 +1317,8 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
               blocks={block.left}
               nested
               onChange={(left) => onChange({ ...block, left })}
+              pathPrefix={[...path, "left"]}
+              selectedPath={selectedPath}
             />
           </div>
           <div className="grid gap-3">
@@ -1279,6 +1329,8 @@ function BlockFields({ block, onChange }: BlockFieldsProps) {
               blocks={block.right}
               nested
               onChange={(right) => onChange({ ...block, right })}
+              pathPrefix={[...path, "right"]}
+              selectedPath={selectedPath}
             />
           </div>
         </div>
@@ -2061,6 +2113,23 @@ export function AdminEditor({
       return haystack.includes(projectCommandQuery);
     });
   }, [projectCommandQuery, projectCommandValue]);
+
+  useEffect(() => {
+    if (
+      !isProjectBuilderMode ||
+      activePanel !== "projects" ||
+      selectedProjectBlockPath.length === 0
+    ) {
+      return;
+    }
+
+    scrollProjectBlockEditorIntoView(selectedProjectBlockPath);
+  }, [
+    activePanel,
+    isProjectBuilderMode,
+    selectedProjectBlockPath,
+    selectedProjectSlug
+  ]);
 
   const updateContent = (
     updater: (currentContent: StudioArchiveContent) => StudioArchiveContent
@@ -2901,6 +2970,7 @@ export function AdminEditor({
                   onChange={(blocks) =>
                     updateSelectedProject({ ...selectedProject, blocks })
                   }
+                  selectedPath={selectedProjectBlockPath}
                 />
               </div>
             </section>
