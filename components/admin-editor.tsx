@@ -61,6 +61,8 @@ const panelClass =
   "rounded-md border border-neutral-200 bg-white/95 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-4";
 const editorPanelClass =
   "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:gap-6 sm:p-5 lg:p-6";
+const settingsPanelClass =
+  `${editorPanelClass} lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain`;
 const previewPanelClass =
   "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 const listClass =
@@ -1296,6 +1298,7 @@ export function AdminEditor({
     })
   );
   const copy = editorCopy[mode];
+  const isProjectBuilderMode = mode === "projects";
   const showProjects = mode !== "notes";
   const showNotes = mode !== "projects";
   const showCategories = showProjects;
@@ -1600,7 +1603,7 @@ export function AdminEditor({
       ) : null}
 
       <div className={editorLayoutClass}>
-        <aside className="grid gap-4 self-start xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto xl:pr-1">
+        <aside className="grid gap-4 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1 lg:overscroll-contain">
           {showCategories ? (
             <section className={panelClass}>
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -1797,9 +1800,25 @@ export function AdminEditor({
           ) : null}
         </aside>
 
-        <main className="min-w-0">
+        {isProjectBuilderMode ? (
+          <section className="min-w-0 lg:order-2" aria-label="실시간 미리보기">
+            <div className={previewPanelClass}>
+              <AdminLivePreview
+                activePanel={activePanel}
+                note={selectedNote}
+                project={selectedProject}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        <div className={isProjectBuilderMode ? "min-w-0 lg:order-3" : "min-w-0"}>
           {activePanel === "projects" && selectedProject ? (
-            <section className={editorPanelClass}>
+            <section
+              className={
+                isProjectBuilderMode ? settingsPanelClass : editorPanelClass
+              }
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
@@ -2192,9 +2211,9 @@ export function AdminEditor({
               </div>
             </section>
           ) : null}
-        </main>
+        </div>
 
-        {mode !== "all" ? (
+        {mode !== "all" && !isProjectBuilderMode ? (
           <aside className={previewPanelClass}>
             <AdminLivePreview
               activePanel={activePanel}
