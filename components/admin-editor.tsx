@@ -26,6 +26,7 @@ import {
   GripVertical,
   LogOut,
   Loader2,
+  PanelRight,
   Plus,
   RefreshCw,
   Save,
@@ -2170,6 +2171,7 @@ export function AdminEditor({
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -2188,7 +2190,9 @@ export function AdminEditor({
   const editorLayoutClass =
     mode === "all"
       ? "grid items-start gap-4 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]"
-      : "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)_minmax(280px,320px)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
+      : isProjectBuilderMode && !isSettingsPanelOpen
+        ? "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]"
+        : "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)_minmax(280px,320px)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
 
   useEffect(() => {
     let mounted = true;
@@ -2855,6 +2859,16 @@ export function AdminEditor({
 
         {isProjectBuilderMode ? (
           <section className="min-w-0 lg:order-2" aria-label="실시간 미리보기">
+            {!isSettingsPanelOpen ? (
+              <button
+                className="mb-3 ml-auto inline-flex min-h-9 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+                onClick={() => setIsSettingsPanelOpen(true)}
+                type="button"
+              >
+                <PanelRight aria-hidden size={15} />
+                설정 열기
+              </button>
+            ) : null}
             <div className={previewPanelClass}>
               <AdminLivePreview
                 activePanel={activePanel}
@@ -2870,6 +2884,7 @@ export function AdminEditor({
           </section>
         ) : null}
 
+        {!isProjectBuilderMode || isSettingsPanelOpen ? (
         <div className={isProjectBuilderMode ? "min-w-0 lg:order-3" : "min-w-0"}>
           {activePanel === "projects" && selectedProject ? (
             <section
@@ -2886,6 +2901,16 @@ export function AdminEditor({
                     {selectedProject.title}
                   </h2>
                 </div>
+                {isProjectBuilderMode ? (
+                  <button
+                    aria-label="설정 패널 숨기기"
+                    className={iconButtonClass}
+                    onClick={() => setIsSettingsPanelOpen(false)}
+                    type="button"
+                  >
+                    <PanelRight aria-hidden size={16} />
+                  </button>
+                ) : null}
                 <button
                   className={`${dangerButtonClass} w-full sm:w-auto`}
                   onClick={() => {
@@ -3300,6 +3325,7 @@ export function AdminEditor({
             </section>
           ) : null}
         </div>
+        ) : null}
 
         {mode !== "all" && !isProjectBuilderMode ? (
           <aside className={previewPanelClass}>

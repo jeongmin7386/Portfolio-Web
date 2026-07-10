@@ -1225,6 +1225,7 @@ export function PageBuilderEditor({
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const [history, setHistory] = useState<BuilderHistory>({
     past: [],
     future: []
@@ -1246,6 +1247,9 @@ export function PageBuilderEditor({
     () => `/api/admin/page?slug=${pageSlug}`,
     [pageSlug]
   );
+  const editorGridClass = isSettingsPanelOpen
+    ? "grid min-h-[calc(var(--app-viewport-height)-65px)] lg:h-[calc(var(--app-viewport-height)-130px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]"
+    : "grid min-h-[calc(var(--app-viewport-height)-65px)] lg:h-[calc(var(--app-viewport-height)-130px)] lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)]";
 
   useEffect(() => {
     let mounted = true;
@@ -2032,7 +2036,7 @@ export function PageBuilderEditor({
         </div>
       </header>
 
-      <div className="grid min-h-[calc(var(--app-viewport-height)-65px)] lg:h-[calc(var(--app-viewport-height)-130px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
+      <div className={editorGridClass}>
         <aside className="border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="grid gap-6">
             <section>
@@ -2117,6 +2121,16 @@ export function PageBuilderEditor({
         </aside>
 
         <main className="min-h-[720px] overflow-auto bg-neutral-100 p-4 pb-28 dark:bg-neutral-900 lg:min-h-0">
+          {!isSettingsPanelOpen ? (
+            <button
+              className="mb-3 ml-auto inline-flex min-h-9 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+              onClick={() => setIsSettingsPanelOpen(true)}
+              type="button"
+            >
+              <PanelRight aria-hidden size={15} />
+              설정 열기
+            </button>
+          ) : null}
           {status ? (
             <p className="mb-3 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
               {status}
@@ -2148,7 +2162,21 @@ export function PageBuilderEditor({
           </div>
         </main>
 
+        {isSettingsPanelOpen ? (
         <aside className="border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              설정
+            </h2>
+            <button
+              aria-label="설정 패널 숨기기"
+              className={iconButtonClass}
+              onClick={() => setIsSettingsPanelOpen(false)}
+              type="button"
+            >
+              <PanelRight aria-hidden size={16} />
+            </button>
+          </div>
           <div className="grid gap-6">
             <section className="grid gap-3">
               <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
@@ -2328,6 +2356,7 @@ export function PageBuilderEditor({
             ) : null}
           </div>
         </aside>
+        ) : null}
       </div>
       <CommandBar
         commandMatches={commandMatches}
