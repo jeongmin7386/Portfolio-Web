@@ -28,11 +28,15 @@ export type ProjectBlock =
   | ({
       type: "heading";
       text: string;
-      level?: 2 | 3 | 4;
+      level?: 1 | 2 | 3 | 4;
     } & ProjectTextSettings)
   | ({
       type: "paragraph";
       text: string;
+    } & ProjectTextSettings)
+  | ({
+      type: "bulletList" | "numberedList";
+      items: string[];
     } & ProjectTextSettings)
   | {
       type: "image";
@@ -153,6 +157,8 @@ export const BUILDER_BLOCK_TYPES = [
   "paragraph",
   "image",
   "gallery",
+  "bulletList",
+  "numberedList",
   "button",
   "divider",
   "embed",
@@ -232,6 +238,17 @@ export type BuilderBlock =
       };
       settings: {
         width?: "narrow" | "content" | "wide";
+        align?: BuilderAlign;
+      } & BuilderTextSettings;
+    }
+  | {
+      id: string;
+      type: "bulletList" | "numberedList";
+      order: number;
+      content: {
+        items: string[];
+      };
+      settings: {
         align?: BuilderAlign;
       } & BuilderTextSettings;
     }

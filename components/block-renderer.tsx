@@ -46,6 +46,7 @@ type ActiveLightbox = {
 type InlineEditableTag =
   | "cite"
   | "figcaption"
+  | "h1"
   | "h2"
   | "h3"
   | "h4"
@@ -61,6 +62,7 @@ type InlineEditableTextProps = {
   placeholder?: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
+  onMarkdownShortcut?: (value: string) => boolean;
 };
 
 const aspectRatioClass = {
@@ -75,6 +77,8 @@ const projectInsertOptions: Array<{
 }> = [
   { label: "제목", type: "heading" },
   { label: "본문", type: "paragraph" },
+  { label: "글머리 목록", type: "bulletList" },
+  { label: "번호 목록", type: "numberedList" },
   { label: "이미지", type: "image" },
   { label: "갤러리", type: "imageGrid" },
   { label: "인용", type: "quote" },
@@ -211,7 +215,15 @@ function getColorPickerValue(color?: string) {
 
 type TextStyleProjectBlock = Extract<
   ProjectBlock,
-  { type: "heading" | "paragraph" | "quote" | "button" }
+  {
+    type:
+      | "heading"
+      | "paragraph"
+      | "bulletList"
+      | "numberedList"
+      | "quote"
+      | "button";
+  }
 >;
 
 function isTextStyleProjectBlock(
@@ -220,6 +232,8 @@ function isTextStyleProjectBlock(
   return (
     block.type === "heading" ||
     block.type === "paragraph" ||
+    block.type === "bulletList" ||
+    block.type === "numberedList" ||
     block.type === "quote" ||
     block.type === "button"
   );
@@ -288,7 +302,8 @@ export function InlineEditableText({
   multiline,
   placeholder,
   onChange,
-  onFocus
+  onFocus,
+  onMarkdownShortcut
 }: InlineEditableTextProps) {
   const elementRef = useRef<HTMLElement | null>(null);
   const editableClassName = `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`;
@@ -326,6 +341,17 @@ export function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === " " && onMarkdownShortcut) {
+        const handled = onMarkdownShortcut(
+          event.currentTarget.textContent ?? ""
+        );
+
+        if (handled) {
+          event.preventDefault();
+          return;
+        }
+      }
+
       if (event.key === "Enter" && (multiline || event.shiftKey)) {
         event.preventDefault();
         const target = event.currentTarget;
@@ -370,6 +396,8 @@ export function InlineEditableText({
       return <cite {...editableProps} ref={setElementRef} />;
     case "figcaption":
       return <figcaption {...editableProps} ref={setElementRef} />;
+    case "h1":
+      return <h1 {...editableProps} ref={setElementRef} />;
     case "h2":
       return <h2 {...editableProps} ref={setElementRef} />;
     case "h3":
@@ -610,14 +638,14 @@ function FloatingProjectBlockToolbar({
       />
       {block.type === "heading" ? (
         <div className="flex items-center gap-1">
-          {[2, 3, 4].map((level) => (
+          {[1, 2, 3, 4].map((level) => (
             <ProjectToolbarButton
               active={(block.level ?? 2) === level}
               key={level}
               onClick={() =>
                 onChange({
                   ...block,
-                  level: level as 2 | 3 | 4
+                  level: level as 1 | 2 | 3 | 4
                 })
               }
             >
@@ -774,10 +802,18 @@ export function BlockRenderer({
     switch (block.type) {
       case "heading": {
         const HeadingTag =
-          block.level === 4 ? "h4" : block.level === 3 ? "h3" : "h2";
+          block.level === 1
+            ? "h1"
+            : block.level === 4
+              ? "h4"
+              : block.level === 3
+                ? "h3"
+                : "h2";
         const textStyle = getProjectTextStyle(block);
         const className = `${
-          block.level === 4
+          block.level === 1
+            ? "mt-14 font-display text-4xl font-semibold leading-tight text-neutral-950 dark:text-neutral-50 md:text-5xl"
+            : block.level === 4
             ? "mt-6 text-xl font-semibold text-neutral-950 dark:text-neutral-50"
             : block.level === 3
             ? "mt-8 text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
@@ -820,6 +856,25 @@ export function BlockRenderer({
               multiline
               onChange={(text) => changeBlock(path, { ...block, text })}
               onFocus={() => selectBlock(path)}
+              onMarkdownShortcut={(text) => {
+                const trimmedText = text.trim();
+
+                if (trimmedText === "-" || trimmedText === "1.") {
+                  changeBlock(path, {
+                    type:
+                      trimmedText === "-" ? "bulletList" : "numberedList",
+                    items: [""],
+                    align: block.align,
+                    color: block.color,
+                    fontFamily: block.fontFamily,
+                    fontSizePt: block.fontSizePt,
+                    lineHeight: block.lineHeight
+                  } as ProjectBlock);
+                  return true;
+                }
+
+                return false;
+              }}
               placeholder="본문 입력"
               style={textStyle}
               value={block.text}
@@ -829,6 +884,48 @@ export function BlockRenderer({
               {block.text}
             </p>
           ),
+          path,
+          key,
+          block
+        );
+      }
+      case "bulletList":
+      case "numberedList": {
+        const ListTag = block.type === "numberedList" ? "ol" : "ul";
+        const textStyle = getProjectTextStyle(block);
+        const items = block.items.length ? block.items : [""];
+        const className = `max-w-3xl ${
+          block.type === "numberedList" ? "list-decimal" : "list-disc"
+        } space-y-2 pl-6 text-base leading-8 text-neutral-700 dark:text-neutral-300 ${
+          projectAlignClass[block.align ?? "left"]
+        }`;
+
+        return wrapEditableBlock(
+          <ListTag className={className} style={textStyle}>
+            {items.map((item, index) => (
+              <li key={`${key}-item-${index}`}>
+                {editable ? (
+                  <InlineEditableText
+                    as="span"
+                    multiline
+                    onChange={(text) =>
+                      changeBlock(path, {
+                        ...block,
+                        items: items.map((currentItem, currentIndex) =>
+                          currentIndex === index ? text : currentItem
+                        )
+                      })
+                    }
+                    onFocus={() => selectBlock(path)}
+                    placeholder="목록 항목"
+                    value={item}
+                  />
+                ) : (
+                  item
+                )}
+              </li>
+            ))}
+          </ListTag>,
           path,
           key,
           block

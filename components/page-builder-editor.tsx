@@ -141,6 +141,8 @@ const sectionLabels: Record<BuilderSectionType, string> = {
 const blockLabels: Record<BuilderBlockType, string> = {
   heading: "제목",
   paragraph: "본문",
+  bulletList: "글머리 목록",
+  numberedList: "번호 목록",
   image: "이미지",
   gallery: "갤러리",
   button: "버튼",
@@ -168,6 +170,8 @@ const sectionTypes: BuilderSectionType[] = [
 const blockTypes: BuilderBlockType[] = [
   "heading",
   "paragraph",
+  "bulletList",
+  "numberedList",
   "image",
   "gallery",
   "button",
@@ -180,7 +184,16 @@ const blockTypes: BuilderBlockType[] = [
 
 type TextStyleBlock = Extract<
   BuilderBlock,
-  { type: "heading" | "paragraph" | "button" | "quote" | "stats" }
+  {
+    type:
+      | "heading"
+      | "paragraph"
+      | "bulletList"
+      | "numberedList"
+      | "button"
+      | "quote"
+      | "stats";
+  }
 >;
 
 const textFontOptions: Array<{
@@ -212,6 +225,8 @@ function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
   return (
     block.type === "heading" ||
     block.type === "paragraph" ||
+    block.type === "bulletList" ||
+    block.type === "numberedList" ||
     block.type === "button" ||
     block.type === "quote" ||
     block.type === "stats"
@@ -358,6 +373,22 @@ function createBlock(type: BuilderBlockType): BuilderBlock {
         content: { text: "본문을 입력하세요." },
         settings: { width: "content", align: "left" }
       };
+    case "bulletList":
+      return {
+        id,
+        type,
+        order: 0,
+        content: { items: ["목록 항목"] },
+        settings: { align: "left" }
+      };
+    case "numberedList":
+      return {
+        id,
+        type,
+        order: 0,
+        content: { items: ["번호 목록 항목"] },
+        settings: { align: "left" }
+      };
     case "image":
       return {
         id,
@@ -447,7 +478,14 @@ function createHeadingBlock(level: 1 | 2 | 3 | 4) {
   return {
     ...block,
     content: {
-      text: level === 1 ? "새 큰 제목" : level === 2 ? "새 제목" : "새 소제목"
+      text:
+        level === 1
+          ? "새 큰 제목"
+          : level === 2
+            ? "새 제목"
+            : level === 3
+              ? "새 소제목"
+              : "새 세부 제목"
     },
     settings: {
       ...block.settings,
@@ -736,6 +774,20 @@ const baseBlockInsertOptions: BlockInsertOption[] = [
     create: () => createBlock("paragraph")
   },
   {
+    id: "block-bullet-list",
+    kind: "block",
+    label: "글머리 목록",
+    description: "핵심 내용을 목록으로 정리",
+    create: () => createBlock("bulletList")
+  },
+  {
+    id: "block-numbered-list",
+    kind: "block",
+    label: "번호 목록",
+    description: "순서가 있는 내용을 정리",
+    create: () => createBlock("numberedList")
+  },
+  {
     id: "block-image",
     kind: "block",
     label: "이미지",
@@ -898,8 +950,8 @@ const slashCommandOptions: InsertOption[] = [
     kind: "block",
     label: "제목 1",
     description: "큰 제목 블록",
-    command: "/h1",
-    aliases: ["h1", "제목1", "큰제목"],
+    command: "/#",
+    aliases: ["h1", "/h1", "#", "제목1", "큰제목"],
     create: () => createHeadingBlock(1)
   },
   {
@@ -907,8 +959,8 @@ const slashCommandOptions: InsertOption[] = [
     kind: "block",
     label: "제목 2",
     description: "기본 제목 블록",
-    command: "/h2",
-    aliases: ["h2", "제목2", "제목"],
+    command: "/##",
+    aliases: ["h2", "/h2", "##", "제목2", "제목"],
     create: () => createHeadingBlock(2)
   },
   {
@@ -916,8 +968,8 @@ const slashCommandOptions: InsertOption[] = [
     kind: "block",
     label: "제목 3",
     description: "작은 제목 블록",
-    command: "/h3",
-    aliases: ["h3", "제목3", "소제목"],
+    command: "/###",
+    aliases: ["h3", "/h3", "###", "제목3", "소제목"],
     create: () => createHeadingBlock(3)
   },
   {
@@ -925,8 +977,8 @@ const slashCommandOptions: InsertOption[] = [
     kind: "block",
     label: "제목 4",
     description: "더 작은 제목 블록",
-    command: "/h4",
-    aliases: ["h4", "제목4", "소제목"],
+    command: "/####",
+    aliases: ["h4", "/h4", "####", "제목4", "세부제목"],
     create: () => createHeadingBlock(4)
   },
   {
@@ -937,6 +989,24 @@ const slashCommandOptions: InsertOption[] = [
     command: "/text",
     aliases: ["text", "본문", "paragraph"],
     create: () => createBlock("paragraph")
+  },
+  {
+    id: "command-bullet-list",
+    kind: "block",
+    label: "글머리 목록",
+    description: "글머리 기호 목록",
+    command: "/-",
+    aliases: ["ul", "bullet", "글머리", "목록", "불릿"],
+    create: () => createBlock("bulletList")
+  },
+  {
+    id: "command-numbered-list",
+    kind: "block",
+    label: "번호 목록",
+    description: "번호 매기기 목록",
+    command: "/1.",
+    aliases: ["ol", "number", "번호", "번호목록", "순서"],
+    create: () => createBlock("numberedList")
   },
   {
     id: "command-image",
@@ -2977,6 +3047,32 @@ function BlockFields({
               <option value="content">기본</option>
               <option value="wide">넓게</option>
             </select>
+          </label>
+          {textStyleFields}
+        </>
+      );
+    case "bulletList":
+    case "numberedList":
+      return (
+        <>
+          <label className={labelClass}>
+            목록 항목
+            <textarea
+              className={textareaClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  content: {
+                    items: event.target.value
+                      .split("\n")
+                      .map((item) => item.trim())
+                      .filter(Boolean)
+                  }
+                })
+              }
+              placeholder="한 줄에 항목 하나씩 입력"
+              value={block.content.items.join("\n")}
+            />
           </label>
           {textStyleFields}
         </>

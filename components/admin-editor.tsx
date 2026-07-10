@@ -134,6 +134,8 @@ function isProjectEditorInteractiveTarget(target: EventTarget | null) {
 const blockLabels: Record<ProjectBlock["type"], string> = {
   heading: "제목",
   paragraph: "본문",
+  bulletList: "글머리 목록",
+  numberedList: "번호 목록",
   image: "이미지",
   imageGrid: "갤러리",
   quote: "인용",
@@ -150,6 +152,8 @@ const blockLabels: Record<ProjectBlock["type"], string> = {
 const blockAddTypes: ProjectBlock["type"][] = [
   "heading",
   "paragraph",
+  "bulletList",
+  "numberedList",
   "image",
   "imageGrid",
   "button",
@@ -174,25 +178,33 @@ type ProjectInsertOption = {
 
 const projectSlashCommandOptions: ProjectInsertOption[] = [
   {
-    command: "/h2",
+    command: "/#",
     description: "큰 제목 블록을 추가합니다.",
-    keywords: ["heading", "title", "제목"],
+    keywords: ["heading", "title", "제목", "h1", "/h1"],
+    label: "제목 H1",
+    type: "heading",
+    overrides: { level: 1 } as Partial<ProjectBlock>
+  },
+  {
+    command: "/##",
+    description: "큰 제목 블록을 추가합니다.",
+    keywords: ["heading", "title", "제목", "h2", "/h2", "##"],
     label: "제목 H2",
     type: "heading",
     overrides: { level: 2 } as Partial<ProjectBlock>
   },
   {
-    command: "/h3",
+    command: "/###",
     description: "작은 제목 블록을 추가합니다.",
-    keywords: ["heading", "subtitle", "소제목"],
+    keywords: ["heading", "subtitle", "소제목", "h3", "/h3", "###"],
     label: "제목 H3",
     type: "heading",
     overrides: { level: 3 } as Partial<ProjectBlock>
   },
   {
-    command: "/h4",
+    command: "/####",
     description: "더 작은 제목 블록을 추가합니다.",
-    keywords: ["heading", "subtitle", "제목", "소제목"],
+    keywords: ["heading", "subtitle", "제목", "세부제목", "h4", "/h4", "####"],
     label: "제목 H4",
     type: "heading",
     overrides: { level: 4 } as Partial<ProjectBlock>
@@ -203,6 +215,20 @@ const projectSlashCommandOptions: ProjectInsertOption[] = [
     keywords: ["paragraph", "body", "본문"],
     label: "본문",
     type: "paragraph"
+  },
+  {
+    command: "/-",
+    description: "글머리 기호 목록을 추가합니다.",
+    keywords: ["bullet", "ul", "글머리", "목록", "불릿"],
+    label: "글머리 목록",
+    type: "bulletList"
+  },
+  {
+    command: "/1.",
+    description: "번호 매기기 목록을 추가합니다.",
+    keywords: ["number", "ol", "번호", "번호목록", "순서"],
+    label: "번호 목록",
+    type: "numberedList"
   },
   {
     command: "/image",
@@ -368,6 +394,10 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
       return { type, text: "새 제목", level: 2 };
     case "paragraph":
       return { type, text: "본문을 입력하세요." };
+    case "bulletList":
+      return { type, items: ["목록 항목"] };
+    case "numberedList":
+      return { type, items: ["번호 목록 항목"] };
     case "image":
       return {
         type,
@@ -973,11 +1003,12 @@ function BlockFields({
               onChange={(event) =>
                 onChange({
                   ...block,
-                  level: Number(event.target.value) as 2 | 3 | 4
+                  level: Number(event.target.value) as 1 | 2 | 3 | 4
                 })
               }
               value={block.level ?? 2}
             >
+              <option value={1}>H1</option>
               <option value={2}>H2</option>
               <option value={3}>H3</option>
               <option value={4}>H4</option>
@@ -1006,6 +1037,29 @@ function BlockFields({
             value={block.text}
           />
         </label>
+        </div>
+      );
+    case "bulletList":
+    case "numberedList":
+      return (
+        <div className="grid gap-3">
+          <label className={labelClass}>
+            목록 항목
+            <textarea
+              className={textareaClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  items: event.target.value
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                })
+              }
+              placeholder="한 줄에 항목 하나씩 입력"
+              value={block.items.join("\n")}
+            />
+          </label>
         </div>
       );
     case "image":

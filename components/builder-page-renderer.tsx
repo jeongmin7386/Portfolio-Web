@@ -132,7 +132,16 @@ const legacyTextSizePt: Record<BuilderTextSize, number> = {
 
 type TextStyleBlock = Extract<
   BuilderBlock,
-  { type: "heading" | "paragraph" | "button" | "quote" | "stats" }
+  {
+    type:
+      | "heading"
+      | "paragraph"
+      | "bulletList"
+      | "numberedList"
+      | "button"
+      | "quote"
+      | "stats";
+  }
 >;
 
 const textFontOptions: Array<{
@@ -150,6 +159,8 @@ function isTextStyleBlock(block: BuilderBlock): block is TextStyleBlock {
   return (
     block.type === "heading" ||
     block.type === "paragraph" ||
+    block.type === "bulletList" ||
+    block.type === "numberedList" ||
     block.type === "button" ||
     block.type === "quote" ||
     block.type === "stats"
@@ -300,6 +311,8 @@ function restoreScrollSnapshot(snapshot: ScrollSnapshot) {
 const builderInsertOptions: Array<{ label: string; type: BuilderBlockType }> = [
   { label: "제목", type: "heading" },
   { label: "본문", type: "paragraph" },
+  { label: "글머리 목록", type: "bulletList" },
+  { label: "번호 목록", type: "numberedList" },
   { label: "이미지", type: "image" },
   { label: "갤러리", type: "gallery" },
   { label: "버튼", type: "button" },
@@ -401,6 +414,7 @@ type InlineEditableTextProps = {
   placeholder?: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
+  onMarkdownShortcut?: (value: string) => boolean;
 };
 
 function InlineEditableText({
@@ -411,7 +425,8 @@ function InlineEditableText({
   multiline,
   placeholder,
   onChange,
-  onFocus
+  onFocus,
+  onMarkdownShortcut
 }: InlineEditableTextProps) {
   const elementRef = useRef<HTMLElement | null>(null);
   const editableClassName = `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`;
@@ -449,6 +464,17 @@ function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === " " && onMarkdownShortcut) {
+        const handled = onMarkdownShortcut(
+          event.currentTarget.textContent ?? ""
+        );
+
+        if (handled) {
+          event.preventDefault();
+          return;
+        }
+      }
+
       if (event.key === "Enter" && (multiline || event.shiftKey)) {
         event.preventDefault();
         const target = event.currentTarget;
@@ -832,7 +858,10 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
         </>
       ) : null}
 
-      {block.type === "quote" || block.type === "stats" ? (
+      {block.type === "quote" ||
+      block.type === "stats" ||
+      block.type === "bulletList" ||
+      block.type === "numberedList" ? (
         <AlignControls
           onChange={(align) => updateSettings({ align })}
           value={block.settings.align ?? "left"}
@@ -1118,6 +1147,28 @@ function BuilderBlockRenderer({
               })
             }
             onFocus={selectBlock}
+            onMarkdownShortcut={(text) => {
+              const trimmedText = text.trim();
+
+              if (trimmedText === "-" || trimmedText === "1.") {
+                changeBlock({
+                  ...block,
+                  type: trimmedText === "-" ? "bulletList" : "numberedList",
+                  content: { items: [""] },
+                  settings: {
+                    align: block.settings.align,
+                    color: block.settings.color,
+                    fontFamily: block.settings.fontFamily,
+                    fontSize: block.settings.fontSize,
+                    fontSizePt: block.settings.fontSizePt,
+                    lineHeight: block.settings.lineHeight
+                  }
+                } as BuilderBlock);
+                return true;
+              }
+
+              return false;
+            }}
             placeholder="본문 입력"
             style={textStyle}
             value={block.content.text}
@@ -1137,6 +1188,49 @@ function BuilderBlockRenderer({
             {block.content.text}
           </p>
         )
+      );
+    }
+    case "bulletList":
+    case "numberedList": {
+      const ListTag = block.type === "numberedList" ? "ol" : "ul";
+      const textStyle = getTextStyle(block.settings);
+      const items = block.content.items.length ? block.content.items : [""];
+      const className = `${blockProps.className} ${
+        block.type === "numberedList" ? "list-decimal" : "list-disc"
+      } max-w-3xl space-y-2 pl-6 text-base leading-8 text-neutral-600 dark:text-neutral-300 ${
+        alignClass[block.settings.align ?? "left"]
+      } ${block.settings.align === "center" ? "mx-auto" : ""} ${
+        block.settings.align === "right" ? "ml-auto" : ""
+      }`;
+
+      return wrapEditableBlock(
+        <ListTag {...blockProps} className={className} style={textStyle}>
+          {items.map((item, index) => (
+            <li key={`${block.id}-${index}`}>
+              {editable ? (
+                <InlineEditableText
+                  as="span"
+                  multiline
+                  onChange={(text) =>
+                    changeBlock({
+                      ...block,
+                      content: {
+                        items: items.map((currentItem, currentIndex) =>
+                          currentIndex === index ? text : currentItem
+                        )
+                      }
+                    })
+                  }
+                  onFocus={selectBlock}
+                  placeholder="목록 항목"
+                  value={item}
+                />
+              ) : (
+                item
+              )}
+            </li>
+          ))}
+        </ListTag>
       );
     }
     case "image":
