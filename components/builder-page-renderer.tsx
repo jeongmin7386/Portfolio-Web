@@ -316,6 +316,16 @@ function createClientId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function focusEditableText(focusKey: string) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-focus-key="${focusKey}"]`)
+        ?.focus();
+    });
+  });
+}
+
 const builderInsertOptions: Array<{ label: string; type: BuilderBlockType }> = [
   { label: "제목", type: "heading" },
   { label: "본문", type: "paragraph" },
@@ -421,9 +431,11 @@ type InlineEditableTextProps = {
   style?: CSSProperties;
   multiline?: boolean;
   placeholder?: string;
+  focusKey?: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
   onMarkdownShortcut?: (value: string) => boolean;
+  onEnterKey?: () => boolean;
 };
 
 function InlineEditableText({
@@ -433,9 +445,11 @@ function InlineEditableText({
   style,
   multiline,
   placeholder,
+  focusKey,
   onChange,
   onFocus,
-  onMarkdownShortcut
+  onMarkdownShortcut,
+  onEnterKey
 }: InlineEditableTextProps) {
   const elementRef = useRef<HTMLElement | null>(null);
   const editableClassName = `${className ?? ""} min-h-[1em] rounded-sm outline-none transition empty:before:text-neutral-400 empty:before:content-[attr(data-placeholder)] focus-visible:ring-2 focus-visible:ring-emerald-500/30`;
@@ -454,11 +468,13 @@ function InlineEditableText({
 
   const editableProps: HTMLAttributes<HTMLElement> & {
     "data-placeholder": string;
+    "data-focus-key"?: string;
   } = {
     "aria-label": placeholder,
     "aria-multiline": multiline || undefined,
     className: editableClassName,
     contentEditable: true,
+    "data-focus-key": focusKey,
     "data-placeholder": placeholder ?? "",
     dir: "ltr",
     style,
@@ -473,6 +489,11 @@ function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Enter" && !event.shiftKey && onEnterKey?.()) {
+        event.preventDefault();
+        return;
+      }
+
       if (event.key === " " && onMarkdownShortcut) {
         const handled = onMarkdownShortcut(
           event.currentTarget.textContent ?? ""
@@ -1220,6 +1241,7 @@ function BuilderBlockRenderer({
               {editable ? (
                 <InlineEditableText
                   as="span"
+                  focusKey={`${block.id}-list-${index}`}
                   multiline
                   onChange={(text) =>
                     changeBlock({
@@ -1231,6 +1253,18 @@ function BuilderBlockRenderer({
                       }
                     })
                   }
+                  onEnterKey={() => {
+                    const nextItems = [...items];
+                    const nextIndex = index + 1;
+
+                    nextItems.splice(nextIndex, 0, "");
+                    changeBlock({
+                      ...block,
+                      content: { items: nextItems }
+                    });
+                    focusEditableText(`${block.id}-list-${nextIndex}`);
+                    return true;
+                  }}
                   onFocus={selectBlock}
                   placeholder="목록 항목"
                   value={item}
