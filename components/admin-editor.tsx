@@ -190,6 +190,14 @@ const projectSlashCommandOptions: ProjectInsertOption[] = [
     overrides: { level: 3 } as Partial<ProjectBlock>
   },
   {
+    command: "/h4",
+    description: "더 작은 제목 블록을 추가합니다.",
+    keywords: ["heading", "subtitle", "제목", "소제목"],
+    label: "제목 H4",
+    type: "heading",
+    overrides: { level: 4 } as Partial<ProjectBlock>
+  },
+  {
     command: "/text",
     description: "본문 블록을 추가합니다.",
     keywords: ["paragraph", "body", "본문"],
@@ -963,12 +971,16 @@ function BlockFields({
             <select
               className={inputClass}
               onChange={(event) =>
-                onChange({ ...block, level: Number(event.target.value) as 2 | 3 })
+                onChange({
+                  ...block,
+                  level: Number(event.target.value) as 2 | 3 | 4
+                })
               }
               value={block.level ?? 2}
             >
               <option value={2}>H2</option>
               <option value={3}>H3</option>
+              <option value={4}>H4</option>
             </select>
           </label>
           <label className={labelClass}>

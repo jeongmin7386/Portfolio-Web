@@ -382,7 +382,15 @@ type BlockRendererProps = {
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
 };
 
-type InlineEditableTag = "cite" | "figcaption" | "h1" | "h2" | "h3" | "p" | "span";
+type InlineEditableTag =
+  | "cite"
+  | "figcaption"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "p"
+  | "span";
 
 type InlineEditableTextProps = {
   as: InlineEditableTag;
@@ -491,6 +499,8 @@ function InlineEditableText({
       return <h2 {...editableProps} ref={setElementRef} />;
     case "h3":
       return <h3 {...editableProps} ref={setElementRef} />;
+    case "h4":
+      return <h4 {...editableProps} ref={setElementRef} />;
     case "p":
       return <p {...editableProps} ref={setElementRef} />;
     case "span":
@@ -753,7 +763,7 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
       {block.type === "heading" ? (
         <>
           <div className="flex items-center gap-1">
-            {[1, 2, 3].map((level) => (
+            {[1, 2, 3, 4].map((level) => (
               <ToolbarButton
                 active={(block.settings.level ?? 2) === level}
                 key={level}
@@ -762,7 +772,7 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
                     ...block,
                     settings: {
                       ...block.settings,
-                      level: level as 1 | 2 | 3
+                      level: level as 1 | 2 | 3 | 4
                     }
                   })
                 }
@@ -979,7 +989,9 @@ function BuilderBlockRenderer({
           ? "font-display text-5xl font-semibold leading-[1.04] tracking-normal text-neutral-950 dark:text-neutral-50 md:text-7xl"
           : level === 2
             ? "font-display text-3xl font-semibold tracking-normal text-neutral-950 dark:text-neutral-50 md:text-5xl"
-            : "text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
+            : level === 3
+              ? "text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
+              : "text-xl font-semibold text-neutral-950 dark:text-neutral-50"
       }`;
 
       if (level === 1) {
@@ -1030,6 +1042,32 @@ function BuilderBlockRenderer({
             <h3 {...blockProps} className={className} style={textStyle}>
               {block.content.text}
             </h3>
+          )
+        );
+      }
+
+      if (level === 4) {
+        return wrapEditableBlock(
+          editable ? (
+            <InlineEditableText
+              as="h4"
+              className={className}
+              multiline
+              onChange={(text) =>
+                changeBlock({
+                  ...block,
+                  content: { ...block.content, text }
+                })
+              }
+              onFocus={selectBlock}
+              placeholder="?쒕ぉ ?낅젰"
+              style={textStyle}
+              value={block.content.text}
+            />
+          ) : (
+            <h4 {...blockProps} className={className} style={textStyle}>
+              {block.content.text}
+            </h4>
           )
         );
       }

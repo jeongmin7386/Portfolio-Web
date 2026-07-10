@@ -43,7 +43,14 @@ type ActiveLightbox = {
   index: number;
 };
 
-type InlineEditableTag = "cite" | "figcaption" | "h2" | "h3" | "p" | "span";
+type InlineEditableTag =
+  | "cite"
+  | "figcaption"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "p"
+  | "span";
 
 type InlineEditableTextProps = {
   as: InlineEditableTag;
@@ -367,6 +374,8 @@ export function InlineEditableText({
       return <h2 {...editableProps} ref={setElementRef} />;
     case "h3":
       return <h3 {...editableProps} ref={setElementRef} />;
+    case "h4":
+      return <h4 {...editableProps} ref={setElementRef} />;
     case "p":
       return <p {...editableProps} ref={setElementRef} />;
     case "span":
@@ -601,14 +610,14 @@ function FloatingProjectBlockToolbar({
       />
       {block.type === "heading" ? (
         <div className="flex items-center gap-1">
-          {[2, 3].map((level) => (
+          {[2, 3, 4].map((level) => (
             <ProjectToolbarButton
               active={(block.level ?? 2) === level}
               key={level}
               onClick={() =>
                 onChange({
                   ...block,
-                  level: level as 2 | 3
+                  level: level as 2 | 3 | 4
                 })
               }
             >
@@ -764,10 +773,13 @@ export function BlockRenderer({
   ) => {
     switch (block.type) {
       case "heading": {
-        const HeadingTag = block.level === 3 ? "h3" : "h2";
+        const HeadingTag =
+          block.level === 4 ? "h4" : block.level === 3 ? "h3" : "h2";
         const textStyle = getProjectTextStyle(block);
         const className = `${
-          block.level === 3
+          block.level === 4
+            ? "mt-6 text-xl font-semibold text-neutral-950 dark:text-neutral-50"
+            : block.level === 3
             ? "mt-8 text-2xl font-semibold text-neutral-950 dark:text-neutral-50"
             : "mt-14 text-3xl font-semibold text-neutral-950 dark:text-neutral-50"
         } ${projectAlignClass[block.align ?? "left"]}`;

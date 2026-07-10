@@ -441,7 +441,7 @@ function createTypedBlock<Type extends BuilderBlockType>(type: Type) {
   return createBlock(type) as Extract<BuilderBlock, { type: Type }>;
 }
 
-function createHeadingBlock(level: 1 | 2 | 3) {
+function createHeadingBlock(level: 1 | 2 | 3 | 4) {
   const block = createTypedBlock("heading");
 
   return {
@@ -919,6 +919,15 @@ const slashCommandOptions: InsertOption[] = [
     command: "/h3",
     aliases: ["h3", "제목3", "소제목"],
     create: () => createHeadingBlock(3)
+  },
+  {
+    id: "command-h4",
+    kind: "block",
+    label: "제목 4",
+    description: "더 작은 제목 블록",
+    command: "/h4",
+    aliases: ["h4", "제목4", "소제목"],
+    create: () => createHeadingBlock(4)
   },
   {
     id: "command-text",
@@ -2918,7 +2927,7 @@ function BlockFields({
                   ...block,
                   settings: {
                     ...block.settings,
-                    level: Number(event.target.value) as 1 | 2 | 3
+                    level: Number(event.target.value) as 1 | 2 | 3 | 4
                   }
                 })
               }
@@ -2927,6 +2936,7 @@ function BlockFields({
               <option value={1}>H1</option>
               <option value={2}>H2</option>
               <option value={3}>H3</option>
+              <option value={4}>H4</option>
             </select>
           </label>
           {textStyleFields}

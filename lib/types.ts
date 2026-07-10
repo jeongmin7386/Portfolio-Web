@@ -28,7 +28,7 @@ export type ProjectBlock =
   | ({
       type: "heading";
       text: string;
-      level?: 2 | 3;
+      level?: 2 | 3 | 4;
     } & ProjectTextSettings)
   | ({
       type: "paragraph";
@@ -219,7 +219,7 @@ export type BuilderBlock =
         text: string;
       };
       settings: {
-        level?: 1 | 2 | 3;
+        level?: 1 | 2 | 3 | 4;
         align?: BuilderAlign;
       } & BuilderTextSettings;
     }
