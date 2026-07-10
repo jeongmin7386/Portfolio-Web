@@ -321,7 +321,7 @@ function focusEditableText(focusKey: string) {
     window.requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>(`[data-focus-key="${focusKey}"]`)
-        ?.focus();
+        ?.focus({ preventScroll: true });
     });
   });
 }
@@ -489,9 +489,15 @@ function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key === "Enter" && !event.shiftKey && onEnterKey?.()) {
-        event.preventDefault();
-        return;
+      if (event.key === "Enter" && !event.shiftKey && onEnterKey) {
+        const scrollSnapshot = captureScrollSnapshot(event.currentTarget);
+        const handled = onEnterKey();
+
+        if (handled) {
+          event.preventDefault();
+          restoreScrollSnapshot(scrollSnapshot);
+          return;
+        }
       }
 
       if (event.key === " " && onMarkdownShortcut) {
