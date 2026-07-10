@@ -319,7 +319,7 @@ export function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key === "Enter" && event.shiftKey) {
+      if (event.key === "Enter" && (multiline || event.shiftKey)) {
         event.preventDefault();
         const target = event.currentTarget;
         const scrollSnapshot = captureScrollSnapshot(target);
@@ -777,6 +777,7 @@ export function BlockRenderer({
             <InlineEditableText
               as={HeadingTag}
               className={className}
+              multiline
               onChange={(text) => changeBlock(path, { ...block, text })}
               onFocus={() => selectBlock(path)}
               placeholder="제목 입력"

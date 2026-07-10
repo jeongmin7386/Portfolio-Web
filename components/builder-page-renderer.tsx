@@ -441,7 +441,7 @@ function InlineEditableText({
     onInput: (event: FormEvent<HTMLElement>) =>
       onChange(event.currentTarget.textContent ?? ""),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key === "Enter" && event.shiftKey) {
+      if (event.key === "Enter" && (multiline || event.shiftKey)) {
         event.preventDefault();
         const target = event.currentTarget;
         const scrollSnapshot = captureScrollSnapshot(target);
@@ -988,6 +988,7 @@ function BuilderBlockRenderer({
             <InlineEditableText
               as="h1"
               className={className}
+              multiline
               onChange={(text) =>
                 changeBlock({
                   ...block,
@@ -1013,6 +1014,7 @@ function BuilderBlockRenderer({
             <InlineEditableText
               as="h3"
               className={className}
+              multiline
               onChange={(text) =>
                 changeBlock({
                   ...block,
@@ -1037,6 +1039,7 @@ function BuilderBlockRenderer({
           <InlineEditableText
             as="h2"
             className={className}
+            multiline
             onChange={(text) =>
               changeBlock({
                 ...block,
