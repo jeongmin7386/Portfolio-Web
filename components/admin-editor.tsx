@@ -136,6 +136,7 @@ const blockLabels: Record<ProjectBlock["type"], string> = {
   paragraph: "본문",
   bulletList: "글머리 목록",
   numberedList: "번호 목록",
+  tabs: "탭",
   image: "이미지",
   imageGrid: "갤러리",
   quote: "인용",
@@ -154,6 +155,7 @@ const blockAddTypes: ProjectBlock["type"][] = [
   "paragraph",
   "bulletList",
   "numberedList",
+  "tabs",
   "image",
   "imageGrid",
   "button",
@@ -229,6 +231,13 @@ const projectSlashCommandOptions: ProjectInsertOption[] = [
     keywords: ["number", "ol", "번호", "번호목록", "순서"],
     label: "번호 목록",
     type: "numberedList"
+  },
+  {
+    command: "/tabs",
+    description: "탭으로 나눈 콘텐츠 블록을 추가합니다.",
+    keywords: ["tab", "tabs", "탭"],
+    label: "탭",
+    type: "tabs"
   },
   {
     command: "/image",
@@ -338,6 +347,14 @@ function slugify(value: string) {
   return slug || `project-${Date.now()}`;
 }
 
+function createEditorId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function createProject(categories: string[]): Project {
   const timestamp = Date.now();
 
@@ -398,6 +415,23 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
       return { type, items: ["목록 항목"] };
     case "numberedList":
       return { type, items: ["번호 목록 항목"] };
+    case "tabs": {
+      const tabs = [1, 2, 3].map((index) => ({
+        id: createEditorId("tab"),
+        label: `탭 ${index}`,
+        text:
+          index === 1
+            ? "빈 탭입니다. 내용을 입력하거나 탭을 추가해보세요."
+            : ""
+      }));
+
+      return {
+        type,
+        tabs,
+        activeTabId: tabs[0]?.id,
+        style: "soft"
+      };
+    }
     case "image":
       return {
         type,
@@ -1060,6 +1094,114 @@ function BlockFields({
               value={block.items.join("\n")}
             />
           </label>
+        </div>
+      );
+    case "tabs":
+      return (
+        <div className="grid gap-4">
+          <label className={labelClass}>
+            탭 스타일
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  style: event.target.value as "soft" | "line"
+                })
+              }
+              value={block.style ?? "soft"}
+            >
+              <option value="soft">부드러운 버튼형</option>
+              <option value="line">밑줄형</option>
+            </select>
+          </label>
+          {block.tabs.map((tab, tabIndex) => (
+            <div
+              className="grid gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800"
+              key={tab.id}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  탭 {tabIndex + 1}
+                </p>
+                {block.tabs.length > 1 ? (
+                  <button
+                    className={iconButtonClass}
+                    onClick={() => {
+                      const tabs = block.tabs.filter(
+                        (item) => item.id !== tab.id
+                      );
+                      onChange({
+                        ...block,
+                        tabs,
+                        activeTabId:
+                          block.activeTabId === tab.id
+                            ? tabs[0]?.id
+                            : block.activeTabId
+                      });
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden size={15} />
+                  </button>
+                ) : null}
+              </div>
+              <label className={labelClass}>
+                탭 이름
+                <input
+                  className={inputClass}
+                  onChange={(event) =>
+                    onChange({
+                      ...block,
+                      tabs: block.tabs.map((item) =>
+                        item.id === tab.id
+                          ? { ...item, label: event.target.value }
+                          : item
+                      )
+                    })
+                  }
+                  value={tab.label}
+                />
+              </label>
+              <label className={labelClass}>
+                내용
+                <textarea
+                  className={textareaClass}
+                  onChange={(event) =>
+                    onChange({
+                      ...block,
+                      tabs: block.tabs.map((item) =>
+                        item.id === tab.id
+                          ? { ...item, text: event.target.value }
+                          : item
+                      )
+                    })
+                  }
+                  placeholder="탭 안에 보여줄 내용을 입력"
+                  value={tab.text}
+                />
+              </label>
+            </div>
+          ))}
+          <button
+            className={secondaryButtonClass}
+            onClick={() => {
+              const tab = {
+                id: createEditorId("tab"),
+                label: `탭 ${block.tabs.length + 1}`,
+                text: ""
+              };
+              onChange({
+                ...block,
+                tabs: [...block.tabs, tab],
+                activeTabId: tab.id
+              });
+            }}
+            type="button"
+          >
+            <Plus aria-hidden size={15} />
+            탭 추가
+          </button>
         </div>
       );
     case "image":

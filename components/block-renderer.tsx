@@ -79,6 +79,7 @@ const projectInsertOptions: Array<{
   { label: "본문", type: "paragraph" },
   { label: "글머리 목록", type: "bulletList" },
   { label: "번호 목록", type: "numberedList" },
+  { label: "탭", type: "tabs" },
   { label: "이미지", type: "image" },
   { label: "갤러리", type: "imageGrid" },
   { label: "인용", type: "quote" },
@@ -292,6 +293,14 @@ function restoreScrollSnapshot(snapshot: ScrollSnapshot) {
     restore();
     window.requestAnimationFrame(restore);
   });
+}
+
+function createClientId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function InlineEditableText({
@@ -683,6 +692,7 @@ export function BlockRenderer({
   onInsertBlock
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
+  const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
 
   const selectedKey = selectedBlockPath ? pathKey(selectedBlockPath) : "";
 
@@ -926,6 +936,141 @@ export function BlockRenderer({
               </li>
             ))}
           </ListTag>,
+          path,
+          key,
+          block
+        );
+      }
+      case "tabs": {
+        const pathId = pathKey(path);
+        const tabs = block.tabs.length
+          ? block.tabs
+          : [
+              {
+                id: "tab-empty",
+                label: "탭 1",
+                text: "빈 탭입니다. 내용을 입력하거나 탭을 추가해보세요."
+              }
+            ];
+        const currentActiveId = tabs.some((tab) => tab.id === activeTabs[pathId])
+          ? activeTabs[pathId]
+          : tabs.some((tab) => tab.id === block.activeTabId)
+            ? block.activeTabId
+            : tabs[0]?.id;
+        const activeTab =
+          tabs.find((tab) => tab.id === currentActiveId) ?? tabs[0];
+        const isLineStyle = block.style === "line";
+        const updateTab = (
+          tabId: string,
+          patch: Partial<(typeof tabs)[number]>
+        ) => {
+          changeBlock(path, {
+            ...block,
+            tabs: tabs.map((tab) =>
+              tab.id === tabId ? { ...tab, ...patch } : tab
+            )
+          });
+        };
+        const addTab = () => {
+          const tab = {
+            id: createClientId("tab"),
+            label: `탭 ${tabs.length + 1}`,
+            text: ""
+          };
+
+          changeBlock(path, {
+            ...block,
+            tabs: [...tabs, tab],
+            activeTabId: tab.id
+          });
+          setActiveTabs((current) => ({ ...current, [pathId]: tab.id }));
+        };
+
+        return wrapEditableBlock(
+          <div className="my-8 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="tablist"
+              aria-label="탭 블록"
+            >
+              {tabs.map((tab) => {
+                const active = tab.id === activeTab?.id;
+
+                return (
+                  <button
+                    aria-selected={active}
+                    className={
+                      isLineStyle
+                        ? `min-h-9 border-b px-2 text-sm transition ${
+                            active
+                              ? "border-neutral-950 text-neutral-950 dark:border-neutral-50 dark:text-neutral-50"
+                              : "border-transparent text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                          }`
+                        : `min-h-9 rounded-md px-3 text-sm transition ${
+                            active
+                              ? "bg-neutral-100 text-neutral-950 dark:bg-neutral-900 dark:text-neutral-50"
+                              : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+                          }`
+                    }
+                    key={tab.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActiveTabs((current) => ({
+                        ...current,
+                        [pathId]: tab.id
+                      }));
+                      selectBlock(path);
+                    }}
+                    role="tab"
+                    type="button"
+                  >
+                    {editable ? (
+                      <InlineEditableText
+                        as="span"
+                        onChange={(label) => updateTab(tab.id, { label })}
+                        onFocus={() => selectBlock(path)}
+                        placeholder="탭 이름"
+                        value={tab.label}
+                      />
+                    ) : (
+                      tab.label
+                    )}
+                  </button>
+                );
+              })}
+              {editable ? (
+                <button
+                  aria-label="탭 추가"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    addTab();
+                    selectBlock(path);
+                  }}
+                  type="button"
+                >
+                  <Plus aria-hidden size={18} />
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-6 min-h-14 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
+              {editable ? (
+                <InlineEditableText
+                  as="p"
+                  className="whitespace-pre-line"
+                  multiline
+                  onChange={(text) => updateTab(activeTab.id, { text })}
+                  onFocus={() => selectBlock(path)}
+                  placeholder="빈 탭입니다. 내용을 입력하세요."
+                  value={activeTab.text}
+                />
+              ) : activeTab.text ? (
+                <p className="whitespace-pre-line">{activeTab.text}</p>
+              ) : (
+                <p className="text-neutral-400">빈 탭입니다.</p>
+              )}
+            </div>
+          </div>,
           path,
           key,
           block

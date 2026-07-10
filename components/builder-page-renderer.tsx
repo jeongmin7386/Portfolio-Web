@@ -308,11 +308,20 @@ function restoreScrollSnapshot(snapshot: ScrollSnapshot) {
   });
 }
 
+function createClientId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 const builderInsertOptions: Array<{ label: string; type: BuilderBlockType }> = [
   { label: "제목", type: "heading" },
   { label: "본문", type: "paragraph" },
   { label: "글머리 목록", type: "bulletList" },
   { label: "번호 목록", type: "numberedList" },
+  { label: "탭", type: "tabs" },
   { label: "이미지", type: "image" },
   { label: "갤러리", type: "gallery" },
   { label: "버튼", type: "button" },
@@ -973,6 +982,7 @@ function BuilderBlockRenderer({
   const changeBlock = (nextBlock: BuilderBlock) => {
     onChangeBlock?.(sectionId, nextBlock);
   };
+  const [activeTabId, setActiveTabId] = useState("");
   const blockProps = {
     className: `${getBlockSelectionClass(Boolean(selected))} ${
       editable ? "cursor-text" : ""
@@ -1231,6 +1241,139 @@ function BuilderBlockRenderer({
             </li>
           ))}
         </ListTag>
+      );
+    }
+    case "tabs": {
+      const tabs = block.content.tabs.length
+        ? block.content.tabs
+        : [
+            {
+              id: "tab-empty",
+              label: "탭 1",
+              text: "빈 탭입니다. 내용을 입력하거나 탭을 추가해보세요."
+            }
+          ];
+      const storedActiveId = block.settings.activeTabId;
+      const currentActiveId = tabs.some((tab) => tab.id === activeTabId)
+        ? activeTabId
+        : tabs.some((tab) => tab.id === storedActiveId)
+          ? storedActiveId
+          : tabs[0]?.id;
+      const activeTab = tabs.find((tab) => tab.id === currentActiveId) ?? tabs[0];
+      const isLineStyle = block.settings.style === "line";
+      const updateTab = (
+        tabId: string,
+        patch: Partial<(typeof tabs)[number]>
+      ) => {
+        changeBlock({
+          ...block,
+          content: {
+            tabs: tabs.map((tab) =>
+              tab.id === tabId ? { ...tab, ...patch } : tab
+            )
+          }
+        });
+      };
+      const addTab = () => {
+        const tab = {
+          id: createClientId("tab"),
+          label: `탭 ${tabs.length + 1}`,
+          text: ""
+        };
+
+        changeBlock({
+          ...block,
+          content: { tabs: [...tabs, tab] },
+          settings: { ...block.settings, activeTabId: tab.id }
+        });
+        setActiveTabId(tab.id);
+      };
+
+      return wrapEditableBlock(
+        <div
+          {...blockProps}
+          className={`${blockProps.className} rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950`}
+        >
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="tablist"
+            aria-label="탭 블록"
+          >
+            {tabs.map((tab) => {
+              const active = tab.id === activeTab?.id;
+
+              return (
+                <button
+                  aria-selected={active}
+                  className={
+                    isLineStyle
+                      ? `min-h-9 border-b px-2 text-sm transition ${
+                          active
+                            ? "border-neutral-950 text-neutral-950 dark:border-neutral-50 dark:text-neutral-50"
+                            : "border-transparent text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                        }`
+                      : `min-h-9 rounded-md px-3 text-sm transition ${
+                          active
+                            ? "bg-neutral-100 text-neutral-950 dark:bg-neutral-900 dark:text-neutral-50"
+                            : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+                        }`
+                  }
+                  key={tab.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveTabId(tab.id);
+                    selectBlock();
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  {editable ? (
+                    <InlineEditableText
+                      as="span"
+                      onChange={(label) => updateTab(tab.id, { label })}
+                      onFocus={selectBlock}
+                      placeholder="탭 이름"
+                      value={tab.label}
+                    />
+                  ) : (
+                    tab.label
+                  )}
+                </button>
+              );
+            })}
+            {editable ? (
+              <button
+                aria-label="탭 추가"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  addTab();
+                  selectBlock();
+                }}
+                type="button"
+              >
+                <Plus aria-hidden size={18} />
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-6 min-h-14 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
+            {editable ? (
+              <InlineEditableText
+                as="p"
+                className="whitespace-pre-line"
+                multiline
+                onChange={(text) => updateTab(activeTab.id, { text })}
+                onFocus={selectBlock}
+                placeholder="빈 탭입니다. 내용을 입력하세요."
+                value={activeTab.text}
+              />
+            ) : activeTab.text ? (
+              <p className="whitespace-pre-line">{activeTab.text}</p>
+            ) : (
+              <p className="text-neutral-400">빈 탭입니다.</p>
+            )}
+          </div>
+        </div>
       );
     }
     case "image":

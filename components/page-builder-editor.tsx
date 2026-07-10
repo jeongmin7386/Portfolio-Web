@@ -143,6 +143,7 @@ const blockLabels: Record<BuilderBlockType, string> = {
   paragraph: "본문",
   bulletList: "글머리 목록",
   numberedList: "번호 목록",
+  tabs: "탭",
   image: "이미지",
   gallery: "갤러리",
   button: "버튼",
@@ -172,6 +173,7 @@ const blockTypes: BuilderBlockType[] = [
   "paragraph",
   "bulletList",
   "numberedList",
+  "tabs",
   "image",
   "gallery",
   "button",
@@ -244,6 +246,8 @@ const primaryButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-neutral-950 bg-neutral-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200";
 const dangerButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800";
+const iconButtonClass =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-neutral-50";
 const publicPortfolioSuffix = "portfoilo";
 
 function normalizePublicPortfolioName(value: string) {
@@ -389,6 +393,24 @@ function createBlock(type: BuilderBlockType): BuilderBlock {
         content: { items: ["번호 목록 항목"] },
         settings: { align: "left" }
       };
+    case "tabs": {
+      const tabs = [1, 2, 3].map((index) => ({
+        id: createId("tab"),
+        label: `탭 ${index}`,
+        text:
+          index === 1
+            ? "빈 탭입니다. 내용을 입력하거나 탭을 추가해보세요."
+            : ""
+      }));
+
+      return {
+        id,
+        type,
+        order: 0,
+        content: { tabs },
+        settings: { activeTabId: tabs[0]?.id, style: "soft" }
+      };
+    }
     case "image":
       return {
         id,
@@ -788,6 +810,13 @@ const baseBlockInsertOptions: BlockInsertOption[] = [
     create: () => createBlock("numberedList")
   },
   {
+    id: "block-tabs",
+    kind: "block",
+    label: "탭",
+    description: "내용을 탭으로 나누어 정리",
+    create: () => createBlock("tabs")
+  },
+  {
     id: "block-image",
     kind: "block",
     label: "이미지",
@@ -1007,6 +1036,15 @@ const slashCommandOptions: InsertOption[] = [
     command: "/1.",
     aliases: ["ol", "number", "번호", "번호목록", "순서"],
     create: () => createBlock("numberedList")
+  },
+  {
+    id: "command-tabs",
+    kind: "block",
+    label: "탭",
+    description: "탭으로 나눈 콘텐츠 블록",
+    command: "/tabs",
+    aliases: ["tab", "tabs", "탭"],
+    create: () => createBlock("tabs")
   },
   {
     id: "command-image",
@@ -3076,6 +3114,124 @@ function BlockFields({
           </label>
           {textStyleFields}
         </>
+      );
+    case "tabs":
+      return (
+        <div className="grid gap-4">
+          <label className={labelClass}>
+            탭 스타일
+            <select
+              className={inputClass}
+              onChange={(event) =>
+                onChange({
+                  ...block,
+                  settings: {
+                    ...block.settings,
+                    style: event.target.value as "soft" | "line"
+                  }
+                })
+              }
+              value={block.settings.style ?? "soft"}
+            >
+              <option value="soft">부드러운 버튼형</option>
+              <option value="line">밑줄형</option>
+            </select>
+          </label>
+          {block.content.tabs.map((tab, index) => (
+            <div
+              className="grid gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800"
+              key={tab.id}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  탭 {index + 1}
+                </p>
+                {block.content.tabs.length > 1 ? (
+                  <button
+                    className={iconButtonClass}
+                    onClick={() => {
+                      const tabs = block.content.tabs.filter(
+                        (item) => item.id !== tab.id
+                      );
+                      onChange({
+                        ...block,
+                        content: { tabs },
+                        settings: {
+                          ...block.settings,
+                          activeTabId:
+                            block.settings.activeTabId === tab.id
+                              ? tabs[0]?.id
+                              : block.settings.activeTabId
+                        }
+                      });
+                    }}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden size={15} />
+                  </button>
+                ) : null}
+              </div>
+              <label className={labelClass}>
+                탭 이름
+                <input
+                  className={inputClass}
+                  onChange={(event) =>
+                    onChange({
+                      ...block,
+                      content: {
+                        tabs: block.content.tabs.map((item) =>
+                          item.id === tab.id
+                            ? { ...item, label: event.target.value }
+                            : item
+                        )
+                      }
+                    })
+                  }
+                  value={tab.label}
+                />
+              </label>
+              <label className={labelClass}>
+                내용
+                <textarea
+                  className={textareaClass}
+                  onChange={(event) =>
+                    onChange({
+                      ...block,
+                      content: {
+                        tabs: block.content.tabs.map((item) =>
+                          item.id === tab.id
+                            ? { ...item, text: event.target.value }
+                            : item
+                        )
+                      }
+                    })
+                  }
+                  placeholder="탭 안에 보여줄 내용을 입력"
+                  value={tab.text}
+                />
+              </label>
+            </div>
+          ))}
+          <button
+            className={buttonClass}
+            onClick={() => {
+              const tab = {
+                id: createId("tab"),
+                label: `탭 ${block.content.tabs.length + 1}`,
+                text: ""
+              };
+              onChange({
+                ...block,
+                content: { tabs: [...block.content.tabs, tab] },
+                settings: { ...block.settings, activeTabId: tab.id }
+              });
+            }}
+            type="button"
+          >
+            <Plus aria-hidden size={15} />
+            탭 추가
+          </button>
+        </div>
       );
     case "image":
       return (

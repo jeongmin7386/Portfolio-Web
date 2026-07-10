@@ -14,6 +14,12 @@ export type ProjectImage = {
   caption?: string;
 };
 
+export type ProjectTabItem = {
+  id: string;
+  label: string;
+  text: string;
+};
+
 export type ProjectTextFont = "sans" | "display" | "serif" | "mono";
 
 export type ProjectTextSettings = {
@@ -38,6 +44,12 @@ export type ProjectBlock =
       type: "bulletList" | "numberedList";
       items: string[];
     } & ProjectTextSettings)
+  | {
+      type: "tabs";
+      tabs: ProjectTabItem[];
+      activeTabId?: string;
+      style?: "soft" | "line";
+    }
   | {
       type: "image";
       src: string;
@@ -159,6 +171,7 @@ export const BUILDER_BLOCK_TYPES = [
   "gallery",
   "bulletList",
   "numberedList",
+  "tabs",
   "button",
   "divider",
   "embed",
@@ -192,6 +205,12 @@ export type BuilderTextSettings = {
   fontSizePt?: number;
   lineHeight?: number;
   color?: string;
+};
+
+export type BuilderTabItem = {
+  id: string;
+  label: string;
+  text: string;
 };
 
 export type BuilderSectionSettings = {
@@ -251,6 +270,18 @@ export type BuilderBlock =
       settings: {
         align?: BuilderAlign;
       } & BuilderTextSettings;
+    }
+  | {
+      id: string;
+      type: "tabs";
+      order: number;
+      content: {
+        tabs: BuilderTabItem[];
+      };
+      settings: {
+        activeTabId?: string;
+        style?: "soft" | "line";
+      };
     }
   | {
       id: string;
