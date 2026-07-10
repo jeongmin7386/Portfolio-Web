@@ -178,6 +178,10 @@ function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined 
     style.lineHeight = fontSizePt >= 32 ? "1.08" : fontSizePt >= 20 ? "1.2" : "1.6";
   }
 
+  if (settings.lineHeight) {
+    style.lineHeight = String(settings.lineHeight);
+  }
+
   return Object.keys(style).length ? style : undefined;
 }
 
@@ -553,6 +557,8 @@ function ToolbarNumberInput({
   max,
   min,
   placeholder,
+  step,
+  suffix = "pt",
   value,
   onChange
 }: {
@@ -560,6 +566,8 @@ function ToolbarNumberInput({
   max?: number;
   min?: number;
   placeholder?: string;
+  step?: number;
+  suffix?: string;
   value?: number;
   onChange: (value: number | undefined) => void;
 }) {
@@ -570,6 +578,7 @@ function ToolbarNumberInput({
         className="h-8 w-16 rounded-sm border border-neutral-200 bg-white px-2 text-xs text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
         max={max}
         min={min}
+        step={step}
         onChange={(event) => {
           const nextValue = event.target.value;
           onChange(nextValue ? Number(nextValue) : undefined);
@@ -578,7 +587,7 @@ function ToolbarNumberInput({
         type="number"
         value={value ?? ""}
       />
-      <span>pt</span>
+      <span>{suffix}</span>
     </label>
   );
 }
@@ -678,6 +687,16 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
                 ? legacyTextSizePt[block.settings.fontSize]
                 : undefined)
             }
+          />
+          <ToolbarNumberInput
+            label="줄간격"
+            max={3}
+            min={0.8}
+            onChange={(lineHeight) => updateTextSettings({ lineHeight })}
+            placeholder="자동"
+            step={0.05}
+            suffix="배"
+            value={block.settings.lineHeight}
           />
           <div className="relative">
             <ToolbarButton
