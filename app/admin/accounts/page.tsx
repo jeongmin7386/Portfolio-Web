@@ -24,7 +24,7 @@ export default async function AdminAccountsPage() {
 
   if (!session.isOwner) {
     return (
-      <div className="min-h-screen bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
+      <div className="min-h-[var(--app-viewport-height)] bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
         <div className="mx-auto max-w-xl rounded-md border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
           <h1 className="font-display text-3xl font-semibold">
             소유자 권한이 필요합니다
@@ -39,7 +39,7 @@ export default async function AdminAccountsPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
+    <div className="min-h-[var(--app-viewport-height)] overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
       <AdminAccountsManager />
     </div>
   );

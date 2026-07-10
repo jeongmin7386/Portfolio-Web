@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -28,6 +28,12 @@ export const metadata: Metadata = {
   }
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover"
+};
+
 export default function RootLayout({
   children
 }: Readonly<{
@@ -37,7 +43,9 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <SiteHeader />
-        <main className="page-transition min-h-screen">{children}</main>
+        <main className="page-transition min-h-[var(--app-viewport-height)]">
+          {children}
+        </main>
         <SiteFooter />
       </body>
     </html>

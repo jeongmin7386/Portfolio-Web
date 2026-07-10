@@ -78,9 +78,9 @@ const panelClass =
 const editorPanelClass =
   "grid gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:gap-6 sm:p-5 lg:p-6";
 const settingsPanelClass =
-  `${editorPanelClass} lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain`;
+  `${editorPanelClass} lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain`;
 const previewPanelClass =
-  "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain";
+  "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
 
@@ -1748,7 +1748,7 @@ function ProjectCommandBar({
   onToggleAddMenu
 }: ProjectCommandBarProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
+    <div className="ipad-project-command-bar pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
       <div className="pointer-events-auto relative flex w-full max-w-xl items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
         {(isCommandOpen || isAddMenuOpen) ? (
           <div className="absolute bottom-[calc(100%+8px)] left-0 grid max-h-80 w-full gap-1 overflow-y-auto rounded-md border border-neutral-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
@@ -2446,7 +2446,7 @@ export function AdminEditor({
       ) : null}
 
       <div className={editorLayoutClass}>
-        <aside className="grid gap-4 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1 lg:overscroll-contain">
+        <aside className="grid gap-4 self-start lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:pr-1 lg:overscroll-contain">
           {showCategories ? (
             <section className={panelClass}>
             <div className="mb-4 flex items-center justify-between gap-3">

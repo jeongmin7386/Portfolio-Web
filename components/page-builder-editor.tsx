@@ -1808,7 +1808,7 @@ export function PageBuilderEditor({
     pageSlug === "archive" ? "/archive" : `/${draftPublicSlug}`;
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
+    <div className="min-h-[var(--app-viewport-height)] bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
       <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
         <div className="flex items-center gap-3">
           <PanelRight aria-hidden size={18} />
@@ -1915,7 +1915,7 @@ export function PageBuilderEditor({
         </div>
       </header>
 
-      <div className="grid min-h-[calc(100vh-65px)] lg:h-[calc(100vh-130px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
+      <div className="grid min-h-[calc(var(--app-viewport-height)-65px)] lg:h-[calc(var(--app-viewport-height)-130px)] lg:min-h-0 lg:grid-cols-[280px_1fr_340px]">
         <aside className="border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="grid gap-6">
             <section>
@@ -2261,7 +2261,7 @@ function CommandBar({
   onToggleAddMenu
 }: CommandBarProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[80] flex justify-center px-3 sm:px-4">
+    <div className="ipad-fixed-command-bar pointer-events-none fixed inset-x-0 bottom-4 z-[80] flex justify-center px-3 sm:px-4">
       <div className="pointer-events-auto w-full max-w-[720px]">
         {isAddMenuOpen ? (
           <div className="mb-2 max-h-[min(60vh,520px)] overflow-y-auto rounded-md border border-neutral-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">

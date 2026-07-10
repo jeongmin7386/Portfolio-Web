@@ -25,7 +25,7 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
+    <div className="min-h-[var(--app-viewport-height)] overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
       <AdminEditor
         authEnabled={authEnabled}
         storageMode={getContentStorageMode()}
