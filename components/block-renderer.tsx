@@ -132,10 +132,10 @@ function ProjectInsertionPoint({
         <Plus aria-hidden size={18} />
       </button>
       {open ? (
-        <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-56 -translate-x-1/2 gap-1 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
           {projectInsertOptions.map((option) => (
             <button
-              className="rounded-sm px-3 py-2 text-left text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:bg-neutral-900"
+              className="min-h-12 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
               key={option.type}
               onClick={() => {
                 onInsertBlock(path, option.type);
