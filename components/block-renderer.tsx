@@ -1685,12 +1685,12 @@ export function BlockRenderer({
               data-project-tab-id={activeTab?.id ?? ""}
               data-project-tab-path={JSON.stringify(path)}
               onMouseDown={(event) => {
-                if (editable) {
+                if (editable && event.target === event.currentTarget) {
                   event.stopPropagation();
                 }
               }}
               onTouchStart={(event) => {
-                if (editable) {
+                if (editable && event.target === event.currentTarget) {
                   event.stopPropagation();
                 }
               }}

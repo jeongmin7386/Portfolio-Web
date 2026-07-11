@@ -1951,12 +1951,12 @@ function BuilderBlockRenderer({
             data-builder-tab-drop-zone
             data-builder-tab-id={activeTab?.id ?? ""}
             onMouseDown={(event) => {
-              if (editable) {
+              if (editable && event.target === event.currentTarget) {
                 event.stopPropagation();
               }
             }}
             onTouchStart={(event) => {
-              if (editable) {
+              if (editable && event.target === event.currentTarget) {
                 event.stopPropagation();
               }
             }}
