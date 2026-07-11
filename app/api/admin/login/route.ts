@@ -46,12 +46,12 @@ export async function POST(request: Request) {
         redirectTo: getSessionEditPath({
           authEnabled: true,
           authenticated: true,
-          isOwner: user.role === "owner",
+          isOwner: false,
           user: {
             email: user.email,
             id: user.id,
             name: user.name,
-            role: user.role
+            role: "admin"
           }
         })
       });

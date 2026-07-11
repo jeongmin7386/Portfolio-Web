@@ -183,7 +183,7 @@ function decodePayload(payload: string): SessionTokenPayload | null {
 function createSessionToken(user?: PublicAdminUser) {
   const payload = encodePayload({
     expiresAt: Date.now() + sessionDurationSeconds * 1000,
-    role: user?.role ?? "owner",
+    role: user ? "admin" : "owner",
     sub: user?.id ?? "owner"
   });
 
@@ -258,7 +258,7 @@ export async function getAdminSession(): Promise<AdminSession> {
     };
   }
 
-  if (payload.sub === "owner" || payload.role === "owner") {
+  if (payload.sub === "owner") {
     return {
       authEnabled: true,
       authenticated: true,
@@ -284,12 +284,12 @@ export async function getAdminSession(): Promise<AdminSession> {
   return {
     authEnabled: true,
     authenticated: true,
-    isOwner: user.role === "owner",
+    isOwner: false,
     user: {
       email: user.email,
       id: user.id,
       name: user.name,
-      role: user.role
+      role: "admin"
     }
   };
 }
