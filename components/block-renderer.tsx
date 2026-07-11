@@ -1273,6 +1273,27 @@ export function BlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
+              const tabTarget = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>("[data-project-tab-drop-zone]");
+              const rawTabPath = tabTarget?.dataset.projectTabPath;
+              const tabId = tabTarget?.dataset.projectTabId;
+
+              if (tabTarget && rawTabPath && tabId) {
+                try {
+                  const tabPath = JSON.parse(rawTabPath) as ProjectBlockPath;
+                  const targetKey = pathKey(tabPath);
+
+                  if (Array.isArray(tabPath) && targetKey !== currentKey) {
+                    selectBlock(path);
+                    onMoveBlockIntoTab?.(path, tabPath, tabId);
+                    return;
+                  }
+                } catch {
+                  return;
+                }
+              }
+
               const target = document
                 .elementFromPoint(event.clientX, event.clientY)
                 ?.closest<HTMLElement>("[data-project-preview-block]");
@@ -1638,6 +1659,9 @@ export function BlockRenderer({
             </div>
             <div
               className="mt-6 min-h-14 rounded-md border border-dashed border-transparent p-2 text-sm leading-7 text-neutral-600 transition dark:text-neutral-300"
+              data-project-tab-drop-zone
+              data-project-tab-id={activeTab?.id ?? ""}
+              data-project-tab-path={JSON.stringify(path)}
               onMouseDown={(event) => {
                 if (editable) {
                   event.stopPropagation();

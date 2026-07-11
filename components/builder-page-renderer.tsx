@@ -1382,6 +1382,30 @@ function BuilderBlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
+              const tabTarget = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>("[data-builder-tab-drop-zone]");
+              const tabTargetSectionId = tabTarget?.dataset.builderSectionId;
+              const tabTargetBlockId = tabTarget?.dataset.builderTabBlockId;
+              const tabTargetId = tabTarget?.dataset.builderTabId;
+
+              if (
+                tabTarget &&
+                tabTargetSectionId === sectionId &&
+                tabTargetBlockId &&
+                tabTargetId &&
+                tabTargetBlockId !== block.id
+              ) {
+                selectBlock();
+                onMoveBlockIntoTab?.(
+                  sectionId,
+                  block.id,
+                  tabTargetBlockId,
+                  tabTargetId
+                );
+                return;
+              }
+
               const target = document
                 .elementFromPoint(event.clientX, event.clientY)
                 ?.closest<HTMLElement>("[data-builder-preview-block]");
@@ -1900,6 +1924,10 @@ function BuilderBlockRenderer({
           </div>
           <div
             className="mt-6 min-h-14 rounded-md border border-dashed border-transparent p-2 text-sm leading-7 text-neutral-600 transition dark:text-neutral-300"
+            data-builder-section-id={sectionId}
+            data-builder-tab-block-id={block.id}
+            data-builder-tab-drop-zone
+            data-builder-tab-id={activeTab?.id ?? ""}
             onMouseDown={(event) => {
               if (editable) {
                 event.stopPropagation();
