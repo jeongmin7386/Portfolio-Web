@@ -26,10 +26,19 @@ export async function POST(request: Request) {
     ownerPassword?: string;
     password?: string;
   };
+  const email = body.email?.trim();
+  const password = body.password ?? "";
 
-  if (body.email) {
+  if (email !== undefined) {
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: "이메일과 비밀번호를 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
     try {
-      const user = await verifyAdminAccount(body.email, body.password ?? "");
+      const user = await verifyAdminAccount(email, password);
       await setAdminSessionCookie(user);
 
       return NextResponse.json({
@@ -61,6 +70,13 @@ export async function POST(request: Request) {
     }
   }
 
+  if (body.ownerPassword === undefined) {
+    return NextResponse.json(
+      { message: "로그인 방식을 다시 선택해주세요." },
+      { status: 400 }
+    );
+  }
+
   if (!isOwnerPasswordConfigured()) {
     return NextResponse.json(
       { message: "소유자 비밀번호가 아직 설정되지 않았습니다." },
@@ -68,7 +84,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const ownerPassword = body.ownerPassword ?? body.password;
+  const ownerPassword = body.ownerPassword;
 
   if (!ownerPassword || !verifyAdminPassword(ownerPassword)) {
     return NextResponse.json(

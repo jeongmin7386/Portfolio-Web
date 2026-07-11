@@ -36,6 +36,14 @@ export function AdminLoginForm({
   };
 
   const handleLogin = async () => {
+    if (!isOwnerMode && (!email.trim() || !password)) {
+      throw new Error("이메일과 비밀번호를 입력해주세요.");
+    }
+
+    if (isOwnerMode && !password) {
+      throw new Error("소유자 비밀번호를 입력해주세요.");
+    }
+
     const response = await fetch("/api/admin/login", {
       method: "POST",
       headers: {
