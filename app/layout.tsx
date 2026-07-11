@@ -5,6 +5,8 @@ import { SiteHeader } from "@/components/site-header";
 import { getAdminSession } from "@/lib/auth";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://studio-archive.onrender.com"),
   title: {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -28,6 +28,7 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(authenticated);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMatch = pathname.match(/^\/u\/([^/]+)/);
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
@@ -58,6 +59,36 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
       window.location.href = "/admin/login";
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function refreshSession() {
+      try {
+        const response = await fetch("/api/admin/session", {
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const body = (await response.json()) as { authenticated?: boolean };
+
+        if (mounted) {
+          setIsAuthenticated(Boolean(body.authenticated));
+        }
+      } catch {
+        // Keep the server-rendered state if the session check fails.
+      }
+    }
+
+    void refreshSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-stone-50/90 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/90">
@@ -98,7 +129,7 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
                 </Link>
               );
             })}
-            {authenticated ? (
+            {isAuthenticated ? (
               <button
                 className={authButtonClass}
                 disabled={isLoggingOut}
