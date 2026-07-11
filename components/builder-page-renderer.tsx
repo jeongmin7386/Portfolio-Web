@@ -438,6 +438,23 @@ function getBuilderTabCommandMatches(value: string) {
   );
 }
 
+function findElementFromPoint(selector: string, clientX: number, clientY: number) {
+  const elements =
+    typeof document.elementsFromPoint === "function"
+      ? document.elementsFromPoint(clientX, clientY)
+      : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
+
+  for (const element of elements) {
+    const target = element?.closest<HTMLElement>(selector);
+
+    if (target) {
+      return target;
+    }
+  }
+
+  return null;
+}
+
 function BuilderInsertionPoint({
   canPasteBlock,
   insertIndex,
@@ -1324,26 +1341,12 @@ function BuilderBlockRenderer({
               selectBlock();
               setIsOptionsOpen((current) => !current);
             }}
-            draggable
-            onDragStart={(event) => {
-              event.stopPropagation();
-              selectBlock();
-              event.dataTransfer.effectAllowed = "move";
-              event.dataTransfer.setData(
-                "application/x-studio-builder-block",
-                JSON.stringify({ sectionId, blockId: block.id })
-              );
-            }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerCancel={() => {
               touchDragRef.current = null;
             }}
             onPointerDown={(event) => {
-              if (
-                event.pointerType === "mouse" ||
-                !editable ||
-                !onMoveBlock
-              ) {
+              if (!editable || (!onMoveBlock && !onMoveBlockIntoTab)) {
                 return;
               }
 
@@ -1397,9 +1400,11 @@ function BuilderBlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
-              const tabTarget = document
-                .elementFromPoint(event.clientX, event.clientY)
-                ?.closest<HTMLElement>("[data-builder-tab-drop-zone]");
+              const tabTarget = findElementFromPoint(
+                "[data-builder-tab-drop-zone]",
+                event.clientX,
+                event.clientY
+              );
               const tabTargetSectionId = tabTarget?.dataset.builderSectionId;
               const tabTargetBlockId = tabTarget?.dataset.builderTabBlockId;
               const tabTargetId = tabTarget?.dataset.builderTabId;
@@ -1421,9 +1426,11 @@ function BuilderBlockRenderer({
                 return;
               }
 
-              const target = document
-                .elementFromPoint(event.clientX, event.clientY)
-                ?.closest<HTMLElement>("[data-builder-preview-block]");
+              const target = findElementFromPoint(
+                "[data-builder-preview-block]",
+                event.clientX,
+                event.clientY
+              );
               const targetSectionId = target?.dataset.builderSectionId;
               const targetBlockId = target?.dataset.builderBlockId;
 

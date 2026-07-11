@@ -163,6 +163,23 @@ function getProjectTabCommandMatches(value: string) {
   );
 }
 
+function findElementFromPoint(selector: string, clientX: number, clientY: number) {
+  const elements =
+    typeof document.elementsFromPoint === "function"
+      ? document.elementsFromPoint(clientX, clientY)
+      : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
+
+  for (const element of elements) {
+    const target = element?.closest<HTMLElement>(selector);
+
+    if (target) {
+      return target;
+    }
+  }
+
+  return null;
+}
+
 function ProjectInsertionPoint({
   canPasteBlock,
   onInsertBlock,
@@ -1215,26 +1232,12 @@ export function BlockRenderer({
               selectBlock(path);
               setOpenOptionsKey((key) => (key === currentKey ? "" : currentKey));
             }}
-            draggable
-            onDragStart={(event) => {
-              event.stopPropagation();
-              selectBlock(path);
-              event.dataTransfer.effectAllowed = "move";
-              event.dataTransfer.setData(
-                "application/x-studio-project-block",
-                JSON.stringify({ path })
-              );
-            }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerCancel={() => {
               touchDragRef.current = null;
             }}
             onPointerDown={(event) => {
-              if (
-                event.pointerType === "mouse" ||
-                !editable ||
-                !onMoveBlock
-              ) {
+              if (!editable || (!onMoveBlock && !onMoveBlockIntoTab)) {
                 return;
               }
 
@@ -1288,9 +1291,11 @@ export function BlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
-              const tabTarget = document
-                .elementFromPoint(event.clientX, event.clientY)
-                ?.closest<HTMLElement>("[data-project-tab-drop-zone]");
+              const tabTarget = findElementFromPoint(
+                "[data-project-tab-drop-zone]",
+                event.clientX,
+                event.clientY
+              );
               const rawTabPath = tabTarget?.dataset.projectTabPath;
               const tabId = tabTarget?.dataset.projectTabId;
 
@@ -1309,9 +1314,11 @@ export function BlockRenderer({
                 }
               }
 
-              const target = document
-                .elementFromPoint(event.clientX, event.clientY)
-                ?.closest<HTMLElement>("[data-project-preview-block]");
+              const target = findElementFromPoint(
+                "[data-project-preview-block]",
+                event.clientX,
+                event.clientY
+              );
               const rawTargetPath = target?.dataset.projectBlockPath;
 
               if (!target || !rawTargetPath) {
