@@ -432,6 +432,136 @@ function deleteBuilderBlockById(
     });
 }
 
+function extractBuilderBlockById(
+  blocks: BuilderBlock[],
+  blockId: string
+): { blocks: BuilderBlock[]; block?: BuilderBlock } {
+  let extractedBlock: BuilderBlock | undefined;
+  let changed = false;
+  const nextBlocks: BuilderBlock[] = [];
+
+  for (const block of blocks) {
+    if (block.id === blockId) {
+      extractedBlock = block;
+      changed = true;
+      continue;
+    }
+
+    if (block.type !== "tabs") {
+      nextBlocks.push(block);
+      continue;
+    }
+
+    let tabsChanged = false;
+    const tabs = block.content.tabs.map((tab) => {
+      const result = extractBuilderBlockById(tab.blocks ?? [], blockId);
+
+      if (!result.block) {
+        return tab;
+      }
+
+      extractedBlock = result.block;
+      tabsChanged = true;
+
+      return {
+        ...tab,
+        blocks: orderItems(result.blocks),
+        text: ""
+      };
+    });
+
+    if (!tabsChanged) {
+      nextBlocks.push(block);
+      continue;
+    }
+
+    changed = true;
+    nextBlocks.push({
+      ...block,
+      content: { tabs }
+    });
+  }
+
+  return {
+    blocks: changed ? orderItems(nextBlocks) : blocks,
+    block: extractedBlock
+  };
+}
+
+function insertBuilderBlockIntoTabById(
+  blocks: BuilderBlock[],
+  tabBlockId: string,
+  tabId: string,
+  movingBlock: BuilderBlock
+): { blocks: BuilderBlock[]; inserted: boolean } {
+  let inserted = false;
+  const nextBlocks = blocks.map((block) => {
+    if (block.type !== "tabs" || inserted) {
+      return block;
+    }
+
+    if (block.id === tabBlockId) {
+      const tabs = block.content.tabs.length
+        ? block.content.tabs
+        : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+
+      inserted = true;
+
+      return {
+        ...block,
+        content: {
+          tabs: tabs.map((tab) =>
+            tab.id === tabId
+              ? {
+                  ...tab,
+                  blocks: orderItems([
+                    ...getEditableBuilderTabBlocks(tab),
+                    movingBlock
+                  ]),
+                  text: ""
+                }
+              : tab
+          )
+        },
+        settings: { ...block.settings, activeTabId: tabId }
+      };
+    }
+
+    const tabs = block.content.tabs.map((tab) => {
+      const result = insertBuilderBlockIntoTabById(
+        tab.blocks ?? [],
+        tabBlockId,
+        tabId,
+        movingBlock
+      );
+
+      if (!result.inserted) {
+        return tab;
+      }
+
+      inserted = true;
+
+      return {
+        ...tab,
+        blocks: result.blocks,
+        text: ""
+      };
+    });
+
+    return inserted
+      ? {
+          ...block,
+          content: { tabs }
+        }
+      : block;
+  });
+
+  return {
+    blocks: inserted ? orderItems(nextBlocks) : blocks,
+    inserted
+  };
+}
+
 function createBlock(type: BuilderBlockType): BuilderBlock {
   const id = createId("block");
 
@@ -2014,45 +2144,23 @@ export function PageBuilderEditor({
       return;
     }
 
-    const movingBlock = section.blocks.find((block) => block.id === sourceBlockId);
+    const extracted = extractBuilderBlockById(section.blocks, sourceBlockId);
 
-    if (!movingBlock) {
+    if (!extracted.block) {
       return;
     }
 
-    const topLevelBlocks = section.blocks.filter(
-      (block) => block.id !== sourceBlockId
+    const inserted = insertBuilderBlockIntoTabById(
+      extracted.blocks,
+      tabBlockId,
+      tabId,
+      extracted.block
     );
-    const nextBlocks = topLevelBlocks.map((block) => {
-      if (block.id !== tabBlockId || block.type !== "tabs") {
-        return block;
-      }
 
-      const tabs = block.content.tabs.length
-        ? block.content.tabs
-        : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
-
-      return {
-        ...block,
-        content: {
-          tabs: tabs.map((tab) =>
-            tab.id === tabId
-              ? {
-                  ...tab,
-                  blocks: orderItems([
-                    ...getEditableBuilderTabBlocks(tab),
-                    movingBlock
-                  ]),
-                  text: ""
-                }
-              : tab
-          )
-        },
-        settings: { ...block.settings, activeTabId: tabId }
-      };
-    });
-
-    updateSelectedSection({ ...section, blocks: orderItems(nextBlocks) });
+    if (!inserted.inserted) {
+      return;
+    }
+    updateSelectedSection({ ...section, blocks: orderItems(inserted.blocks) });
     setSelectedSectionId(sectionId);
     setSelectedBlockId(sourceBlockId);
     setStatus("블록을 탭 안으로 옮겼습니다.");

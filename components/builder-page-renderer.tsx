@@ -2023,6 +2023,7 @@ function BuilderBlockRenderer({
                       onCopyBlock={onCopyBlock}
                       onDeleteBlock={(_, blockId) => deleteActiveTabBlock(blockId)}
                       onInsertBlockIntoTab={onInsertBlockIntoTab}
+                      onMoveBlockIntoTab={onMoveBlockIntoTab}
                       onMoveBlock={(_, sourceBlockId, targetBlockId, placement) =>
                         moveActiveTabBlock(sourceBlockId, targetBlockId, placement)
                       }
