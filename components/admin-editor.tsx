@@ -44,7 +44,8 @@ import {
 import {
   BlockRenderer,
   InlineEditableText,
-  type ProjectBlockPath
+  type ProjectBlockPath,
+  type ProjectTabInsertOptions
 } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
 import {
@@ -57,6 +58,7 @@ import type {
   Project,
   ProjectBlock,
   ProjectImage,
+  ProjectTabItem,
   StudioArchiveContent
 } from "@/lib/types";
 
@@ -505,6 +507,31 @@ function createProjectBlockFromOption(option: ProjectInsertOption) {
   } as ProjectBlock;
 }
 
+function createProjectBlockForTab(
+  type: ProjectBlock["type"],
+  options?: ProjectTabInsertOptions
+) {
+  const block = createBlock(type);
+
+  if (block.type === "heading" && options?.headingLevel) {
+    return { ...block, level: options.headingLevel };
+  }
+
+  return block;
+}
+
+function getEditableProjectTabBlocks(tab: ProjectTabItem): ProjectBlock[] {
+  if (tab.blocks?.length) {
+    return tab.blocks;
+  }
+
+  if (!tab.text.trim()) {
+    return [];
+  }
+
+  return [{ type: "paragraph", text: tab.text }];
+}
+
 function replaceProjectBlockAtPath(
   blocks: ProjectBlock[],
   path: ProjectBlockPath,
@@ -534,6 +561,61 @@ function replaceProjectBlockAtPath(
       [side]: replaceProjectBlockAtPath(block[side], childPath, nextBlock)
     };
   });
+}
+
+function getProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath
+): ProjectBlock | null {
+  const [blockIndex, side, ...childPath] = path;
+
+  if (typeof blockIndex !== "number") {
+    return null;
+  }
+
+  const block = blocks[blockIndex];
+
+  if (!block) {
+    return null;
+  }
+
+  if (path.length === 1) {
+    return block;
+  }
+
+  if (block.type !== "twoColumn" || (side !== "left" && side !== "right")) {
+    return null;
+  }
+
+  return getProjectBlockAtPath(block[side], childPath);
+}
+
+function isProjectPathPrefix(
+  parentPath: ProjectBlockPath,
+  childPath: ProjectBlockPath
+) {
+  return parentPath.every((part, index) => childPath[index] === part);
+}
+
+function adjustProjectPathAfterDelete(
+  path: ProjectBlockPath,
+  deletedPath: ProjectBlockPath
+): ProjectBlockPath {
+  const pathParent = path.slice(0, -1);
+  const deletedParent = deletedPath.slice(0, -1);
+  const pathIndex = path[path.length - 1];
+  const deletedIndex = deletedPath[deletedPath.length - 1];
+
+  if (
+    projectBlockPathKey(pathParent) !== projectBlockPathKey(deletedParent) ||
+    typeof pathIndex !== "number" ||
+    typeof deletedIndex !== "number" ||
+    deletedIndex >= pathIndex
+  ) {
+    return path;
+  }
+
+  return [...pathParent, pathIndex - 1];
 }
 
 function insertProjectBlockAfterPath(
@@ -727,6 +809,71 @@ function moveProjectBlockAtPath(
   });
 
   return { blocks: nextBlocks, path: nextPath };
+}
+
+function insertProjectBlockIntoTabAtPath(
+  blocks: ProjectBlock[],
+  tabPath: ProjectBlockPath,
+  tabId: string,
+  nextBlock: ProjectBlock
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  const tabBlock = getProjectBlockAtPath(blocks, tabPath);
+
+  if (tabBlock?.type !== "tabs") {
+    return { blocks, path: tabPath };
+  }
+
+  const tabs = tabBlock.tabs.length
+    ? tabBlock.tabs
+    : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+  const nextTabBlock: ProjectBlock = {
+    ...tabBlock,
+    activeTabId: tabId,
+    tabs: tabs.map((tab) =>
+      tab.id === tabId
+        ? {
+            ...tab,
+            blocks: [...getEditableProjectTabBlocks(tab), nextBlock],
+            text: ""
+          }
+        : tab
+    )
+  };
+
+  return {
+    blocks: replaceProjectBlockAtPath(blocks, tabPath, nextTabBlock),
+    path: tabPath
+  };
+}
+
+function moveProjectBlockIntoTabAtPath(
+  blocks: ProjectBlock[],
+  sourcePath: ProjectBlockPath,
+  tabPath: ProjectBlockPath,
+  tabId: string
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  if (
+    projectBlockPathKey(sourcePath) === projectBlockPathKey(tabPath) ||
+    isProjectPathPrefix(sourcePath, tabPath)
+  ) {
+    return { blocks, path: tabPath };
+  }
+
+  const movingBlock = getProjectBlockAtPath(blocks, sourcePath);
+
+  if (!movingBlock) {
+    return { blocks, path: tabPath };
+  }
+
+  const deleted = deleteProjectBlockAtPath(blocks, sourcePath);
+  const adjustedTabPath = adjustProjectPathAfterDelete(tabPath, sourcePath);
+
+  return insertProjectBlockIntoTabAtPath(
+    deleted.blocks,
+    adjustedTabPath,
+    tabId,
+    movingBlock
+  );
 }
 
 type ImageFieldsProps = {
@@ -1847,6 +1994,17 @@ type AdminLivePreviewProps = {
     targetPath: ProjectBlockPath,
     placement: "before" | "after"
   ) => void;
+  onInsertProjectBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string,
+    type: ProjectBlock["type"],
+    options?: ProjectTabInsertOptions
+  ) => void;
+  onMoveProjectBlockIntoTab?: (
+    sourcePath: ProjectBlockPath,
+    tabPath: ProjectBlockPath,
+    tabId: string
+  ) => void;
 };
 
 function PreviewMetaItem({
@@ -1891,7 +2049,9 @@ function ProjectLivePreview({
   onChangeBlock,
   onInsertBlock,
   onDeleteBlock,
-  onMoveBlock
+  onMoveBlock,
+  onInsertBlockIntoTab,
+  onMoveBlockIntoTab
 }: {
   project: Project;
   selectedBlockPath?: ProjectBlockPath;
@@ -1904,6 +2064,17 @@ function ProjectLivePreview({
     sourcePath: ProjectBlockPath,
     targetPath: ProjectBlockPath,
     placement: "before" | "after"
+  ) => void;
+  onInsertBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string,
+    type: ProjectBlock["type"],
+    options?: ProjectTabInsertOptions
+  ) => void;
+  onMoveBlockIntoTab?: (
+    sourcePath: ProjectBlockPath,
+    tabPath: ProjectBlockPath,
+    tabId: string
   ) => void;
 }) {
   const coverImage = project.coverImage || "/images/placeholder-atlas.svg";
@@ -2073,7 +2244,9 @@ function ProjectLivePreview({
             onChangeBlock={onChangeBlock}
             onDeleteBlock={onDeleteBlock}
             onInsertBlock={onInsertBlock}
+            onInsertBlockIntoTab={onInsertBlockIntoTab}
             onMoveBlock={onMoveBlock}
+            onMoveBlockIntoTab={onMoveBlockIntoTab}
             onSelectBlock={onSelectBlock}
             selectedBlockPath={selectedBlockPath}
           />
@@ -2239,7 +2412,9 @@ function AdminLivePreview({
   onChangeProjectBlock,
   onInsertProjectBlock,
   onDeleteProjectBlock,
-  onMoveProjectBlock
+  onMoveProjectBlock,
+  onInsertProjectBlockIntoTab,
+  onMoveProjectBlockIntoTab
 }: AdminLivePreviewProps) {
   if (activePanel === "projects" && project) {
     return (
@@ -2248,7 +2423,9 @@ function AdminLivePreview({
         onChangeProject={onChangeProject}
         onDeleteBlock={onDeleteProjectBlock}
         onInsertBlock={onInsertProjectBlock}
+        onInsertBlockIntoTab={onInsertProjectBlockIntoTab}
         onMoveBlock={onMoveProjectBlock}
+        onMoveBlockIntoTab={onMoveProjectBlockIntoTab}
         onSelectBlock={onSelectProjectBlock}
         project={project}
         selectedBlockPath={selectedProjectBlockPath}
@@ -2583,6 +2760,55 @@ export function AdminEditor({
     });
     setSelectedProjectBlockPath(moved.path);
     setStatus("블록 순서를 변경했습니다.");
+  };
+
+  const insertProjectBlockIntoTabFromPreview = (
+    tabPath: ProjectBlockPath,
+    tabId: string,
+    type: ProjectBlock["type"],
+    options?: ProjectTabInsertOptions
+  ) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const insertion = insertProjectBlockIntoTabAtPath(
+      selectedProject.blocks,
+      tabPath,
+      tabId,
+      createProjectBlockForTab(type, options)
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setStatus(`${blockLabels[type]} 블록을 탭 안에 추가했습니다.`);
+  };
+
+  const moveProjectBlockIntoTabFromPreview = (
+    sourcePath: ProjectBlockPath,
+    tabPath: ProjectBlockPath,
+    tabId: string
+  ) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const moved = moveProjectBlockIntoTabAtPath(
+      selectedProject.blocks,
+      sourcePath,
+      tabPath,
+      tabId
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: moved.blocks
+    });
+    setSelectedProjectBlockPath(moved.path);
+    setStatus("블록을 탭 안으로 옮겼습니다.");
   };
 
   const selectProjectBlockFromSettings = (path: ProjectBlockPath) => {
@@ -3083,7 +3309,9 @@ export function AdminEditor({
                 onChangeProjectBlock={updateSelectedProjectBlock}
                 onDeleteProjectBlock={deleteProjectBlockFromPreview}
                 onInsertProjectBlock={insertProjectBlockAtPreviewPath}
+                onInsertProjectBlockIntoTab={insertProjectBlockIntoTabFromPreview}
                 onMoveProjectBlock={moveProjectBlockFromPreview}
+                onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
                 onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
                 selectedProjectBlockPath={selectedProjectBlockPath}
@@ -3544,7 +3772,9 @@ export function AdminEditor({
               onChangeProjectBlock={updateSelectedProjectBlock}
               onDeleteProjectBlock={deleteProjectBlockFromPreview}
               onInsertProjectBlock={insertProjectBlockAtPreviewPath}
+              onInsertProjectBlockIntoTab={insertProjectBlockIntoTabFromPreview}
               onMoveProjectBlock={moveProjectBlockFromPreview}
+              onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
               onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}
               selectedProjectBlockPath={selectedProjectBlockPath}

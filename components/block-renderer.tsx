@@ -29,6 +29,7 @@ import type {
 } from "@/lib/types";
 
 export type ProjectBlockPath = Array<number | "left" | "right">;
+export type ProjectTabInsertOptions = { headingLevel?: 1 | 2 | 3 | 4 };
 
 type BlockRendererProps = {
   blocks: ProjectBlock[];
@@ -42,6 +43,17 @@ type BlockRendererProps = {
     sourcePath: ProjectBlockPath,
     targetPath: ProjectBlockPath,
     placement: "before" | "after"
+  ) => void;
+  onInsertBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string,
+    type: ProjectBlock["type"],
+    options?: ProjectTabInsertOptions
+  ) => void;
+  onMoveBlockIntoTab?: (
+    sourcePath: ProjectBlockPath,
+    tabPath: ProjectBlockPath,
+    tabId: string
   ) => void;
 };
 
@@ -101,6 +113,47 @@ const projectInsertOptions: Array<{
   { label: "과정", type: "process" },
   { label: "결과", type: "result" }
 ];
+
+type ProjectTabInsertOption = {
+  aliases: string[];
+  headingLevel?: 1 | 2 | 3 | 4;
+  label: string;
+  type: ProjectBlock["type"];
+};
+
+const projectTabInsertOptions: ProjectTabInsertOption[] = [
+  { aliases: ["/#", "/h1"], headingLevel: 1, label: "제목 1", type: "heading" },
+  { aliases: ["/##", "/h2"], headingLevel: 2, label: "제목 2", type: "heading" },
+  { aliases: ["/###", "/h3"], headingLevel: 3, label: "제목 3", type: "heading" },
+  { aliases: ["/####", "/h4"], headingLevel: 4, label: "제목 4", type: "heading" },
+  { aliases: ["/text", "/본문"], label: "본문", type: "paragraph" },
+  { aliases: ["/-", "/bullet", "/글머리"], label: "글머리 목록", type: "bulletList" },
+  { aliases: ["/1.", "/number", "/번호"], label: "번호 목록", type: "numberedList" },
+  { aliases: ["/tabs", "/탭"], label: "탭", type: "tabs" },
+  { aliases: ["/image", "/이미지"], label: "이미지", type: "image" },
+  { aliases: ["/gallery", "/갤러리"], label: "갤러리", type: "imageGrid" },
+  { aliases: ["/quote", "/인용"], label: "인용", type: "quote" },
+  { aliases: ["/button", "/버튼"], label: "버튼", type: "button" },
+  { aliases: ["/divider", "/구분선"], label: "구분선", type: "divider" },
+  { aliases: ["/spacer", "/여백"], label: "여백", type: "spacer" },
+  { aliases: ["/embed", "/임베드"], label: "임베드", type: "embed" },
+  { aliases: ["/two", "/2열"], label: "2열", type: "twoColumn" },
+  { aliases: ["/stats", "/지표"], label: "지표", type: "stats" },
+  { aliases: ["/process", "/과정"], label: "과정", type: "process" },
+  { aliases: ["/result", "/결과"], label: "결과", type: "result" }
+];
+
+function getProjectTabCommandMatches(value: string) {
+  const query = value.trim().toLowerCase();
+
+  if (!query.startsWith("/")) {
+    return [];
+  }
+
+  return projectTabInsertOptions.filter((option) =>
+    option.aliases.some((alias) => alias.toLowerCase().startsWith(query))
+  );
+}
 
 function ProjectInsertionPoint({
   onInsertBlock,
@@ -896,13 +949,20 @@ export function BlockRenderer({
   onChangeBlock,
   onInsertBlock,
   onDeleteBlock,
-  onMoveBlock
+  onMoveBlock,
+  onInsertBlockIntoTab,
+  onMoveBlockIntoTab
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
   const [openOptionsKey, setOpenOptionsKey] = useState("");
+  const [tabCommandValue, setTabCommandValue] = useState("");
+  const [isTabCommandOpen, setIsTabCommandOpen] = useState(false);
+  const [isTabAddMenuOpen, setIsTabAddMenuOpen] = useState(false);
+  const [selectedTabCommandIndex, setSelectedTabCommandIndex] = useState(0);
 
   const selectedKey = selectedBlockPath ? pathKey(selectedBlockPath) : "";
+  const tabCommandMatches = getProjectTabCommandMatches(tabCommandValue);
 
   const openLightbox = (images: LightboxImage[], index: number) => {
     if (!editable) {
@@ -921,6 +981,64 @@ export function BlockRenderer({
   };
   const deleteBlock = (path: ProjectBlockPath) => {
     onDeleteBlock?.(path);
+  };
+  const insertBlockIntoActiveTab = (
+    path: ProjectBlockPath,
+    tabId: string | undefined,
+    option: ProjectTabInsertOption
+  ) => {
+    if (!tabId) {
+      return;
+    }
+
+    onInsertBlockIntoTab?.(
+      path,
+      tabId,
+      option.type,
+      option.headingLevel ? { headingLevel: option.headingLevel } : undefined
+    );
+    setTabCommandValue("");
+    setIsTabCommandOpen(false);
+    setIsTabAddMenuOpen(false);
+    setSelectedTabCommandIndex(0);
+    selectBlock(path);
+  };
+
+  const handleTabCommandKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    path: ProjectBlockPath,
+    tabId: string | undefined
+  ) => {
+    if (event.key === "Escape") {
+      setIsTabCommandOpen(false);
+      setIsTabAddMenuOpen(false);
+      return;
+    }
+
+    if (!isTabCommandOpen || tabCommandMatches.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSelectedTabCommandIndex((current) =>
+        Math.min(current + 1, tabCommandMatches.length - 1)
+      );
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelectedTabCommandIndex((current) => Math.max(current - 1, 0));
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      insertBlockIntoActiveTab(
+        path,
+        tabId,
+        tabCommandMatches[selectedTabCommandIndex] ?? tabCommandMatches[0]
+      );
+    }
   };
 
   const wrapEditableBlock = (
@@ -1351,12 +1469,137 @@ export function BlockRenderer({
                 </button>
               ) : null}
             </div>
-            <div className="mt-6 min-h-14 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
+            <div
+              className="mt-6 min-h-14 rounded-md border border-dashed border-transparent p-2 text-sm leading-7 text-neutral-600 transition dark:text-neutral-300"
+              onDragOver={(event) => {
+                if (
+                  editable &&
+                  onMoveBlockIntoTab &&
+                  event.dataTransfer.types.includes(
+                    "application/x-studio-project-block"
+                  )
+                ) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.dataTransfer.dropEffect = "move";
+                }
+              }}
+              onDrop={(event) => {
+                if (!editable || !onMoveBlockIntoTab || !activeTab?.id) {
+                  return;
+                }
+
+                const payload = event.dataTransfer.getData(
+                  "application/x-studio-project-block"
+                );
+
+                if (!payload) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                try {
+                  const parsed = JSON.parse(payload) as {
+                    path?: ProjectBlockPath;
+                  };
+
+                  if (Array.isArray(parsed.path)) {
+                    onMoveBlockIntoTab(parsed.path, path, activeTab.id);
+                    selectBlock(path);
+                  }
+                } catch {
+                  // 다른 드래그 데이터는 무시합니다.
+                }
+              }}
+            >
               {activeTabBlocks.length > 0 ? (
                 <BlockRenderer blocks={activeTabBlocks} />
               ) : (
-                <p className="text-neutral-400">빈 탭입니다.</p>
+                <p className="text-neutral-400">
+                  빈 탭입니다. 아래 입력창에서 /로 블록을 추가할 수 있습니다.
+                </p>
               )}
+              {editable && activeTab?.id ? (
+                <div
+                  className="relative mt-4 flex w-full max-w-xl items-center gap-2 rounded-full border border-neutral-200 bg-white/90 p-1.5 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <button
+                    aria-expanded={isTabAddMenuOpen}
+                    aria-label="탭 안에 블록 추가"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:bg-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:bg-neutral-50 dark:text-neutral-950"
+                    onClick={() => {
+                      setIsTabAddMenuOpen((current) => !current);
+                      setIsTabCommandOpen(false);
+                      selectBlock(path);
+                    }}
+                    type="button"
+                  >
+                    <Plus aria-hidden size={17} />
+                  </button>
+                  <input
+                    className="min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setTabCommandValue(value);
+                      setSelectedTabCommandIndex(0);
+                      setIsTabCommandOpen(value.trimStart().startsWith("/"));
+                      setIsTabAddMenuOpen(false);
+                    }}
+                    onFocus={() => {
+                      selectBlock(path);
+                      setIsTabCommandOpen(tabCommandValue.trimStart().startsWith("/"));
+                    }}
+                    onKeyDown={(event) =>
+                      handleTabCommandKeyDown(event, path, activeTab.id)
+                    }
+                    placeholder="/ 입력으로 탭 안에 블록 추가"
+                    value={tabCommandValue}
+                  />
+                  {isTabAddMenuOpen ? (
+                    <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 grid w-[min(36rem,calc(100vw-2rem))] grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
+                      {projectTabInsertOptions.map((option) => (
+                        <button
+                          className="min-h-11 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
+                          key={`${option.type}-${option.label}`}
+                          onClick={() =>
+                            insertBlockIntoActiveTab(path, activeTab.id, option)
+                          }
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {isTabCommandOpen && tabCommandMatches.length > 0 ? (
+                    <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 grid w-[min(32rem,calc(100vw-2rem))] gap-1 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+                      {tabCommandMatches.map((option, index) => (
+                        <button
+                          className={`rounded-sm px-3 py-2 text-left transition ${
+                            index === selectedTabCommandIndex
+                              ? "bg-neutral-950 text-white dark:bg-neutral-50 dark:text-neutral-950"
+                              : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
+                          }`}
+                          key={`${option.type}-${option.label}`}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() =>
+                            insertBlockIntoActiveTab(path, activeTab.id, option)
+                          }
+                          type="button"
+                        >
+                          <span className="font-medium">{option.label}</span>
+                          <span className="ml-2 text-xs opacity-60">
+                            {option.aliases[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>,
           path,

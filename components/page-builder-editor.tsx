@@ -533,6 +533,34 @@ function createHeadingBlock(level: 1 | 2 | 3 | 4) {
   };
 }
 
+function createBlockForTab(
+  type: BuilderBlockType,
+  options?: { headingLevel?: 1 | 2 | 3 | 4 }
+) {
+  if (type === "heading" && options?.headingLevel) {
+    return createHeadingBlock(options.headingLevel);
+  }
+
+  return createBlock(type);
+}
+
+function getEditableBuilderTabBlocks(tab: BuilderTabItem): BuilderBlock[] {
+  if (tab.blocks?.length) {
+    return tab.blocks;
+  }
+
+  if (!tab.text.trim()) {
+    return [];
+  }
+
+  return [
+    {
+      ...createTypedBlock("paragraph"),
+      content: { text: tab.text }
+    }
+  ];
+}
+
 function createSection(type: BuilderSectionType): BuilderSection {
   const id = createId("section");
   const baseSettings: BuilderSectionSettings = {
@@ -1743,6 +1771,111 @@ export function PageBuilderEditor({
     setSelectedBlockId(sourceBlockId);
   };
 
+  const insertBlockIntoTabFromPreview = (
+    sectionId: string,
+    tabBlockId: string,
+    tabId: string,
+    type: BuilderBlockType,
+    options?: { headingLevel?: 1 | 2 | 3 | 4 }
+  ) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section) {
+      return;
+    }
+
+    const nextBlock = createBlockForTab(type, options);
+    const nextBlocks = section.blocks.map((block) => {
+      if (block.id !== tabBlockId || block.type !== "tabs") {
+        return block;
+      }
+
+      const tabs = block.content.tabs.length
+        ? block.content.tabs
+        : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+
+      return {
+        ...block,
+        content: {
+          tabs: tabs.map((tab) =>
+            tab.id === tabId
+              ? {
+                  ...tab,
+                  blocks: orderItems([
+                    ...getEditableBuilderTabBlocks(tab),
+                    nextBlock
+                  ]),
+                  text: ""
+                }
+              : tab
+          )
+        },
+        settings: { ...block.settings, activeTabId: tabId }
+      };
+    });
+
+    updateSelectedSection({ ...section, blocks: nextBlocks });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(tabBlockId);
+    setStatus(`${blockLabels[type]} 블록을 탭 안에 추가했습니다.`);
+  };
+
+  const moveBlockIntoTabFromPreview = (
+    sectionId: string,
+    sourceBlockId: string,
+    tabBlockId: string,
+    tabId: string
+  ) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section || sourceBlockId === tabBlockId) {
+      return;
+    }
+
+    const movingBlock = section.blocks.find((block) => block.id === sourceBlockId);
+
+    if (!movingBlock) {
+      return;
+    }
+
+    const topLevelBlocks = section.blocks.filter(
+      (block) => block.id !== sourceBlockId
+    );
+    const nextBlocks = topLevelBlocks.map((block) => {
+      if (block.id !== tabBlockId || block.type !== "tabs") {
+        return block;
+      }
+
+      const tabs = block.content.tabs.length
+        ? block.content.tabs
+        : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+
+      return {
+        ...block,
+        content: {
+          tabs: tabs.map((tab) =>
+            tab.id === tabId
+              ? {
+                  ...tab,
+                  blocks: orderItems([
+                    ...getEditableBuilderTabBlocks(tab),
+                    movingBlock
+                  ]),
+                  text: ""
+                }
+              : tab
+          )
+        },
+        settings: { ...block.settings, activeTabId: tabId }
+      };
+    });
+
+    updateSelectedSection({ ...section, blocks: orderItems(nextBlocks) });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(tabBlockId);
+    setStatus("블록을 탭 안으로 옮겼습니다.");
+  };
+
   const handleSectionDragEnd = (event: DragEndEvent) => {
     if (!page || !event.over || event.active.id === event.over.id) {
       return;
@@ -2241,7 +2374,9 @@ export function PageBuilderEditor({
               onChangeBlock={updateBlockInSection}
               onDeleteBlock={deleteBlockFromPreview}
               onInsertBlock={insertBlockAtPosition}
+              onInsertBlockIntoTab={insertBlockIntoTabFromPreview}
               onMoveBlock={moveBlockFromPreview}
+              onMoveBlockIntoTab={moveBlockIntoTabFromPreview}
               onSelectBlock={(sectionId, blockId) => {
                 setSelectedSectionId(sectionId);
                 setSelectedBlockId(blockId);
