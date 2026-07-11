@@ -1304,7 +1304,6 @@ function BlockListEditor({
             } ${draggingIndex === index ? "opacity-60" : ""}`}
             data-project-block-editor={currentPathKey}
             data-project-block-editor-index={index}
-            draggable
             key={`${block.type}-${index}`}
             onClick={(event) => {
               if (isProjectEditorInteractiveTarget(event.target)) {
@@ -1313,9 +1312,7 @@ function BlockListEditor({
 
               onSelect?.(currentPath);
             }}
-            onDragEnd={() => setDraggingIndex(null)}
             onDragOver={(event) => event.preventDefault()}
-            onDragStart={() => setDraggingIndex(index)}
             onDrop={(event) => {
               event.preventDefault();
               reorderBlock(index);
@@ -1332,6 +1329,9 @@ function BlockListEditor({
               <button
                 aria-label="블록 순서 변경"
                 className={iconButtonClass}
+                draggable
+                onDragEnd={() => setDraggingIndex(null)}
+                onDragStart={() => setDraggingIndex(index)}
                 onPointerCancel={() => {
                   touchDragRef.current = null;
                   setDraggingIndex(null);

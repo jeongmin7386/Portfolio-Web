@@ -622,13 +622,22 @@ function InlineEditableText({
     "data-focus-key": focusKey,
     "data-placeholder": placeholder ?? "",
     dir: "ltr",
-    style,
+    draggable: false,
+    style: {
+      ...style,
+      touchAction: "manipulation"
+    },
     onBlur: (event: FocusEvent<HTMLElement>) => {
       const nextValue = event.currentTarget.textContent ?? "";
 
       if (nextValue !== value) {
         onChange(nextValue);
       }
+    },
+    onClick: (event) => event.stopPropagation(),
+    onDragStart: (event) => {
+      event.preventDefault();
+      event.stopPropagation();
     },
     onFocus,
     onInput: (event: FormEvent<HTMLElement>) =>
@@ -687,6 +696,12 @@ function InlineEditableText({
         event.currentTarget.blur();
       }
     },
+    onMouseDown: (event) => event.stopPropagation(),
+    onMouseUp: (event) => event.stopPropagation(),
+    onPointerDown: (event) => event.stopPropagation(),
+    onPointerUp: (event) => event.stopPropagation(),
+    onTouchEnd: (event) => event.stopPropagation(),
+    onTouchStart: (event) => event.stopPropagation(),
     role: "textbox",
     suppressContentEditableWarning: true
   };
