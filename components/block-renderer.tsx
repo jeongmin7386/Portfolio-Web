@@ -1555,6 +1555,7 @@ export function BlockRenderer({
         const activeTab =
           tabs.find((tab) => tab.id === currentActiveId) ?? tabs[0];
         const activeTabBlocks = getProjectTabBlocks(activeTab);
+        const hasActiveTabStoredBlocks = Boolean(activeTab?.blocks?.length);
         const isLineStyle = block.style === "line";
         const updateTab = (
           tabId: string,
@@ -1652,6 +1653,16 @@ export function BlockRenderer({
             </div>
             <div
               className="mt-6 min-h-14 rounded-md border border-dashed border-transparent p-2 text-sm leading-7 text-neutral-600 transition dark:text-neutral-300"
+              onMouseDown={(event) => {
+                if (editable) {
+                  event.stopPropagation();
+                }
+              }}
+              onTouchStart={(event) => {
+                if (editable) {
+                  event.stopPropagation();
+                }
+              }}
               onDragOver={(event) => {
                 if (
                   editable &&
@@ -1695,7 +1706,7 @@ export function BlockRenderer({
                 }
               }}
             >
-              {activeTabBlocks.length > 0 ? (
+              {hasActiveTabStoredBlocks ? (
                 <EditableProjectTabBlockList
                   blocks={activeTabBlocks}
                   editable={editable}
@@ -1706,9 +1717,27 @@ export function BlockRenderer({
                   }
                 />
               ) : (
-                <p className="text-neutral-400">
-                  빈 탭입니다. 아래 입력창에서 /로 블록을 추가할 수 있습니다.
-                </p>
+                <>
+                  {editable && activeTab?.id ? (
+                    <InlineEditableText
+                      as="p"
+                      className="text-neutral-700 dark:text-neutral-200"
+                      multiline
+                      onChange={(text) => updateTab(activeTab.id, { text })}
+                      onFocus={() => selectBlock(path)}
+                      placeholder="탭 내용을 입력하세요"
+                      value={activeTab.text ?? ""}
+                    />
+                  ) : activeTab?.text ? (
+                    <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-200">
+                      {activeTab.text}
+                    </p>
+                  ) : (
+                    <p className="text-neutral-400">
+                      빈 탭입니다. 아래 입력창에서 /로 블록을 추가할 수 있습니다.
+                    </p>
+                  )}
+                </>
               )}
               {editable && activeTab?.id ? (
                 <div
