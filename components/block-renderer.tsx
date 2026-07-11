@@ -187,7 +187,9 @@ function ProjectInsertionPoint({
     >
       <div
         className={`absolute inset-x-0 top-1/2 h-px bg-blue-500 transition ${
-          open ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          open
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
         }`}
       />
       <button
@@ -196,7 +198,7 @@ function ProjectInsertionPoint({
         className={`relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
           open
             ? "scale-100 opacity-100"
-            : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 focus:scale-100 focus:opacity-100"
+            : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 focus:scale-100 focus:opacity-100 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100"
         }`}
         onClick={() => setOpen((current) => !current)}
         type="button"
@@ -1185,7 +1187,7 @@ export function BlockRenderer({
             className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
               selected || optionsOpen
                 ? "opacity-100"
-                : "opacity-0 group-hover:opacity-100"
+                : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             }`}
             onClick={(event) => {
               event.stopPropagation();

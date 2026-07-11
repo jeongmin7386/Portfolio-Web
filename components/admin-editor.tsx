@@ -39,6 +39,7 @@ import {
   type KeyboardEvent,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 
@@ -1023,6 +1024,7 @@ function SortableProjectRow({
 
 function UploadImageInput({ onUploaded }: UploadImageInputProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleUpload = async (file: File) => {
     const formData = new FormData();
@@ -1089,6 +1091,7 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
         accept="image/*"
         className="sr-only"
         disabled={isUploading}
+        ref={fileInputRef}
         onChange={(event) => {
           const file = event.target.files?.[0];
 
@@ -1104,7 +1107,14 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
       <button
         className={secondaryButtonClass}
         disabled={isUploading}
-        onClick={() => void handleClipboardUpload()}
+        onClick={() => {
+          if (!navigator.clipboard?.read) {
+            fileInputRef.current?.click();
+            return;
+          }
+
+          void handleClipboardUpload();
+        }}
         type="button"
       >
         <Clipboard aria-hidden size={15} />
@@ -1217,6 +1227,13 @@ function BlockListEditor({
   selectedPath
 }: BlockListEditorProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const touchDragRef = useRef<{
+    pointerId: number;
+    index: number;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+  } | null>(null);
   const selectedPathKey = selectedPath ? projectBlockPathKey(selectedPath) : "";
 
   const updateBlock = (index: number, block: ProjectBlock) => {
@@ -1254,6 +1271,23 @@ function BlockListEditor({
     setDraggingIndex(null);
   };
 
+  const reorderTouchBlock = (sourceIndex: number, targetIndex: number) => {
+    if (
+      sourceIndex === targetIndex ||
+      sourceIndex < 0 ||
+      sourceIndex >= blocks.length ||
+      targetIndex < 0 ||
+      targetIndex >= blocks.length
+    ) {
+      setDraggingIndex(null);
+      return;
+    }
+
+    onChange(arrayMove(blocks, sourceIndex, targetIndex));
+    onSelect?.([...pathPrefix, targetIndex]);
+    setDraggingIndex(null);
+  };
+
   return (
     <div className={nested ? "grid gap-3" : "grid gap-4"}>
       {blocks.map((block, index) => {
@@ -1269,6 +1303,7 @@ function BlockListEditor({
                 : "border-neutral-200 dark:border-neutral-800"
             } ${draggingIndex === index ? "opacity-60" : ""}`}
             data-project-block-editor={currentPathKey}
+            data-project-block-editor-index={index}
             draggable
             key={`${block.type}-${index}`}
             onClick={(event) => {
@@ -1294,6 +1329,90 @@ function BlockListEditor({
               <p className="text-xs text-neutral-500">블록 {index + 1}</p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                aria-label="블록 순서 변경"
+                className={iconButtonClass}
+                onPointerCancel={() => {
+                  touchDragRef.current = null;
+                  setDraggingIndex(null);
+                }}
+                onPointerDown={(event) => {
+                  if (event.pointerType === "mouse") {
+                    return;
+                  }
+
+                  event.preventDefault();
+                  event.stopPropagation();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  touchDragRef.current = {
+                    pointerId: event.pointerId,
+                    index,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    dragging: false
+                  };
+                }}
+                onPointerMove={(event) => {
+                  const dragState = touchDragRef.current;
+
+                  if (!dragState || dragState.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  const distance = Math.hypot(
+                    event.clientX - dragState.startX,
+                    event.clientY - dragState.startY
+                  );
+
+                  if (distance > 8) {
+                    dragState.dragging = true;
+                    setDraggingIndex(dragState.index);
+                  }
+
+                  if (dragState.dragging) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                }}
+                onPointerUp={(event) => {
+                  const dragState = touchDragRef.current;
+                  touchDragRef.current = null;
+
+                  if (!dragState || dragState.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                  }
+
+                  if (!dragState.dragging) {
+                    setDraggingIndex(null);
+                    return;
+                  }
+
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  const target = document
+                    .elementFromPoint(event.clientX, event.clientY)
+                    ?.closest<HTMLElement>("[data-project-block-editor-index]");
+                  const targetIndex = Number(
+                    target?.dataset.projectBlockEditorIndex
+                  );
+
+                  if (!Number.isInteger(targetIndex)) {
+                    setDraggingIndex(null);
+                    return;
+                  }
+
+                  reorderTouchBlock(dragState.index, targetIndex);
+                }}
+                style={{ touchAction: "none" }}
+                type="button"
+              >
+                <GripVertical aria-hidden size={15} />
+              </button>
               <button
                 aria-label="위로 이동"
                 className={iconButtonClass}

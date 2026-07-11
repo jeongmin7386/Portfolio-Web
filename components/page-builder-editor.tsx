@@ -3329,6 +3329,8 @@ function UploadButton({
   onUploaded: (url: string) => void;
   onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <div className="flex flex-wrap gap-2">
       <label className={`${buttonClass} w-fit cursor-pointer`}>
@@ -3337,6 +3339,7 @@ function UploadButton({
       <input
         accept="image/*"
         className="sr-only"
+        ref={fileInputRef}
         onChange={(event) => {
           onImageUpload(onUploaded, event.target.files?.[0]);
           event.target.value = "";
@@ -3346,7 +3349,14 @@ function UploadButton({
       </label>
       <button
         className={buttonClass}
-        onClick={() => onClipboardImageUpload(onUploaded)}
+        onClick={() => {
+          if (!navigator.clipboard?.read) {
+            fileInputRef.current?.click();
+            return;
+          }
+
+          onClipboardImageUpload(onUploaded);
+        }}
         type="button"
       >
         <Clipboard aria-hidden size={15} />
