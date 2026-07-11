@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ClipboardPaste, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   Fragment,
   type CSSProperties,
@@ -36,10 +36,12 @@ type BuilderPageRendererProps = {
   notes: Note[];
   projectBasePath?: string;
   editable?: boolean;
+  canPasteBlock?: boolean;
   selectedSectionId?: string;
   selectedBlockId?: string;
   onSelectSection?: (sectionId: string) => void;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
+  onCopyBlock?: (sectionId: string, block: BuilderBlock) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
   onInsertBlock?: (
     sectionId: string,
@@ -59,6 +61,12 @@ type BuilderPageRendererProps = {
     tabId: string,
     type: BuilderBlockType,
     options?: { headingLevel?: 1 | 2 | 3 | 4 }
+  ) => void;
+  onPasteBlock?: (sectionId: string, insertIndex: number) => void;
+  onPasteBlockIntoTab?: (
+    sectionId: string,
+    tabBlockId: string,
+    tabId: string
   ) => void;
   onMoveBlockIntoTab?: (
     sectionId: string,
@@ -431,16 +439,20 @@ function getBuilderTabCommandMatches(value: string) {
 }
 
 function BuilderInsertionPoint({
+  canPasteBlock,
   insertIndex,
   onInsertBlock,
+  onPasteBlock,
   sectionId
 }: {
+  canPasteBlock?: boolean;
   insertIndex: number;
   onInsertBlock?: (
     sectionId: string,
     insertIndex: number,
     type: BuilderBlockType
   ) => void;
+  onPasteBlock?: (sectionId: string, insertIndex: number) => void;
   sectionId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -474,6 +486,21 @@ function BuilderInsertionPoint({
       </button>
       {open ? (
         <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
+          {canPasteBlock && onPasteBlock ? (
+            <button
+              className="min-h-12 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+              onClick={() => {
+                onPasteBlock(sectionId, insertIndex);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              <span className="flex items-center gap-2">
+                <ClipboardPaste aria-hidden size={15} />
+                붙여넣기
+              </span>
+            </button>
+          ) : null}
           {builderInsertOptions.map((option) => (
             <button
               className="min-h-12 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
@@ -496,10 +523,12 @@ function BuilderInsertionPoint({
 type BlockRendererProps = {
   block: BuilderBlock;
   editable?: boolean;
+  canPasteBlock?: boolean;
   selected?: boolean;
   selectedBlockId?: string;
   sectionId: string;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
+  onCopyBlock?: (sectionId: string, block: BuilderBlock) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
   onDeleteBlock?: (sectionId: string, blockId: string) => void;
   onMoveBlock?: (
@@ -514,6 +543,11 @@ type BlockRendererProps = {
     tabId: string,
     type: BuilderBlockType,
     options?: { headingLevel?: 1 | 2 | 3 | 4 }
+  ) => void;
+  onPasteBlockIntoTab?: (
+    sectionId: string,
+    tabBlockId: string,
+    tabId: string
   ) => void;
   onMoveBlockIntoTab?: (
     sectionId: string,
@@ -682,6 +716,7 @@ function InlineEditableText({
 type FloatingBlockToolbarProps = {
   block: BuilderBlock;
   onChange: (block: BuilderBlock) => void;
+  onCopy: () => void;
   onDelete: () => void;
 };
 
@@ -799,6 +834,7 @@ function AlignControls({
 function FloatingBlockToolbar({
   block,
   onChange,
+  onCopy,
   onDelete
 }: FloatingBlockToolbarProps) {
   const [isColorOpen, setIsColorOpen] = useState(false);
@@ -1117,6 +1153,14 @@ function FloatingBlockToolbar({
         </ToolbarSelect>
       ) : null}
       <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+        onClick={onCopy}
+        type="button"
+      >
+        <Copy aria-hidden size={14} />
+        복사
+      </button>
+      <button
         className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-red-200 bg-white px-2 text-xs font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800"
         onClick={onDelete}
         type="button"
@@ -1131,14 +1175,17 @@ function FloatingBlockToolbar({
 function BuilderBlockRenderer({
   block,
   editable,
+  canPasteBlock,
   selected,
   selectedBlockId,
   sectionId,
   onSelectBlock,
+  onCopyBlock,
   onChangeBlock,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
+  onPasteBlockIntoTab,
   onMoveBlockIntoTab
 }: BlockRendererProps) {
   const selectBlock = () => {
@@ -1264,6 +1311,10 @@ function BuilderBlockRenderer({
           <FloatingBlockToolbar
             block={block}
             onChange={changeBlock}
+            onCopy={() => {
+              onCopyBlock?.(sectionId, block);
+              setIsOptionsOpen(false);
+            }}
             onDelete={deleteBlock}
           />
         ) : null}
@@ -1812,13 +1863,17 @@ function BuilderBlockRenderer({
                   .map((tabBlock) => (
                     <BuilderBlockRenderer
                       block={tabBlock}
+                      canPasteBlock={canPasteBlock}
                       editable={editable}
                       key={tabBlock.id}
                       onChangeBlock={(_, nextBlock) => updateActiveTabBlock(nextBlock)}
+                      onCopyBlock={onCopyBlock}
                       onDeleteBlock={(_, blockId) => deleteActiveTabBlock(blockId)}
+                      onInsertBlockIntoTab={onInsertBlockIntoTab}
                       onMoveBlock={(_, sourceBlockId, targetBlockId, placement) =>
                         moveActiveTabBlock(sourceBlockId, targetBlockId, placement)
                       }
+                      onPasteBlockIntoTab={onPasteBlockIntoTab}
                       onSelectBlock={onSelectBlock}
                       sectionId={sectionId}
                       selected={selectedBlockId === tabBlock.id}
@@ -1888,6 +1943,21 @@ function BuilderBlockRenderer({
                 />
                 {isTabAddMenuOpen ? (
                   <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 grid w-[min(36rem,calc(100vw-2rem))] grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
+                    {canPasteBlock && onPasteBlockIntoTab ? (
+                      <button
+                        className="min-h-11 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                        onClick={() => {
+                          onPasteBlockIntoTab(sectionId, block.id, activeTab.id);
+                          setIsTabAddMenuOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <span className="flex items-center gap-2">
+                          <ClipboardPaste aria-hidden size={15} />
+                          붙여넣기
+                        </span>
+                      </button>
+                    ) : null}
                     {builderTabInsertOptions.map((option) => (
                       <button
                         className="min-h-11 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
@@ -2321,15 +2391,19 @@ function SectionRenderer({
   notes,
   projectBasePath,
   editable,
+  canPasteBlock,
   selectedSectionId,
   selectedBlockId,
   onSelectSection,
   onSelectBlock,
+  onCopyBlock,
   onChangeBlock,
   onInsertBlock,
+  onPasteBlock,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
+  onPasteBlockIntoTab,
   onMoveBlockIntoTab
 }: SectionRendererProps) {
   const selected = selectedSectionId === section.id;
@@ -2349,8 +2423,10 @@ function SectionRenderer({
     <div className={`grid ${gap}`}>
       {editable ? (
         <BuilderInsertionPoint
+          canPasteBlock={canPasteBlock}
           insertIndex={0}
           onInsertBlock={onInsertBlock}
+          onPasteBlock={onPasteBlock}
           sectionId={section.id}
         />
       ) : null}
@@ -2358,10 +2434,13 @@ function SectionRenderer({
         <Fragment key={block.id}>
           <BuilderBlockRenderer
             block={block}
+            canPasteBlock={canPasteBlock}
             editable={editable}
             onChangeBlock={onChangeBlock}
+            onCopyBlock={onCopyBlock}
             onDeleteBlock={onDeleteBlock}
             onInsertBlockIntoTab={onInsertBlockIntoTab}
+            onPasteBlockIntoTab={onPasteBlockIntoTab}
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}
             onSelectBlock={onSelectBlock}
@@ -2371,8 +2450,10 @@ function SectionRenderer({
           />
           {editable ? (
             <BuilderInsertionPoint
+              canPasteBlock={canPasteBlock}
               insertIndex={index + 1}
               onInsertBlock={onInsertBlock}
+              onPasteBlock={onPasteBlock}
               sectionId={section.id}
             />
           ) : null}
@@ -2408,15 +2489,19 @@ export function BuilderPageRenderer({
   notes,
   projectBasePath,
   editable,
+  canPasteBlock,
   selectedSectionId,
   selectedBlockId,
   onSelectSection,
   onSelectBlock,
+  onCopyBlock,
   onChangeBlock,
   onInsertBlock,
+  onPasteBlock,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
+  onPasteBlockIntoTab,
   onMoveBlockIntoTab
 }: BuilderPageRendererProps) {
   return (
@@ -2427,12 +2512,16 @@ export function BuilderPageRenderer({
         .map((section) => (
           <SectionRenderer
             editable={editable}
+            canPasteBlock={canPasteBlock}
             key={section.id}
             notes={notes}
             onChangeBlock={onChangeBlock}
+            onCopyBlock={onCopyBlock}
             onDeleteBlock={onDeleteBlock}
             onInsertBlock={onInsertBlock}
             onInsertBlockIntoTab={onInsertBlockIntoTab}
+            onPasteBlock={onPasteBlock}
+            onPasteBlockIntoTab={onPasteBlockIntoTab}
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}
             onSelectBlock={onSelectBlock}

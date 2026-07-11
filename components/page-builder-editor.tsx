@@ -1261,14 +1261,38 @@ const slashCommandOptions: InsertOption[] = [
   }
 ];
 
+function cloneBuilderBlockForPaste(block: BuilderBlock): BuilderBlock {
+  const clonedBlock = JSON.parse(JSON.stringify(block)) as BuilderBlock;
+  const nextBlock = {
+    ...clonedBlock,
+    id: createId("block")
+  } as BuilderBlock;
+
+  if (nextBlock.type === "tabs") {
+    return {
+      ...nextBlock,
+      content: {
+        tabs: nextBlock.content.tabs.map((tab) => ({
+          ...tab,
+          id: createId("tab"),
+          blocks: orderItems(
+            (tab.blocks ?? []).map((tabBlock) =>
+              cloneBuilderBlockForPaste(tabBlock)
+            )
+          )
+        }))
+      }
+    };
+  }
+
+  return nextBlock;
+}
+
 function cloneSection(section: BuilderSection) {
   return {
     ...section,
     id: createId("section"),
-    blocks: section.blocks.map((block) => ({
-      ...block,
-      id: createId("block")
-    }))
+    blocks: orderItems(section.blocks.map(cloneBuilderBlockForPaste))
   };
 }
 
@@ -1357,6 +1381,7 @@ export function PageBuilderEditor({
   const [selectedBlockId, setSelectedBlockId] = useState("");
   const [viewport, setViewport] = useState<BuilderViewport>("desktop");
   const [status, setStatus] = useState("");
+  const [copiedBlock, setCopiedBlock] = useState<BuilderBlock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
@@ -1738,6 +1763,46 @@ export function PageBuilderEditor({
     setStatus(`${blockLabels[type]} 블록을 추가했습니다.`);
   };
 
+  const copyBlockFromPreview = (sectionId: string, block: BuilderBlock) => {
+    setCopiedBlock(block);
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(block.id);
+    setStatus("블록을 복사했습니다. + 버튼에서 붙여넣을 수 있습니다.");
+  };
+
+  const pasteBlockAtPosition = (sectionId: string, insertIndex: number) => {
+    if (!page || !copiedBlock) {
+      return;
+    }
+
+    const block = cloneBuilderBlockForPaste(copiedBlock);
+    const nextSections = sortedSections.map((section) => {
+      if (section.id !== sectionId) {
+        return section;
+      }
+
+      const sortedBlocks = section.blocks
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      const boundedIndex = Math.max(
+        0,
+        Math.min(insertIndex, sortedBlocks.length)
+      );
+      const nextBlocks = [...sortedBlocks];
+      nextBlocks.splice(boundedIndex, 0, block);
+
+      return {
+        ...section,
+        blocks: orderItems(nextBlocks)
+      };
+    });
+
+    commitPage({ ...page, sections: orderItems(nextSections) });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(block.id);
+    setStatus("복사한 블록을 붙여넣었습니다.");
+  };
+
   const deleteSelectedSection = () => {
     if (!page || !selectedSection) {
       return;
@@ -1790,9 +1855,7 @@ export function PageBuilderEditor({
       return;
     }
 
-    const blocks = orderItems(
-      section.blocks.filter((block) => block.id !== blockId)
-    );
+    const blocks = orderItems(deleteBuilderBlockById(section.blocks, blockId));
 
     updateSelectedSection({ ...section, blocks });
     setSelectedSectionId(sectionId);
@@ -1885,6 +1948,53 @@ export function PageBuilderEditor({
     setSelectedSectionId(sectionId);
     setSelectedBlockId(nextBlock.id);
     setStatus(`${blockLabels[type]} 블록을 탭 안에 추가했습니다.`);
+  };
+
+  const pasteBlockIntoTabFromPreview = (
+    sectionId: string,
+    tabBlockId: string,
+    tabId: string
+  ) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section || !copiedBlock) {
+      return;
+    }
+
+    const nextBlock = cloneBuilderBlockForPaste(copiedBlock);
+    const nextBlocks = section.blocks.map((block) => {
+      if (block.id !== tabBlockId || block.type !== "tabs") {
+        return block;
+      }
+
+      const tabs = block.content.tabs.length
+        ? block.content.tabs
+        : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+
+      return {
+        ...block,
+        content: {
+          tabs: tabs.map((tab) =>
+            tab.id === tabId
+              ? {
+                  ...tab,
+                  blocks: orderItems([
+                    ...getEditableBuilderTabBlocks(tab),
+                    nextBlock
+                  ]),
+                  text: ""
+                }
+              : tab
+          )
+        },
+        settings: { ...block.settings, activeTabId: tabId }
+      };
+    });
+
+    updateSelectedSection({ ...section, blocks: nextBlocks });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(nextBlock.id);
+    setStatus("복사한 블록을 탭에 붙여넣었습니다.");
   };
 
   const moveBlockIntoTabFromPreview = (
@@ -2437,11 +2547,15 @@ export function PageBuilderEditor({
           >
             <BuilderPageRenderer
               editable
+              canPasteBlock={Boolean(copiedBlock)}
               notes={notes}
               onChangeBlock={updateBlockInSection}
+              onCopyBlock={copyBlockFromPreview}
               onDeleteBlock={deleteBlockFromPreview}
               onInsertBlock={insertBlockAtPosition}
               onInsertBlockIntoTab={insertBlockIntoTabFromPreview}
+              onPasteBlock={pasteBlockAtPosition}
+              onPasteBlockIntoTab={pasteBlockIntoTabFromPreview}
               onMoveBlock={moveBlockFromPreview}
               onMoveBlockIntoTab={moveBlockIntoTabFromPreview}
               onSelectBlock={(sectionId, blockId) => {

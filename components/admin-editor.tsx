@@ -520,6 +520,32 @@ function createProjectBlockForTab(
   return block;
 }
 
+function cloneProjectBlockForPaste(block: ProjectBlock): ProjectBlock {
+  const clonedBlock = JSON.parse(JSON.stringify(block)) as ProjectBlock;
+
+  if (clonedBlock.type === "twoColumn") {
+    return {
+      ...clonedBlock,
+      left: clonedBlock.left.map(cloneProjectBlockForPaste),
+      right: clonedBlock.right.map(cloneProjectBlockForPaste)
+    };
+  }
+
+  if (clonedBlock.type === "tabs") {
+    return {
+      ...clonedBlock,
+      activeTabId: undefined,
+      tabs: clonedBlock.tabs.map((tab) => ({
+        ...tab,
+        id: createEditorId("tab"),
+        blocks: (tab.blocks ?? []).map(cloneProjectBlockForPaste)
+      }))
+    };
+  }
+
+  return clonedBlock;
+}
+
 function getEditableProjectTabBlocks(tab: ProjectTabItem): ProjectBlock[] {
   if (tab.blocks?.length) {
     return tab.blocks;
@@ -2027,8 +2053,10 @@ type AdminLivePreviewProps = {
   activePanel: "projects" | "notes";
   note?: Note;
   project?: Project;
+  canPasteProjectBlock?: boolean;
   selectedProjectBlockPath?: ProjectBlockPath;
   onSelectProjectBlock?: (path: ProjectBlockPath) => void;
+  onCopyProjectBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onChangeProject?: (project: Project) => void;
   onChangeProjectBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertProjectBlock?: (
@@ -2046,6 +2074,11 @@ type AdminLivePreviewProps = {
     tabId: string,
     type: ProjectBlock["type"],
     options?: ProjectTabInsertOptions
+  ) => void;
+  onPasteProjectBlock?: (path: ProjectBlockPath) => void;
+  onPasteProjectBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string
   ) => void;
   onMoveProjectBlockIntoTab?: (
     sourcePath: ProjectBlockPath,
@@ -2090,22 +2123,29 @@ function PreviewMetaItem({
 
 function ProjectLivePreview({
   project,
+  canPasteBlock,
   selectedBlockPath,
   onSelectBlock,
+  onCopyBlock,
   onChangeProject,
   onChangeBlock,
   onInsertBlock,
+  onPasteBlock,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
+  onPasteBlockIntoTab,
   onMoveBlockIntoTab
 }: {
   project: Project;
+  canPasteBlock?: boolean;
   selectedBlockPath?: ProjectBlockPath;
   onSelectBlock?: (path: ProjectBlockPath) => void;
+  onCopyBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onChangeProject?: (project: Project) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  onPasteBlock?: (path: ProjectBlockPath) => void;
   onDeleteBlock?: (path: ProjectBlockPath) => void;
   onMoveBlock?: (
     sourcePath: ProjectBlockPath,
@@ -2117,6 +2157,10 @@ function ProjectLivePreview({
     tabId: string,
     type: ProjectBlock["type"],
     options?: ProjectTabInsertOptions
+  ) => void;
+  onPasteBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string
   ) => void;
   onMoveBlockIntoTab?: (
     sourcePath: ProjectBlockPath,
@@ -2287,13 +2331,17 @@ function ProjectLivePreview({
         <div className="border-t border-neutral-200 pt-1 dark:border-neutral-800 [&_blockquote]:my-6 [&_blockquote]:text-lg [&_h2]:mt-8 [&_h2]:text-2xl [&_h3]:mt-6 [&_h3]:text-xl [&_p]:text-sm [&_p]:leading-7">
           <BlockRenderer
             blocks={project.blocks}
+            canPasteBlock={canPasteBlock}
             editable={editable}
             onChangeBlock={onChangeBlock}
+            onCopyBlock={onCopyBlock}
             onDeleteBlock={onDeleteBlock}
             onInsertBlock={onInsertBlock}
             onInsertBlockIntoTab={onInsertBlockIntoTab}
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}
+            onPasteBlock={onPasteBlock}
+            onPasteBlockIntoTab={onPasteBlockIntoTab}
             onSelectBlock={onSelectBlock}
             selectedBlockPath={selectedBlockPath}
           />
@@ -2453,26 +2501,34 @@ function AdminLivePreview({
   activePanel,
   note,
   project,
+  canPasteProjectBlock,
   selectedProjectBlockPath,
   onSelectProjectBlock,
+  onCopyProjectBlock,
   onChangeProject,
   onChangeProjectBlock,
   onInsertProjectBlock,
+  onPasteProjectBlock,
   onDeleteProjectBlock,
   onMoveProjectBlock,
   onInsertProjectBlockIntoTab,
+  onPasteProjectBlockIntoTab,
   onMoveProjectBlockIntoTab
 }: AdminLivePreviewProps) {
   if (activePanel === "projects" && project) {
     return (
       <ProjectLivePreview
+        canPasteBlock={canPasteProjectBlock}
         onChangeBlock={onChangeProjectBlock}
         onChangeProject={onChangeProject}
+        onCopyBlock={onCopyProjectBlock}
         onDeleteBlock={onDeleteProjectBlock}
         onInsertBlock={onInsertProjectBlock}
         onInsertBlockIntoTab={onInsertProjectBlockIntoTab}
         onMoveBlock={onMoveProjectBlock}
         onMoveBlockIntoTab={onMoveProjectBlockIntoTab}
+        onPasteBlock={onPasteProjectBlock}
+        onPasteBlockIntoTab={onPasteProjectBlockIntoTab}
         onSelectBlock={onSelectProjectBlock}
         project={project}
         selectedBlockPath={selectedProjectBlockPath}
@@ -2553,6 +2609,8 @@ export function AdminEditor({
   );
   const [newCategory, setNewCategory] = useState("");
   const [status, setStatus] = useState("");
+  const [copiedProjectBlock, setCopiedProjectBlock] =
+    useState<ProjectBlock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
@@ -2723,6 +2781,34 @@ export function AdminEditor({
     });
   };
 
+  const copyProjectBlockFromPreview = (
+    path: ProjectBlockPath,
+    block: ProjectBlock
+  ) => {
+    setCopiedProjectBlock(block);
+    setSelectedProjectBlockPath(path);
+    setStatus("블록을 복사했습니다. + 버튼에서 붙여넣을 수 있습니다.");
+  };
+
+  const pasteProjectBlockAtPreviewPath = (path: ProjectBlockPath) => {
+    if (!selectedProject || !copiedProjectBlock) {
+      return;
+    }
+
+    const insertion = insertProjectBlockAtPath(
+      selectedProject.blocks,
+      path,
+      cloneProjectBlockForPaste(copiedProjectBlock)
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setStatus("복사한 블록을 붙여넣었습니다.");
+  };
+
   const insertProjectBlockOption = (option: ProjectInsertOption) => {
     if (!selectedProject) {
       return;
@@ -2832,6 +2918,29 @@ export function AdminEditor({
     });
     setSelectedProjectBlockPath(insertion.path);
     setStatus(`${blockLabels[type]} 블록을 탭 안에 추가했습니다.`);
+  };
+
+  const pasteProjectBlockIntoTabFromPreview = (
+    tabPath: ProjectBlockPath,
+    tabId: string
+  ) => {
+    if (!selectedProject || !copiedProjectBlock) {
+      return;
+    }
+
+    const insertion = insertProjectBlockIntoTabAtPath(
+      selectedProject.blocks,
+      tabPath,
+      tabId,
+      cloneProjectBlockForPaste(copiedProjectBlock)
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setStatus("복사한 블록을 탭에 붙여넣었습니다.");
   };
 
   const moveProjectBlockIntoTabFromPreview = (
@@ -3351,14 +3460,18 @@ export function AdminEditor({
             <div className={previewPanelClass}>
               <AdminLivePreview
                 activePanel={activePanel}
+                canPasteProjectBlock={Boolean(copiedProjectBlock)}
                 note={selectedNote}
                 onChangeProject={updateSelectedProject}
                 onChangeProjectBlock={updateSelectedProjectBlock}
+                onCopyProjectBlock={copyProjectBlockFromPreview}
                 onDeleteProjectBlock={deleteProjectBlockFromPreview}
                 onInsertProjectBlock={insertProjectBlockAtPreviewPath}
                 onInsertProjectBlockIntoTab={insertProjectBlockIntoTabFromPreview}
                 onMoveProjectBlock={moveProjectBlockFromPreview}
                 onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
+                onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
+                onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
                 onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
                 selectedProjectBlockPath={selectedProjectBlockPath}
@@ -3814,14 +3927,18 @@ export function AdminEditor({
           <aside className={previewPanelClass}>
             <AdminLivePreview
               activePanel={activePanel}
+              canPasteProjectBlock={Boolean(copiedProjectBlock)}
               note={selectedNote}
               onChangeProject={updateSelectedProject}
               onChangeProjectBlock={updateSelectedProjectBlock}
+              onCopyProjectBlock={copyProjectBlockFromPreview}
               onDeleteProjectBlock={deleteProjectBlockFromPreview}
               onInsertProjectBlock={insertProjectBlockAtPreviewPath}
               onInsertProjectBlockIntoTab={insertProjectBlockIntoTabFromPreview}
               onMoveProjectBlock={moveProjectBlockFromPreview}
               onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
+              onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
+              onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
               onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}
               selectedProjectBlockPath={selectedProjectBlockPath}

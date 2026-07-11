@@ -14,7 +14,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ClipboardPaste, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import {
   ImageLightbox,
@@ -34,11 +34,14 @@ export type ProjectTabInsertOptions = { headingLevel?: 1 | 2 | 3 | 4 };
 type BlockRendererProps = {
   blocks: ProjectBlock[];
   editable?: boolean;
+  canPasteBlock?: boolean;
   pathPrefix?: ProjectBlockPath;
   selectedBlockPath?: ProjectBlockPath;
   onSelectBlock?: (path: ProjectBlockPath) => void;
+  onCopyBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  onPasteBlock?: (path: ProjectBlockPath) => void;
   onDeleteBlock?: (path: ProjectBlockPath) => void;
   onMoveBlock?: (
     sourcePath: ProjectBlockPath,
@@ -50,6 +53,10 @@ type BlockRendererProps = {
     tabId: string,
     type: ProjectBlock["type"],
     options?: ProjectTabInsertOptions
+  ) => void;
+  onPasteBlockIntoTab?: (
+    tabPath: ProjectBlockPath,
+    tabId: string
   ) => void;
   onMoveBlockIntoTab?: (
     sourcePath: ProjectBlockPath,
@@ -157,10 +164,14 @@ function getProjectTabCommandMatches(value: string) {
 }
 
 function ProjectInsertionPoint({
+  canPasteBlock,
   onInsertBlock,
+  onPasteBlock,
   path
 }: {
+  canPasteBlock?: boolean;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  onPasteBlock?: (path: ProjectBlockPath) => void;
   path: ProjectBlockPath;
 }) {
   const [open, setOpen] = useState(false);
@@ -194,6 +205,21 @@ function ProjectInsertionPoint({
       </button>
       {open ? (
         <div className="absolute left-1/2 top-[calc(100%+6px)] z-30 grid w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
+          {canPasteBlock && onPasteBlock ? (
+            <button
+              className="min-h-12 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+              onClick={() => {
+                onPasteBlock(path);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              <span className="flex items-center gap-2">
+                <ClipboardPaste aria-hidden size={15} />
+                붙여넣기
+              </span>
+            </button>
+          ) : null}
           {projectInsertOptions.map((option) => (
             <button
               className="min-h-12 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
@@ -639,10 +665,12 @@ function ProjectAlignControls({
 function FloatingProjectBlockToolbar({
   block,
   onChange,
+  onCopy,
   onDelete
 }: {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  onCopy: () => void;
   onDelete: () => void;
 }) {
   const [isColorOpen, setIsColorOpen] = useState(false);
@@ -787,6 +815,14 @@ function FloatingProjectBlockToolbar({
         </ProjectToolbarSelect>
       ) : null}
       <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+        onClick={onCopy}
+        type="button"
+      >
+        <Copy aria-hidden size={14} />
+        복사
+      </button>
+      <button
         className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-red-200 bg-white px-2 text-xs font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800"
         onClick={onDelete}
         type="button"
@@ -801,10 +837,12 @@ function FloatingProjectBlockToolbar({
 function FloatingProjectBlockOptions({
   block,
   onChange,
+  onCopy,
   onDelete
 }: {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  onCopy: () => void;
   onDelete: () => void;
 }) {
   if (isTextStyleProjectBlock(block)) {
@@ -812,6 +850,7 @@ function FloatingProjectBlockOptions({
       <FloatingProjectBlockToolbar
         block={block}
         onChange={onChange}
+        onCopy={onCopy}
         onDelete={onDelete}
       />
     );
@@ -831,6 +870,14 @@ function FloatingProjectBlockOptions({
       onMouseDown={stopEvent}
       onTouchStart={stopEvent}
     >
+      <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
+        onClick={onCopy}
+        type="button"
+      >
+        <Copy aria-hidden size={14} />
+        복사
+      </button>
       {block.type === "image" ? (
         <ProjectToolbarSelect
           label="비율"
@@ -945,14 +992,18 @@ function FloatingProjectBlockOptions({
 export function BlockRenderer({
   blocks,
   editable,
+  canPasteBlock,
   pathPrefix = [],
   selectedBlockPath,
   onSelectBlock,
+  onCopyBlock,
   onChangeBlock,
   onInsertBlock,
+  onPasteBlock,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
+  onPasteBlockIntoTab,
   onMoveBlockIntoTab
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
@@ -1152,6 +1203,10 @@ export function BlockRenderer({
           <FloatingProjectBlockOptions
             block={block}
             onChange={(nextBlock) => changeBlock(path, nextBlock)}
+            onCopy={() => {
+              onCopyBlock?.(path, block);
+              setOpenOptionsKey("");
+            }}
             onDelete={() => deleteBlock(path)}
           />
         ) : null}
@@ -1530,13 +1585,17 @@ export function BlockRenderer({
               {hasActiveTabStoredBlocks ? (
                 <BlockRenderer
                   blocks={activeTabBlocks}
+                  canPasteBlock={canPasteBlock}
                   editable={editable}
                   onChangeBlock={onChangeBlock}
+                  onCopyBlock={onCopyBlock}
                   onDeleteBlock={onDeleteBlock}
                   onInsertBlock={onInsertBlock}
                   onInsertBlockIntoTab={onInsertBlockIntoTab}
                   onMoveBlock={onMoveBlock}
                   onMoveBlockIntoTab={onMoveBlockIntoTab}
+                  onPasteBlock={onPasteBlock}
+                  onPasteBlockIntoTab={onPasteBlockIntoTab}
                   onSelectBlock={onSelectBlock}
                   pathPrefix={[...path, "tabs", activeTab.id]}
                   selectedBlockPath={selectedBlockPath}
@@ -1603,6 +1662,21 @@ export function BlockRenderer({
                   />
                   {isTabAddMenuOpen ? (
                     <div className="absolute bottom-[calc(100%+8px)] left-0 z-50 grid w-[min(36rem,calc(100vw-2rem))] grid-cols-2 gap-2 rounded-md border border-neutral-200 bg-white p-2 text-sm shadow-xl dark:border-neutral-800 dark:bg-neutral-950 sm:grid-cols-3">
+                      {canPasteBlock && onPasteBlockIntoTab ? (
+                        <button
+                          className="min-h-11 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          onClick={() => {
+                            onPasteBlockIntoTab(path, activeTab.id);
+                            setIsTabAddMenuOpen(false);
+                          }}
+                          type="button"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ClipboardPaste aria-hidden size={15} />
+                            붙여넣기
+                          </span>
+                        </button>
+                      ) : null}
                       {projectTabInsertOptions.map((option) => (
                         <button
                           className="min-h-11 rounded-sm border border-transparent px-3 py-2 text-left text-neutral-700 transition hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900"
@@ -2069,8 +2143,10 @@ export function BlockRenderer({
 
     return (
       <ProjectInsertionPoint
+        canPasteBlock={canPasteBlock}
         key={key}
         onInsertBlock={onInsertBlock}
+        onPasteBlock={onPasteBlock}
         path={path}
       />
     );
