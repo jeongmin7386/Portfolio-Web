@@ -14,7 +14,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import {
   ImageLightbox,
@@ -36,6 +36,12 @@ type BlockRendererProps = {
   onSelectBlock?: (path: ProjectBlockPath) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  onDeleteBlock?: (path: ProjectBlockPath) => void;
+  onMoveBlock?: (
+    sourcePath: ProjectBlockPath,
+    targetPath: ProjectBlockPath,
+    placement: "before" | "after"
+  ) => void;
 };
 
 type ActiveLightbox = {
@@ -560,10 +566,12 @@ function ProjectAlignControls({
 
 function FloatingProjectBlockToolbar({
   block,
-  onChange
+  onChange,
+  onDelete
 }: {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  onDelete: () => void;
 }) {
   const [isColorOpen, setIsColorOpen] = useState(false);
 
@@ -706,19 +714,35 @@ function FloatingProjectBlockToolbar({
           <option value="text">텍스트</option>
         </ProjectToolbarSelect>
       ) : null}
+      <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-red-200 bg-white px-2 text-xs font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800"
+        onClick={onDelete}
+        type="button"
+      >
+        <Trash2 aria-hidden size={14} />
+        삭제
+      </button>
     </div>
   );
 }
 
 function FloatingProjectBlockOptions({
   block,
-  onChange
+  onChange,
+  onDelete
 }: {
   block: ProjectBlock;
   onChange: (block: ProjectBlock) => void;
+  onDelete: () => void;
 }) {
   if (isTextStyleProjectBlock(block)) {
-    return <FloatingProjectBlockToolbar block={block} onChange={onChange} />;
+    return (
+      <FloatingProjectBlockToolbar
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+      />
+    );
   }
 
   const frameClass =
@@ -834,6 +858,14 @@ function FloatingProjectBlockOptions({
           내용은 미리보기에서 바로 수정하세요.
         </span>
       )}
+      <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-red-200 bg-white px-2 text-xs font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800"
+        onClick={onDelete}
+        type="button"
+      >
+        <Trash2 aria-hidden size={14} />
+        삭제
+      </button>
     </div>
   );
 }
@@ -844,7 +876,9 @@ export function BlockRenderer({
   selectedBlockPath,
   onSelectBlock,
   onChangeBlock,
-  onInsertBlock
+  onInsertBlock,
+  onDeleteBlock,
+  onMoveBlock
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
@@ -866,6 +900,9 @@ export function BlockRenderer({
 
   const changeBlock = (path: ProjectBlockPath, block: ProjectBlock) => {
     onChangeBlock?.(path, block);
+  };
+  const deleteBlock = (path: ProjectBlockPath) => {
+    onDeleteBlock?.(path);
   };
 
   const wrapEditableBlock = (
@@ -903,12 +940,51 @@ export function BlockRenderer({
           event.stopPropagation();
           selectBlock(path);
         }}
+        onDragOver={(event) => {
+          if (
+            event.dataTransfer.types.includes("application/x-studio-project-block")
+          ) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+          }
+        }}
+        onDrop={(event) => {
+          const payload = event.dataTransfer.getData(
+            "application/x-studio-project-block"
+          );
+
+          if (!payload) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          try {
+            const source = JSON.parse(payload) as { path?: ProjectBlockPath };
+
+            if (
+              !Array.isArray(source.path) ||
+              pathKey(source.path) === currentKey
+            ) {
+              return;
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            const placement =
+              event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+
+            onMoveBlock?.(source.path, path, placement);
+          } catch {
+            return;
+          }
+        }}
       >
         {onChangeBlock ? (
           <button
             aria-expanded={optionsOpen}
             aria-label="블록 옵션 열기"
-            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
+            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
               selected || optionsOpen
                 ? "opacity-100"
                 : "opacity-0 group-hover:opacity-100"
@@ -918,7 +994,17 @@ export function BlockRenderer({
               selectBlock(path);
               setOpenOptionsKey((key) => (key === currentKey ? "" : currentKey));
             }}
-            onMouseDown={(event) => event.preventDefault()}
+            draggable
+            onDragStart={(event) => {
+              event.stopPropagation();
+              selectBlock(path);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData(
+                "application/x-studio-project-block",
+                JSON.stringify({ path })
+              );
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
             type="button"
           >
             <SlidersHorizontal aria-hidden size={15} />
@@ -928,6 +1014,7 @@ export function BlockRenderer({
           <FloatingProjectBlockOptions
             block={block}
             onChange={(nextBlock) => changeBlock(path, nextBlock)}
+            onDelete={() => deleteBlock(path)}
           />
         ) : null}
         {children}

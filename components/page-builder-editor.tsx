@@ -1653,6 +1653,61 @@ export function PageBuilderEditor({
     setSelectedBlockId(blocks[0]?.id ?? "");
   };
 
+  const deleteBlockFromPreview = (sectionId: string, blockId: string) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section) {
+      return;
+    }
+
+    const blocks = orderItems(
+      section.blocks.filter((block) => block.id !== blockId)
+    );
+
+    updateSelectedSection({ ...section, blocks });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(blocks[0]?.id ?? "");
+  };
+
+  const moveBlockFromPreview = (
+    sectionId: string,
+    sourceBlockId: string,
+    targetBlockId: string,
+    placement: "before" | "after"
+  ) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section || sourceBlockId === targetBlockId) {
+      return;
+    }
+
+    const blocks = section.blocks.slice().sort((a, b) => a.order - b.order);
+    const movingBlock = blocks.find((block) => block.id === sourceBlockId);
+    const targetBlock = blocks.find((block) => block.id === targetBlockId);
+
+    if (!movingBlock || !targetBlock) {
+      return;
+    }
+
+    const nextBlocks = blocks.filter((block) => block.id !== sourceBlockId);
+    const targetIndex = nextBlocks.findIndex(
+      (block) => block.id === targetBlockId
+    );
+
+    if (targetIndex < 0) {
+      return;
+    }
+
+    nextBlocks.splice(
+      placement === "after" ? targetIndex + 1 : targetIndex,
+      0,
+      movingBlock
+    );
+    updateSelectedSection({ ...section, blocks: orderItems(nextBlocks) });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(sourceBlockId);
+  };
+
   const handleSectionDragEnd = (event: DragEndEvent) => {
     if (!page || !event.over || event.active.id === event.over.id) {
       return;
@@ -2145,7 +2200,9 @@ export function PageBuilderEditor({
               editable
               notes={notes}
               onChangeBlock={updateBlockInSection}
+              onDeleteBlock={deleteBlockFromPreview}
               onInsertBlock={insertBlockAtPosition}
+              onMoveBlock={moveBlockFromPreview}
               onSelectBlock={(sectionId, blockId) => {
                 setSelectedSectionId(sectionId);
                 setSelectedBlockId(blockId);

@@ -611,6 +611,115 @@ function insertProjectBlockAtPath(
   };
 }
 
+function projectBlockParentKey(path: ProjectBlockPath) {
+  return projectBlockPathKey(path.slice(0, -1));
+}
+
+function updateProjectBlockListAtPath(
+  blocks: ProjectBlock[],
+  parentPath: ProjectBlockPath,
+  updater: (blockList: ProjectBlock[]) => ProjectBlock[]
+): ProjectBlock[] {
+  const [blockIndex, side, ...childParentPath] = parentPath;
+
+  if (typeof blockIndex !== "number") {
+    return updater(blocks);
+  }
+
+  if (side !== "left" && side !== "right") {
+    return blocks;
+  }
+
+  return blocks.map((block, currentIndex) => {
+    if (currentIndex !== blockIndex || block.type !== "twoColumn") {
+      return block;
+    }
+
+    return {
+      ...block,
+      [side]: updateProjectBlockListAtPath(
+        block[side],
+        childParentPath,
+        updater
+      )
+    };
+  });
+}
+
+function deleteProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  const blockIndex = path[path.length - 1];
+  const parentPath = path.slice(0, -1);
+
+  if (typeof blockIndex !== "number") {
+    return { blocks, path: [] };
+  }
+
+  return {
+    blocks: updateProjectBlockListAtPath(blocks, parentPath, (blockList) =>
+      blockList.filter((_, currentIndex) => currentIndex !== blockIndex)
+    ),
+    path: [...parentPath, Math.max(0, blockIndex - 1)]
+  };
+}
+
+function moveProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  sourcePath: ProjectBlockPath,
+  targetPath: ProjectBlockPath,
+  placement: "before" | "after"
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  if (
+    projectBlockPathKey(sourcePath) === projectBlockPathKey(targetPath) ||
+    projectBlockParentKey(sourcePath) !== projectBlockParentKey(targetPath)
+  ) {
+    return { blocks, path: sourcePath };
+  }
+
+  const parentPath = sourcePath.slice(0, -1);
+  const sourceIndex = sourcePath[sourcePath.length - 1];
+  const targetIndex = targetPath[targetPath.length - 1];
+
+  if (typeof sourceIndex !== "number" || typeof targetIndex !== "number") {
+    return { blocks, path: sourcePath };
+  }
+
+  let nextPath = sourcePath;
+  const nextBlocks = updateProjectBlockListAtPath(blocks, parentPath, (blockList) => {
+    const movingBlock = blockList[sourceIndex];
+    const targetBlock = blockList[targetIndex];
+
+    if (!movingBlock || !targetBlock) {
+      return blockList;
+    }
+
+    const withoutMoving = blockList.filter(
+      (_, currentIndex) => currentIndex !== sourceIndex
+    );
+    const targetIndexAfterRemoval = withoutMoving.findIndex(
+      (block) => block === targetBlock
+    );
+
+    if (targetIndexAfterRemoval < 0) {
+      return blockList;
+    }
+
+    const insertIndex =
+      placement === "after"
+        ? targetIndexAfterRemoval + 1
+        : targetIndexAfterRemoval;
+
+    withoutMoving.splice(insertIndex, 0, movingBlock);
+    nextPath = [...parentPath, insertIndex];
+
+    return withoutMoving;
+  });
+
+  return { blocks: nextBlocks, path: nextPath };
+}
+
 type ImageFieldsProps = {
   image: ProjectImage & { aspectRatio?: "wide" | "square" | "portrait" };
   showAspectRatio?: boolean;
@@ -1705,6 +1814,12 @@ type AdminLivePreviewProps = {
     path: ProjectBlockPath,
     type: ProjectBlock["type"]
   ) => void;
+  onDeleteProjectBlock?: (path: ProjectBlockPath) => void;
+  onMoveProjectBlock?: (
+    sourcePath: ProjectBlockPath,
+    targetPath: ProjectBlockPath,
+    placement: "before" | "after"
+  ) => void;
 };
 
 function PreviewMetaItem({
@@ -1747,7 +1862,9 @@ function ProjectLivePreview({
   onSelectBlock,
   onChangeProject,
   onChangeBlock,
-  onInsertBlock
+  onInsertBlock,
+  onDeleteBlock,
+  onMoveBlock
 }: {
   project: Project;
   selectedBlockPath?: ProjectBlockPath;
@@ -1755,6 +1872,12 @@ function ProjectLivePreview({
   onChangeProject?: (project: Project) => void;
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
+  onDeleteBlock?: (path: ProjectBlockPath) => void;
+  onMoveBlock?: (
+    sourcePath: ProjectBlockPath,
+    targetPath: ProjectBlockPath,
+    placement: "before" | "after"
+  ) => void;
 }) {
   const coverImage = project.coverImage || "/images/placeholder-atlas.svg";
   const editable = Boolean(
@@ -1921,7 +2044,9 @@ function ProjectLivePreview({
             blocks={project.blocks}
             editable={editable}
             onChangeBlock={onChangeBlock}
+            onDeleteBlock={onDeleteBlock}
             onInsertBlock={onInsertBlock}
+            onMoveBlock={onMoveBlock}
             onSelectBlock={onSelectBlock}
             selectedBlockPath={selectedBlockPath}
           />
@@ -2085,14 +2210,18 @@ function AdminLivePreview({
   onSelectProjectBlock,
   onChangeProject,
   onChangeProjectBlock,
-  onInsertProjectBlock
+  onInsertProjectBlock,
+  onDeleteProjectBlock,
+  onMoveProjectBlock
 }: AdminLivePreviewProps) {
   if (activePanel === "projects" && project) {
     return (
       <ProjectLivePreview
         onChangeBlock={onChangeProjectBlock}
         onChangeProject={onChangeProject}
+        onDeleteBlock={onDeleteProjectBlock}
         onInsertBlock={onInsertProjectBlock}
+        onMoveBlock={onMoveProjectBlock}
         onSelectBlock={onSelectProjectBlock}
         project={project}
         selectedBlockPath={selectedProjectBlockPath}
@@ -2379,6 +2508,45 @@ export function AdminEditor({
     });
     setSelectedProjectBlockPath(insertion.path);
     setStatus(`${blockLabels[type]} 블록을 추가했습니다.`);
+  };
+
+  const deleteProjectBlockFromPreview = (path: ProjectBlockPath) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const deletion = deleteProjectBlockAtPath(selectedProject.blocks, path);
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: deletion.blocks
+    });
+    setSelectedProjectBlockPath(deletion.path);
+    setStatus("블록을 삭제했습니다.");
+  };
+
+  const moveProjectBlockFromPreview = (
+    sourcePath: ProjectBlockPath,
+    targetPath: ProjectBlockPath,
+    placement: "before" | "after"
+  ) => {
+    if (!selectedProject) {
+      return;
+    }
+
+    const moved = moveProjectBlockAtPath(
+      selectedProject.blocks,
+      sourcePath,
+      targetPath,
+      placement
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: moved.blocks
+    });
+    setSelectedProjectBlockPath(moved.path);
+    setStatus("블록 순서를 변경했습니다.");
   };
 
   const selectProjectBlockFromSettings = (path: ProjectBlockPath) => {
@@ -2875,7 +3043,9 @@ export function AdminEditor({
                 note={selectedNote}
                 onChangeProject={updateSelectedProject}
                 onChangeProjectBlock={updateSelectedProjectBlock}
+                onDeleteProjectBlock={deleteProjectBlockFromPreview}
                 onInsertProjectBlock={insertProjectBlockAtPreviewPath}
+                onMoveProjectBlock={moveProjectBlockFromPreview}
                 onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
                 selectedProjectBlockPath={selectedProjectBlockPath}
@@ -3334,7 +3504,9 @@ export function AdminEditor({
               note={selectedNote}
               onChangeProject={updateSelectedProject}
               onChangeProjectBlock={updateSelectedProjectBlock}
+              onDeleteProjectBlock={deleteProjectBlockFromPreview}
               onInsertProjectBlock={insertProjectBlockAtPreviewPath}
+              onMoveProjectBlock={moveProjectBlockFromPreview}
               onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}
               selectedProjectBlockPath={selectedProjectBlockPath}

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   Fragment,
   type CSSProperties,
@@ -44,6 +44,13 @@ type BuilderPageRendererProps = {
     sectionId: string,
     insertIndex: number,
     type: BuilderBlockType
+  ) => void;
+  onDeleteBlock?: (sectionId: string, blockId: string) => void;
+  onMoveBlock?: (
+    sectionId: string,
+    sourceBlockId: string,
+    targetBlockId: string,
+    placement: "before" | "after"
   ) => void;
 };
 
@@ -412,6 +419,13 @@ type BlockRendererProps = {
   sectionId: string;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
+  onDeleteBlock?: (sectionId: string, blockId: string) => void;
+  onMoveBlock?: (
+    sectionId: string,
+    sourceBlockId: string,
+    targetBlockId: string,
+    placement: "before" | "after"
+  ) => void;
 };
 
 type InlineEditableTag =
@@ -573,6 +587,7 @@ function InlineEditableText({
 type FloatingBlockToolbarProps = {
   block: BuilderBlock;
   onChange: (block: BuilderBlock) => void;
+  onDelete: () => void;
 };
 
 function ToolbarButton({
@@ -686,7 +701,11 @@ function AlignControls({
   );
 }
 
-function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
+function FloatingBlockToolbar({
+  block,
+  onChange,
+  onDelete
+}: FloatingBlockToolbarProps) {
   const [isColorOpen, setIsColorOpen] = useState(false);
   const frameClass =
     "absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95";
@@ -1002,6 +1021,14 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
           <option value="line">밑줄형</option>
         </ToolbarSelect>
       ) : null}
+      <button
+        className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-red-200 bg-white px-2 text-xs font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800"
+        onClick={onDelete}
+        type="button"
+      >
+        <Trash2 aria-hidden size={14} />
+        삭제
+      </button>
     </div>
   );
 }
@@ -1012,7 +1039,9 @@ function BuilderBlockRenderer({
   selected,
   sectionId,
   onSelectBlock,
-  onChangeBlock
+  onChangeBlock,
+  onDeleteBlock,
+  onMoveBlock
 }: BlockRendererProps) {
   const selectBlock = () => {
     if (editable) {
@@ -1021,6 +1050,9 @@ function BuilderBlockRenderer({
   };
   const changeBlock = (nextBlock: BuilderBlock) => {
     onChangeBlock?.(sectionId, nextBlock);
+  };
+  const deleteBlock = () => {
+    onDeleteBlock?.(sectionId, block.id);
   };
   const [activeTabId, setActiveTabId] = useState("");
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -1051,12 +1083,55 @@ function BuilderBlockRenderer({
           event.stopPropagation();
           selectBlock();
         }}
+        onDragOver={(event) => {
+          if (
+            event.dataTransfer.types.includes("application/x-studio-builder-block")
+          ) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+          }
+        }}
+        onDrop={(event) => {
+          const payload = event.dataTransfer.getData(
+            "application/x-studio-builder-block"
+          );
+
+          if (!payload) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          try {
+            const source = JSON.parse(payload) as {
+              sectionId?: string;
+              blockId?: string;
+            };
+
+            if (
+              source.sectionId !== sectionId ||
+              !source.blockId ||
+              source.blockId === block.id
+            ) {
+              return;
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            const placement =
+              event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+
+            onMoveBlock?.(sectionId, source.blockId, block.id, placement);
+          } catch {
+            return;
+          }
+        }}
       >
         {onChangeBlock ? (
           <button
             aria-expanded={optionsOpen}
             aria-label="블록 옵션 열기"
-            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
+            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
               selected || optionsOpen
                 ? "opacity-100"
                 : "opacity-0 group-hover:opacity-100"
@@ -1066,14 +1141,28 @@ function BuilderBlockRenderer({
               selectBlock();
               setIsOptionsOpen((current) => !current);
             }}
-            onMouseDown={(event) => event.preventDefault()}
+            draggable
+            onDragStart={(event) => {
+              event.stopPropagation();
+              selectBlock();
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData(
+                "application/x-studio-builder-block",
+                JSON.stringify({ sectionId, blockId: block.id })
+              );
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
             type="button"
           >
             <SlidersHorizontal aria-hidden size={15} />
           </button>
         ) : null}
         {optionsOpen && onChangeBlock ? (
-          <FloatingBlockToolbar block={block} onChange={changeBlock} />
+          <FloatingBlockToolbar
+            block={block}
+            onChange={changeBlock}
+            onDelete={deleteBlock}
+          />
         ) : null}
         {children}
       </div>
@@ -1850,7 +1939,9 @@ function SectionRenderer({
   onSelectSection,
   onSelectBlock,
   onChangeBlock,
-  onInsertBlock
+  onInsertBlock,
+  onDeleteBlock,
+  onMoveBlock
 }: SectionRendererProps) {
   const selected = selectedSectionId === section.id;
   const blocks = [...section.blocks].sort((a, b) => a.order - b.order);
@@ -1880,6 +1971,8 @@ function SectionRenderer({
             block={block}
             editable={editable}
             onChangeBlock={onChangeBlock}
+            onDeleteBlock={onDeleteBlock}
+            onMoveBlock={onMoveBlock}
             onSelectBlock={onSelectBlock}
             sectionId={section.id}
             selected={selectedBlockId === block.id}
@@ -1928,7 +2021,9 @@ export function BuilderPageRenderer({
   onSelectSection,
   onSelectBlock,
   onChangeBlock,
-  onInsertBlock
+  onInsertBlock,
+  onDeleteBlock,
+  onMoveBlock
 }: BuilderPageRendererProps) {
   return (
     <div className={editable ? "bg-white dark:bg-neutral-950" : ""}>
@@ -1941,7 +2036,9 @@ export function BuilderPageRenderer({
             key={section.id}
             notes={notes}
             onChangeBlock={onChangeBlock}
+            onDeleteBlock={onDeleteBlock}
             onInsertBlock={onInsertBlock}
+            onMoveBlock={onMoveBlock}
             onSelectBlock={onSelectBlock}
             onSelectSection={onSelectSection}
             page={page}
