@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "관리자 로그인",
-  description: "Studio Archive 관리자 로그인.",
+  description: "Studio 낙화 관리자 로그인.",
   robots: {
     index: false,
     follow: false

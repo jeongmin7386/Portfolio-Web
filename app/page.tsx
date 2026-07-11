@@ -7,7 +7,7 @@ import { getAdminSession, isOwnerPasswordConfigured } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Studio Archive 시작하기",
+  title: "Studio 낙화 시작하기",
   description:
     "승인받은 계정으로 로그인하거나 새 계정을 요청해 나만의 포트폴리오를 편집합니다.",
   robots: {
@@ -28,7 +28,7 @@ export default async function HomePage() {
       <div className="mx-auto grid min-h-[calc(100svh-5rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <section className="max-w-2xl">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-            Studio Archive
+            Studio 낙화
           </p>
           <h1 className="mt-5 font-display text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
             나만의 포트폴리오를 만들고 편집하는 공간

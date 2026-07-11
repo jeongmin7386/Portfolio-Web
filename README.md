@@ -1,6 +1,6 @@
 # Portfolio Web
 
-이 저장소는 기존 `Portfolio Publisher MVP`와 새 `Studio Archive` 포트폴리오 사이트를 함께 포함합니다.
+이 저장소는 기존 `Portfolio Publisher MVP`와 새 `Studio 낙화` 포트폴리오 사이트를 함께 포함합니다.
 
 ## Portfolio Publisher MVP
 
@@ -109,7 +109,7 @@ Notes:
 - The frontend receives the API hostname from the backend service and normalizes it to `https://.../api`.
 - Uploaded thumbnails use `/tmp/uploads` on Render. This is suitable for MVP testing, but files are ephemeral across redeploys/restarts. Use S3-compatible storage or a paid persistent disk before production use.
 
-## Studio Archive
+## Studio 낙화
 
 Notion-style content management and Adobe Portfolio-style case study presentation for a personal design portfolio.
 
@@ -159,7 +159,7 @@ Admin paths:
 
 Storage behavior:
 
-- If `DATABASE_URL` or `STUDIO_ARCHIVE_DATABASE_URL` is set, Studio Archive stores editable content in Postgres.
+- If `DATABASE_URL` or `STUDIO_ARCHIVE_DATABASE_URL` is set, Studio 낙화 stores editable content in Postgres.
 - If no database URL is set, it falls back to `data/studio-archive-content.json`.
 - When the Postgres table is empty, the app seeds it from `content/projects` and `content/notes`.
 - Page builder data is stored as JSON in `studio_archive_pages.sections`.

@@ -7,23 +7,23 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://studio-archive.onrender.com"),
   title: {
-    default: "Studio Archive",
-    template: "%s | Studio Archive"
+    default: "Studio 낙화",
+    template: "%s | Studio 낙화"
   },
   description:
-    "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio Archive 작업 공간입니다.",
+    "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio 낙화 작업 공간입니다.",
   keywords: [
     "포트폴리오 빌더",
     "포트폴리오 편집",
     "디자이너 포트폴리오",
     "프로젝트 아카이브",
-    "Studio Archive"
+    "Studio 낙화"
   ],
   openGraph: {
-    title: "Studio Archive",
+    title: "Studio 낙화",
     description:
-      "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio Archive 작업 공간입니다.",
-    siteName: "Studio Archive",
+      "로그인 후 나만의 포트폴리오를 만들고 편집하는 Studio 낙화 작업 공간입니다.",
+    siteName: "Studio 낙화",
     type: "website"
   }
 };

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "프로젝트 편집",
-  description: "Studio Archive 프로젝트 콘텐츠를 편집하는 관리 화면.",
+  description: "Studio 낙화 프로젝트 콘텐츠를 편집하는 관리 화면.",
   robots: {
     index: false,
     follow: false

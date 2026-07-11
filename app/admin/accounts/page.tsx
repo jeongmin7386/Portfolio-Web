@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "관리자 승인",
-  description: "Studio Archive 관리자 계정 신청을 승인하는 화면.",
+  description: "Studio 낙화 관리자 계정 신청을 승인하는 화면.",
   robots: {
     index: false,
     follow: false

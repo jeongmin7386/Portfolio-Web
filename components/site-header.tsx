@@ -49,7 +49,7 @@ export function SiteHeader() {
           className="rounded-md font-display text-sm font-semibold uppercase tracking-[0.16em] text-neutral-950 outline-none transition hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:text-neutral-50 dark:hover:text-emerald-300"
           href={publicBasePath || "/"}
         >
-          Studio Archive
+          Studio 낙화
         </Link>
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <nav

@@ -404,7 +404,7 @@ function getSeedArchiveBuilderPage(): BuilderPage {
     id: "page-archive",
     slug: "archive",
     title: "Archive",
-    seoTitle: "Archive | Studio Archive",
+    seoTitle: "Archive | Studio 낙화",
     seoDescription: "작업 과정과 리서치, 짧은 노트를 모아두는 아카이브입니다.",
     status: "published",
     updatedAt: new Date().toISOString(),
@@ -507,7 +507,7 @@ async function getSeedBuilderPage(
     id: "page-home",
     slug: "home",
     title: "홈",
-    seoTitle: "Studio Archive",
+    seoTitle: "Studio 낙화",
     seoDescription:
       "작업의 맥락과 이미지를 차분하게 담는 개인 포트폴리오.",
     status: "published",
@@ -529,7 +529,7 @@ async function getSeedBuilderPage(
             type: "paragraph",
             order: 0,
             content: {
-              text: "Studio Archive"
+              text: "Studio 낙화"
             },
             settings: {
               width: "narrow",

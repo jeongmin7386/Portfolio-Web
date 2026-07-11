@@ -25,7 +25,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 text-sm text-neutral-600 dark:text-neutral-400 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
         <div>
           <p className="font-display text-base font-semibold text-neutral-950 dark:text-neutral-50">
-            Studio Archive
+            Studio 낙화
           </p>
           <p className="mt-2 max-w-xl leading-6">
             포트폴리오를 만들고, 편집하고, 각자의 공개 페이지로 발행하는

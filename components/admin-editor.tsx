@@ -2257,7 +2257,7 @@ type AdminEditorProps = {
 const editorCopy = {
   all: {
     eyebrow: "Admin",
-    title: "Studio Archive 편집",
+    title: "Studio 낙화 편집",
     description:
       "프로젝트, 카테고리, 아카이브 노트를 수정합니다. DB 저장, 로그인 보호, 이미지 업로드를 운영 환경에 연결할 수 있습니다."
   },

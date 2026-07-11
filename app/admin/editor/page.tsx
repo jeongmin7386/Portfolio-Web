@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "페이지 빌더",
-  description: "Studio Archive 페이지 구조를 편집하는 빌더.",
+  description: "Studio 낙화 페이지 구조를 편집하는 빌더.",
   robots: {
     index: false,
     follow: false
