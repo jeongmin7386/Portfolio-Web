@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  getSessionEditPath,
   isOwnerPasswordConfigured,
   isAdminAuthEnabled,
   setAdminSessionCookie,
@@ -31,7 +32,20 @@ export async function POST(request: Request) {
       const user = await verifyAdminAccount(body.email, body.password ?? "");
       await setAdminSessionCookie(user);
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({
+        ok: true,
+        redirectTo: getSessionEditPath({
+          authEnabled: true,
+          authenticated: true,
+          isOwner: user.role === "owner",
+          user: {
+            email: user.email,
+            id: user.id,
+            name: user.name,
+            role: user.role
+          }
+        })
+      });
     } catch (error) {
       if (error instanceof AdminUserError) {
         return NextResponse.json(
@@ -65,5 +79,5 @@ export async function POST(request: Request) {
 
   await setAdminSessionCookie();
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, redirectTo: "/admin" });
 }

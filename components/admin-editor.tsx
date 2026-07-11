@@ -2250,6 +2250,8 @@ function AdminLivePreview({
 
 type AdminEditorProps = {
   authEnabled: boolean;
+  canManageAccounts?: boolean;
+  editBasePath?: string;
   storageMode: "database" | "file";
   mode?: "all" | "projects" | "notes";
 };
@@ -2280,6 +2282,8 @@ const editorCopy = {
 
 export function AdminEditor({
   authEnabled,
+  canManageAccounts = true,
+  editBasePath = "/admin",
   storageMode,
   mode = "all"
 }: AdminEditorProps) {
@@ -2322,6 +2326,11 @@ export function AdminEditor({
       : isProjectBuilderMode && !isSettingsPanelOpen
         ? "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]"
         : "grid items-start gap-4 lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)_minmax(280px,320px)] xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(360px,460px)]";
+  const allEditHref = editBasePath === "/admin" ? "/admin" : editBasePath;
+  const homeEditHref =
+    editBasePath === "/admin" ? "/admin/editor" : editBasePath;
+  const projectsEditHref = `${editBasePath}/projects`;
+  const archiveEditHref = `${editBasePath}/archive`;
 
   useEffect(() => {
     let mounted = true;
@@ -2750,13 +2759,13 @@ export function AdminEditor({
               className={`w-full sm:w-auto ${
                 mode === "all" ? primaryButtonClass : secondaryButtonClass
               }`}
-              href="/admin"
+              href={allEditHref}
             >
               전체 관리
             </Link>
             <Link
               className={`${secondaryButtonClass} w-full sm:w-auto`}
-              href="/admin/editor"
+              href={homeEditHref}
             >
               홈 빌더
             </Link>
@@ -2764,7 +2773,7 @@ export function AdminEditor({
               className={`w-full sm:w-auto ${
                 mode === "projects" ? primaryButtonClass : secondaryButtonClass
               }`}
-              href="/admin/projects"
+              href={projectsEditHref}
             >
               프로젝트
             </Link>
@@ -2772,13 +2781,15 @@ export function AdminEditor({
               className={`w-full sm:w-auto ${
                 mode === "notes" ? primaryButtonClass : secondaryButtonClass
               }`}
-              href="/admin/archive"
+              href={archiveEditHref}
             >
               아카이브
             </Link>
             <Link
-              className={`${secondaryButtonClass} w-full sm:w-auto`}
-              href="/admin/accounts"
+              className={`${secondaryButtonClass} w-full sm:w-auto ${
+                canManageAccounts ? "" : "hidden"
+              }`}
+              href={canManageAccounts ? "/admin/accounts" : editBasePath}
             >
               계정 승인
             </Link>

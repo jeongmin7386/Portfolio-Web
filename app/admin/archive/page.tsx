@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PageBuilderEditor } from "@/components/page-builder-editor";
-import { getAdminSession, isAdminAuthEnabled } from "@/lib/auth";
+import {
+  getAdminSession,
+  getSessionEditPath,
+  isAdminAuthEnabled
+} from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +25,10 @@ export default async function AdminArchivePage() {
 
   if (!session.authenticated) {
     redirect("/admin/login");
+  }
+
+  if (!session.isOwner) {
+    redirect(getSessionEditPath(session, "archive"));
   }
 
   return <PageBuilderEditor authEnabled={authEnabled} pageSlug="archive" />;

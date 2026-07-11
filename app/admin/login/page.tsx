@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AdminLoginForm } from "@/components/admin-login-form";
 import {
   getAdminSession,
+  getSessionEditPath,
   isOwnerPasswordConfigured
 } from "@/lib/auth";
 
@@ -22,7 +23,7 @@ export default async function AdminLoginPage() {
   const session = await getAdminSession();
 
   if (session.authenticated) {
-    redirect("/admin");
+    redirect(getSessionEditPath(session));
   }
 
   return (

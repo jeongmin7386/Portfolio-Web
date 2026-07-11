@@ -66,6 +66,8 @@ import type {
 
 type PageBuilderEditorProps = {
   authEnabled: boolean;
+  canManageAccounts?: boolean;
+  editBasePath?: string;
   pageSlug?: "home" | "archive";
 };
 
@@ -1214,6 +1216,8 @@ async function uploadImage(file: File) {
 
 export function PageBuilderEditor({
   authEnabled,
+  canManageAccounts = true,
+  editBasePath = "/admin",
   pageSlug = "home"
 }: PageBuilderEditorProps) {
   const [page, setPage] = useState<BuilderPage | null>(null);
@@ -1982,6 +1986,8 @@ export function PageBuilderEditor({
         : "";
   const nextPublicPath =
     pageSlug === "archive" ? "/archive" : `/${draftPublicSlug}`;
+  const projectsEditHref = `${editBasePath}/projects`;
+  const archiveEditHref = `${editBasePath}/archive`;
 
   return (
     <div className="min-h-[var(--app-viewport-height)] bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
@@ -2004,15 +2010,17 @@ export function PageBuilderEditor({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link className={buttonClass} href="/admin/projects">
+          <Link className={buttonClass} href={projectsEditHref}>
             프로젝트 편집
           </Link>
-          <Link className={buttonClass} href="/admin/archive">
+          <Link className={buttonClass} href={archiveEditHref}>
             아카이브 편집
           </Link>
+          {canManageAccounts ? (
           <Link className={buttonClass} href="/admin/accounts">
             계정 승인
           </Link>
+          ) : null}
           {(["desktop", "tablet", "mobile"] as BuilderViewport[]).map((item) => {
             const Icon =
               item === "desktop" ? Monitor : item === "tablet" ? Tablet : Smartphone;

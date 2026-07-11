@@ -30,6 +30,87 @@ export type AdminSession = {
   };
 };
 
+function isAsciiLetterOrNumber(value: string) {
+  const code = value.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 97 && code <= 122) ||
+    (code >= 65 && code <= 90)
+  );
+}
+
+function isHangul(value: string) {
+  const code = value.charCodeAt(0);
+  return code >= 0xac00 && code <= 0xd7a3;
+}
+
+function normalizeEditSlug(value = "") {
+  const normalized = value.trim().toLowerCase().normalize("NFKC");
+  let nextValue = "";
+
+  for (const character of normalized) {
+    if (
+      isAsciiLetterOrNumber(character) ||
+      isHangul(character) ||
+      character === "_"
+    ) {
+      nextValue += character;
+      continue;
+    }
+
+    if (character === "-" || /\s/.test(character)) {
+      nextValue += "-";
+    }
+  }
+
+  return nextValue.replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function getSessionEditSlug(session: AdminSession) {
+  if (session.isOwner) {
+    return "admin";
+  }
+
+  const user = session.user;
+  const emailName = user?.email?.split("@")[0] ?? "";
+
+  return (
+    normalizeEditSlug(user?.name) ||
+    normalizeEditSlug(emailName) ||
+    normalizeEditSlug(user?.id) ||
+    "user"
+  );
+}
+
+export function getSessionEditPath(
+  session: AdminSession,
+  area: "home" | "projects" | "archive" = "home"
+) {
+  if (session.isOwner) {
+    if (area === "projects") {
+      return "/admin/projects";
+    }
+
+    if (area === "archive") {
+      return "/admin/archive";
+    }
+
+    return "/admin";
+  }
+
+  const basePath = `/${getSessionEditSlug(session)}/edit`;
+
+  if (area === "projects") {
+    return `${basePath}/projects`;
+  }
+
+  if (area === "archive") {
+    return `${basePath}/archive`;
+  }
+
+  return basePath;
+}
+
 function getAdminPassword() {
   return process.env.STUDIO_ARCHIVE_ADMIN_PASSWORD?.trim();
 }

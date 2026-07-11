@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminLoginForm } from "@/components/admin-login-form";
-import { getAdminSession, isOwnerPasswordConfigured } from "@/lib/auth";
+import {
+  getAdminSession,
+  getSessionEditPath,
+  isOwnerPasswordConfigured
+} from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +24,7 @@ export default async function HomePage() {
   const session = await getAdminSession();
 
   if (session.authenticated) {
-    redirect("/admin");
+    redirect(getSessionEditPath(session));
   }
 
   return (

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminEditor } from "@/components/admin-editor";
-import { getAdminSession, isAdminAuthEnabled } from "@/lib/auth";
+import {
+  getAdminSession,
+  getSessionEditPath,
+  isAdminAuthEnabled
+} from "@/lib/auth";
 import { getContentStorageMode } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +26,10 @@ export default async function AdminProjectsPage() {
 
   if (!session.authenticated) {
     redirect("/admin/login");
+  }
+
+  if (!session.isOwner) {
+    redirect(getSessionEditPath(session, "projects"));
   }
 
   return (

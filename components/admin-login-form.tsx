@@ -47,13 +47,16 @@ export function AdminLoginForm({
           : { email: email.trim(), password }
       )
     });
-    const body = (await response.json()) as { message?: string };
+    const body = (await response.json()) as {
+      message?: string;
+      redirectTo?: string;
+    };
 
     if (!response.ok) {
       throw new Error(body.message ?? "로그인하지 못했습니다.");
     }
 
-    window.location.href = "/admin";
+    window.location.href = body.redirectTo ?? "/admin";
   };
 
   const handleRequest = async () => {
