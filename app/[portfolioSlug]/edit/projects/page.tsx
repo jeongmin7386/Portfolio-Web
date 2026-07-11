@@ -5,6 +5,7 @@ import { AdminEditor } from "@/components/admin-editor";
 import {
   getAdminSession,
   getSessionEditPath,
+  isSessionEditSlug,
   isAdminAuthEnabled
 } from "@/lib/auth";
 import { getContentStorageMode } from "@/lib/content";
@@ -43,9 +44,8 @@ export default async function UserProjectsEditPage({
   const { portfolioSlug } = await params;
   const editBasePath = getSessionEditPath(session);
   const expectedPath = getSessionEditPath(session, "projects");
-  const currentPath = `/${portfolioSlug}/edit/projects`;
 
-  if (currentPath !== expectedPath) {
+  if (!isSessionEditSlug(session, portfolioSlug)) {
     redirect(expectedPath);
   }
 

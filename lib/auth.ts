@@ -82,6 +82,18 @@ export function getSessionEditSlug(session: AdminSession) {
   );
 }
 
+export function isSessionEditSlug(session: AdminSession, slug: string) {
+  let decodedSlug = slug;
+
+  try {
+    decodedSlug = decodeURIComponent(slug);
+  } catch {
+    decodedSlug = slug;
+  }
+
+  return normalizeEditSlug(decodedSlug) === getSessionEditSlug(session);
+}
+
 export function getSessionEditPath(
   session: AdminSession,
   area: "home" | "projects" | "archive" = "home"
@@ -98,7 +110,7 @@ export function getSessionEditPath(
     return "/admin";
   }
 
-  const basePath = `/${getSessionEditSlug(session)}/edit`;
+  const basePath = `/${encodeURIComponent(getSessionEditSlug(session))}/edit`;
 
   if (area === "projects") {
     return `${basePath}/projects`;

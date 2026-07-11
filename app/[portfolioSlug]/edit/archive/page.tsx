@@ -5,6 +5,7 @@ import { PageBuilderEditor } from "@/components/page-builder-editor";
 import {
   getAdminSession,
   getSessionEditPath,
+  isSessionEditSlug,
   isAdminAuthEnabled
 } from "@/lib/auth";
 
@@ -42,9 +43,8 @@ export default async function UserArchiveEditPage({
   const { portfolioSlug } = await params;
   const editBasePath = getSessionEditPath(session);
   const expectedPath = getSessionEditPath(session, "archive");
-  const currentPath = `/${portfolioSlug}/edit/archive`;
 
-  if (currentPath !== expectedPath) {
+  if (!isSessionEditSlug(session, portfolioSlug)) {
     redirect(expectedPath);
   }
 

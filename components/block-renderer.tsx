@@ -23,6 +23,7 @@ import {
 import type {
   ProjectBlock,
   ProjectImage,
+  ProjectTabItem,
   ProjectTextFont,
   ProjectTextSettings
 } from "@/lib/types";
@@ -309,6 +310,23 @@ function createClientId(prefix: string) {
   }
 
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getProjectTabBlocks(tab: ProjectTabItem): ProjectBlock[] {
+  if (tab.blocks?.length) {
+    return tab.blocks;
+  }
+
+  if (!tab.text?.trim()) {
+    return [];
+  }
+
+  return [
+    {
+      type: "paragraph",
+      text: tab.text
+    }
+  ];
 }
 
 function focusEditableText(focusKey: string) {
@@ -1237,6 +1255,7 @@ export function BlockRenderer({
             : tabs[0]?.id;
         const activeTab =
           tabs.find((tab) => tab.id === currentActiveId) ?? tabs[0];
+        const activeTabBlocks = getProjectTabBlocks(activeTab);
         const isLineStyle = block.style === "line";
         const updateTab = (
           tabId: string,
@@ -1252,6 +1271,7 @@ export function BlockRenderer({
         const addTab = () => {
           const tab = {
             id: createClientId("tab"),
+            blocks: [],
             label: `탭 ${tabs.length + 1}`,
             text: ""
           };
@@ -1332,18 +1352,8 @@ export function BlockRenderer({
               ) : null}
             </div>
             <div className="mt-6 min-h-14 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-              {editable ? (
-                <InlineEditableText
-                  as="p"
-                  className="whitespace-pre-line"
-                  multiline
-                  onChange={(text) => updateTab(activeTab.id, { text })}
-                  onFocus={() => selectBlock(path)}
-                  placeholder="빈 탭입니다. 내용을 입력하세요."
-                  value={activeTab.text}
-                />
-              ) : activeTab.text ? (
-                <p className="whitespace-pre-line">{activeTab.text}</p>
+              {activeTabBlocks.length > 0 ? (
+                <BlockRenderer blocks={activeTabBlocks} />
               ) : (
                 <p className="text-neutral-400">빈 탭입니다.</p>
               )}

@@ -419,6 +419,15 @@ function createBlock(type: ProjectBlock["type"]): ProjectBlock {
     case "tabs": {
       const tabs = [1, 2, 3].map((index) => ({
         id: createEditorId("tab"),
+        blocks:
+          index === 1
+            ? [
+                {
+                  type: "paragraph",
+                  text: "빈 탭입니다. 내용을 입력하거나 블록을 추가해보세요."
+                } satisfies ProjectBlock
+              ]
+            : [],
         label: `탭 ${index}`,
         text:
           index === 1
@@ -1291,6 +1300,23 @@ function BlockFields({
                   value={tab.text}
                 />
               </label>
+              <div className="grid gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  탭 내부 블록
+                </p>
+                <BlockListEditor
+                  blocks={tab.blocks ?? []}
+                  nested
+                  onChange={(blocks) =>
+                    onChange({
+                      ...block,
+                      tabs: block.tabs.map((item) =>
+                        item.id === tab.id ? { ...item, blocks } : item
+                      )
+                    })
+                  }
+                />
+              </div>
             </div>
           ))}
           <button
@@ -1298,6 +1324,7 @@ function BlockFields({
             onClick={() => {
               const tab = {
                 id: createEditorId("tab"),
+                blocks: [],
                 label: `탭 ${block.tabs.length + 1}`,
                 text: ""
               };

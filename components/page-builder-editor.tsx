@@ -56,6 +56,7 @@ import type {
   BuilderSection,
   BuilderSectionSettings,
   BuilderSectionType,
+  BuilderTabItem,
   BuilderTextFont,
   BuilderTextSettings,
   BuilderViewport,
@@ -396,8 +397,22 @@ function createBlock(type: BuilderBlockType): BuilderBlock {
         settings: { align: "left" }
       };
     case "tabs": {
-      const tabs = [1, 2, 3].map((index) => ({
+      const tabs: BuilderTabItem[] = [1, 2, 3].map((index) => ({
         id: createId("tab"),
+        blocks:
+          index === 1
+            ? [
+                {
+                  id: createId("block"),
+                  type: "paragraph",
+                  order: 0,
+                  content: {
+                    text: "빈 탭입니다. 내용을 입력하거나 블록을 추가해보세요."
+                  },
+                  settings: { width: "content", align: "left" }
+                }
+              ]
+            : [],
         label: `탭 ${index}`,
         text:
           index === 1
@@ -2997,6 +3012,123 @@ function UploadButton({
   );
 }
 
+type NestedBuilderBlockListEditorProps = {
+  blocks: BuilderBlock[];
+  onChange: (blocks: BuilderBlock[]) => void;
+  onClipboardImageUpload: (onUploaded: (url: string) => void) => void;
+  onImagePaste: (
+    onUploaded: (url: string) => void,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => void;
+  onImageUpload: (onUploaded: (url: string) => void, file?: File) => void;
+};
+
+function NestedBuilderBlockListEditor({
+  blocks,
+  onChange,
+  onClipboardImageUpload,
+  onImagePaste,
+  onImageUpload
+}: NestedBuilderBlockListEditorProps) {
+  const sortedBlocks = blocks.slice().sort((a, b) => a.order - b.order);
+
+  const updateBlock = (block: BuilderBlock) => {
+    onChange(
+      orderItems(
+        sortedBlocks.map((item) => (item.id === block.id ? block : item))
+      )
+    );
+  };
+
+  const removeBlock = (blockId: string) => {
+    onChange(orderItems(sortedBlocks.filter((block) => block.id !== blockId)));
+  };
+
+  const moveBlock = (blockId: string, direction: -1 | 1) => {
+    const index = sortedBlocks.findIndex((block) => block.id === blockId);
+    const targetIndex = index + direction;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= sortedBlocks.length) {
+      return;
+    }
+
+    const nextBlocks = [...sortedBlocks];
+    const [currentBlock] = nextBlocks.splice(index, 1);
+    nextBlocks.splice(targetIndex, 0, currentBlock);
+    onChange(orderItems(nextBlocks));
+  };
+
+  const addBlock = (type: BuilderBlockType) => {
+    onChange(orderItems([...sortedBlocks, createBlock(type)]));
+  };
+
+  return (
+    <div className="grid gap-3">
+      {sortedBlocks.map((block, index) => (
+        <section
+          className="grid gap-3 rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950"
+          key={block.id}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-neutral-950 dark:text-neutral-50">
+                {blockLabels[block.type]}
+              </p>
+              <p className="text-xs text-neutral-500">탭 블록 {index + 1}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className={iconButtonClass}
+                disabled={index === 0}
+                onClick={() => moveBlock(block.id, -1)}
+                type="button"
+              >
+                위
+              </button>
+              <button
+                className={iconButtonClass}
+                disabled={index === sortedBlocks.length - 1}
+                onClick={() => moveBlock(block.id, 1)}
+                type="button"
+              >
+                아래
+              </button>
+              <button
+                aria-label="블록 삭제"
+                className={iconButtonClass}
+                onClick={() => removeBlock(block.id)}
+                type="button"
+              >
+                <Trash2 aria-hidden size={15} />
+              </button>
+            </div>
+          </div>
+          <BlockFields
+            block={block}
+            onChange={updateBlock}
+            onClipboardImageUpload={onClipboardImageUpload}
+            onImagePaste={onImagePaste}
+            onImageUpload={onImageUpload}
+          />
+        </section>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        {baseBlockInsertOptions.map((option) => (
+          <button
+            className={buttonClass}
+            key={option.id}
+            onClick={() => addBlock(option.create().type)}
+            type="button"
+          >
+            <Plus aria-hidden size={15} />
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TextStyleFields({
   block,
   onChange
@@ -3304,6 +3436,27 @@ function BlockFields({
                   value={tab.text}
                 />
               </label>
+              <div className="grid gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  탭 내부 블록
+                </p>
+                <NestedBuilderBlockListEditor
+                  blocks={tab.blocks ?? []}
+                  onChange={(blocks) =>
+                    onChange({
+                      ...block,
+                      content: {
+                        tabs: block.content.tabs.map((item) =>
+                          item.id === tab.id ? { ...item, blocks } : item
+                        )
+                      }
+                    })
+                  }
+                  onClipboardImageUpload={onClipboardImageUpload}
+                  onImagePaste={onImagePaste}
+                  onImageUpload={onImageUpload}
+                />
+              </div>
             </div>
           ))}
           <button
@@ -3311,6 +3464,7 @@ function BlockFields({
             onClick={() => {
               const tab = {
                 id: createId("tab"),
+                blocks: [],
                 label: `탭 ${block.content.tabs.length + 1}`,
                 text: ""
               };

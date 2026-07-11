@@ -5,6 +5,7 @@ import { PageBuilderEditor } from "@/components/page-builder-editor";
 import {
   getAdminSession,
   getSessionEditPath,
+  isSessionEditSlug,
   isAdminAuthEnabled
 } from "@/lib/auth";
 
@@ -39,9 +40,8 @@ export default async function UserEditPage({ params }: UserEditPageProps) {
 
   const { portfolioSlug } = await params;
   const editBasePath = getSessionEditPath(session);
-  const currentPath = `/${portfolioSlug}/edit`;
 
-  if (currentPath !== editBasePath) {
+  if (!isSessionEditSlug(session, portfolioSlug)) {
     redirect(editBasePath);
   }
 

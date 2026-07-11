@@ -17,6 +17,7 @@ export type ProjectImage = {
 export type ProjectTabItem = {
   id: string;
   label: string;
+  blocks?: ProjectBlock[];
   text: string;
 };
 
@@ -210,6 +211,7 @@ export type BuilderTextSettings = {
 export type BuilderTabItem = {
   id: string;
   label: string;
+  blocks?: BuilderBlock[];
   text: string;
 };
 

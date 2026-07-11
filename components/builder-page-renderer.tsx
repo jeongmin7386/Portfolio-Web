@@ -22,6 +22,7 @@ import type {
   BuilderBlockType,
   BuilderPage,
   BuilderSection,
+  BuilderTabItem,
   BuilderTextFont,
   BuilderTextSettings,
   BuilderTextSize,
@@ -321,6 +322,31 @@ function createClientId(prefix: string) {
   }
 
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getBuilderTabBlocks(tab: BuilderTabItem): BuilderBlock[] {
+  if (tab.blocks?.length) {
+    return tab.blocks;
+  }
+
+  if (!tab.text?.trim()) {
+    return [];
+  }
+
+  return [
+    {
+      id: `${tab.id}-legacy-text`,
+      type: "paragraph",
+      order: 0,
+      content: {
+        text: tab.text
+      },
+      settings: {
+        align: "left",
+        width: "content"
+      }
+    }
+  ];
 }
 
 function focusEditableText(focusKey: string) {
@@ -1425,6 +1451,7 @@ function BuilderBlockRenderer({
           ? storedActiveId
           : tabs[0]?.id;
       const activeTab = tabs.find((tab) => tab.id === currentActiveId) ?? tabs[0];
+      const activeTabBlocks = getBuilderTabBlocks(activeTab);
       const isLineStyle = block.settings.style === "line";
       const updateTab = (
         tabId: string,
@@ -1442,6 +1469,7 @@ function BuilderBlockRenderer({
       const addTab = () => {
         const tab = {
           id: createClientId("tab"),
+          blocks: [],
           label: `탭 ${tabs.length + 1}`,
           text: ""
         };
@@ -1522,18 +1550,21 @@ function BuilderBlockRenderer({
             ) : null}
           </div>
           <div className="mt-6 min-h-14 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-            {editable ? (
-              <InlineEditableText
-                as="p"
-                className="whitespace-pre-line"
-                multiline
-                onChange={(text) => updateTab(activeTab.id, { text })}
-                onFocus={selectBlock}
-                placeholder="빈 탭입니다. 내용을 입력하세요."
-                value={activeTab.text}
-              />
-            ) : activeTab.text ? (
-              <p className="whitespace-pre-line">{activeTab.text}</p>
+            {activeTabBlocks.length > 0 ? (
+              <div className="grid gap-4">
+                {activeTabBlocks
+                  .slice()
+                  .sort((firstBlock, secondBlock) => firstBlock.order - secondBlock.order)
+                  .map((tabBlock) => (
+                    <BuilderBlockRenderer
+                      block={tabBlock}
+                      editable={false}
+                      key={tabBlock.id}
+                      sectionId={sectionId}
+                      selected={false}
+                    />
+                  ))}
+              </div>
             ) : (
               <p className="text-neutral-400">빈 탭입니다.</p>
             )}
