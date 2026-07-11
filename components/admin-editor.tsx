@@ -537,7 +537,7 @@ function replaceProjectBlockAtPath(
   path: ProjectBlockPath,
   nextBlock: ProjectBlock
 ): ProjectBlock[] {
-  const [blockIndex, side, ...childPath] = path;
+  const [blockIndex, relation, tabIdOrSide, ...childPath] = path;
 
   if (typeof blockIndex !== "number") {
     return blocks;
@@ -552,14 +552,41 @@ function replaceProjectBlockAtPath(
       return nextBlock;
     }
 
-    if (block.type !== "twoColumn" || (side !== "left" && side !== "right")) {
-      return block;
+    if (block.type === "twoColumn" && (relation === "left" || relation === "right")) {
+      return {
+        ...block,
+        [relation]: replaceProjectBlockAtPath(
+          block[relation],
+          path.slice(2),
+          nextBlock
+        )
+      };
     }
 
-    return {
-      ...block,
-      [side]: replaceProjectBlockAtPath(block[side], childPath, nextBlock)
-    };
+    if (
+      block.type === "tabs" &&
+      relation === "tabs" &&
+      typeof tabIdOrSide === "string"
+    ) {
+      return {
+        ...block,
+        tabs: block.tabs.map((tab) =>
+          tab.id === tabIdOrSide
+            ? {
+                ...tab,
+                blocks: replaceProjectBlockAtPath(
+                  getEditableProjectTabBlocks(tab),
+                  childPath,
+                  nextBlock
+                ),
+                text: ""
+              }
+            : tab
+        )
+      };
+    }
+
+    return block;
   });
 }
 
@@ -567,7 +594,7 @@ function getProjectBlockAtPath(
   blocks: ProjectBlock[],
   path: ProjectBlockPath
 ): ProjectBlock | null {
-  const [blockIndex, side, ...childPath] = path;
+  const [blockIndex, relation, tabIdOrSide, ...childPath] = path;
 
   if (typeof blockIndex !== "number") {
     return null;
@@ -583,11 +610,21 @@ function getProjectBlockAtPath(
     return block;
   }
 
-  if (block.type !== "twoColumn" || (side !== "left" && side !== "right")) {
-    return null;
+  if (block.type === "twoColumn" && (relation === "left" || relation === "right")) {
+    return getProjectBlockAtPath(block[relation], path.slice(2));
   }
 
-  return getProjectBlockAtPath(block[side], childPath);
+  if (
+    block.type === "tabs" &&
+    relation === "tabs" &&
+    typeof tabIdOrSide === "string"
+  ) {
+    const tab = block.tabs.find((item) => item.id === tabIdOrSide);
+
+    return tab ? getProjectBlockAtPath(getEditableProjectTabBlocks(tab), childPath) : null;
+  }
+
+  return null;
 }
 
 function isProjectPathPrefix(
@@ -623,41 +660,24 @@ function insertProjectBlockAfterPath(
   path: ProjectBlockPath,
   nextBlock: ProjectBlock
 ): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
-  const [blockIndex, side, ...childPath] = path;
-
-  if (typeof blockIndex !== "number") {
+  if (path.length === 0) {
     return {
       blocks: [...blocks, nextBlock],
       path: [blocks.length]
     };
   }
 
-  if (
-    childPath.length > 0 &&
-    (side === "left" || side === "right") &&
-    blocks[blockIndex]?.type === "twoColumn"
-  ) {
-    const block = blocks[blockIndex];
-    const inserted = insertProjectBlockAfterPath(block[side], childPath, nextBlock);
+  const currentIndex = path[path.length - 1];
 
-    return {
-      blocks: blocks.map((currentBlock, currentIndex) =>
-        currentIndex === blockIndex && currentBlock.type === "twoColumn"
-          ? { ...currentBlock, [side]: inserted.blocks }
-          : currentBlock
-      ),
-      path: [blockIndex, side, ...inserted.path]
-    };
+  if (typeof currentIndex !== "number") {
+    return insertProjectBlockAtPath(blocks, [blocks.length], nextBlock);
   }
 
-  const insertIndex = Math.min(blockIndex + 1, blocks.length);
-  const nextBlocks = [...blocks];
-  nextBlocks.splice(insertIndex, 0, nextBlock);
-
-  return {
-    blocks: nextBlocks,
-    path: [insertIndex]
-  };
+  return insertProjectBlockAtPath(
+    blocks,
+    [...path.slice(0, -1), currentIndex + 1],
+    nextBlock
+  );
 }
 
 function insertProjectBlockAtPath(
@@ -665,7 +685,8 @@ function insertProjectBlockAtPath(
   path: ProjectBlockPath,
   nextBlock: ProjectBlock
 ): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
-  const [insertIndex, side, ...childPath] = path;
+  const insertIndex = path[path.length - 1];
+  const parentPath = path.slice(0, -1);
 
   if (typeof insertIndex !== "number") {
     return {
@@ -674,32 +695,22 @@ function insertProjectBlockAtPath(
     };
   }
 
-  if (
-    childPath.length > 0 &&
-    (side === "left" || side === "right") &&
-    blocks[insertIndex]?.type === "twoColumn"
-  ) {
-    const block = blocks[insertIndex];
-    const inserted = insertProjectBlockAtPath(block[side], childPath, nextBlock);
+  let insertedIndex = insertIndex;
+  const nextBlocks = updateProjectBlockListAtPath(
+    blocks,
+    parentPath,
+    (blockList) => {
+      const boundedIndex = Math.max(0, Math.min(insertIndex, blockList.length));
+      const nextBlockList = [...blockList];
 
-    return {
-      blocks: blocks.map((currentBlock, currentIndex) =>
-        currentIndex === insertIndex && currentBlock.type === "twoColumn"
-          ? { ...currentBlock, [side]: inserted.blocks }
-          : currentBlock
-      ),
-      path: [insertIndex, side, ...inserted.path]
-    };
-  }
+      nextBlockList.splice(boundedIndex, 0, nextBlock);
+      insertedIndex = boundedIndex;
 
-  const boundedIndex = Math.max(0, Math.min(insertIndex, blocks.length));
-  const nextBlocks = [...blocks];
-  nextBlocks.splice(boundedIndex, 0, nextBlock);
+      return nextBlockList;
+    }
+  );
 
-  return {
-    blocks: nextBlocks,
-    path: [boundedIndex]
-  };
+  return { blocks: nextBlocks, path: [...parentPath, insertedIndex] };
 }
 
 function projectBlockParentKey(path: ProjectBlockPath) {
@@ -711,29 +722,56 @@ function updateProjectBlockListAtPath(
   parentPath: ProjectBlockPath,
   updater: (blockList: ProjectBlock[]) => ProjectBlock[]
 ): ProjectBlock[] {
-  const [blockIndex, side, ...childParentPath] = parentPath;
+  if (parentPath.length === 0) {
+    return updater(blocks);
+  }
+
+  const [blockIndex, relation, tabIdOrSide, ...childParentPath] = parentPath;
 
   if (typeof blockIndex !== "number") {
     return updater(blocks);
   }
 
-  if (side !== "left" && side !== "right") {
-    return blocks;
-  }
-
   return blocks.map((block, currentIndex) => {
-    if (currentIndex !== blockIndex || block.type !== "twoColumn") {
+    if (currentIndex !== blockIndex) {
       return block;
     }
 
-    return {
-      ...block,
-      [side]: updateProjectBlockListAtPath(
-        block[side],
-        childParentPath,
-        updater
-      )
-    };
+    if (block.type === "twoColumn" && (relation === "left" || relation === "right")) {
+      return {
+        ...block,
+        [relation]: updateProjectBlockListAtPath(
+          block[relation],
+          parentPath.slice(2),
+          updater
+        )
+      };
+    }
+
+    if (
+      block.type === "tabs" &&
+      relation === "tabs" &&
+      typeof tabIdOrSide === "string"
+    ) {
+      return {
+        ...block,
+        tabs: block.tabs.map((tab) =>
+          tab.id === tabIdOrSide
+            ? {
+                ...tab,
+                blocks: updateProjectBlockListAtPath(
+                  getEditableProjectTabBlocks(tab),
+                  childParentPath,
+                  updater
+                ),
+                text: ""
+              }
+            : tab
+        )
+      };
+    }
+
+    return block;
   });
 }
 
@@ -826,23 +864,29 @@ function insertProjectBlockIntoTabAtPath(
   const tabs = tabBlock.tabs.length
     ? tabBlock.tabs
     : [{ id: tabId, blocks: [], label: "탭 1", text: "" }];
+  let insertedPath: ProjectBlockPath = tabPath;
   const nextTabBlock: ProjectBlock = {
     ...tabBlock,
     activeTabId: tabId,
-    tabs: tabs.map((tab) =>
-      tab.id === tabId
-        ? {
-            ...tab,
-            blocks: [...getEditableProjectTabBlocks(tab), nextBlock],
-            text: ""
-          }
-        : tab
-    )
+    tabs: tabs.map((tab) => {
+      if (tab.id !== tabId) {
+        return tab;
+      }
+
+      const nextBlocks = [...getEditableProjectTabBlocks(tab), nextBlock];
+      insertedPath = [...tabPath, "tabs", tabId, nextBlocks.length - 1];
+
+      return {
+        ...tab,
+        blocks: nextBlocks,
+        text: ""
+      };
+    })
   };
 
   return {
     blocks: replaceProjectBlockAtPath(blocks, tabPath, nextTabBlock),
-    path: tabPath
+    path: insertedPath
   };
 }
 
@@ -1462,6 +1506,9 @@ function BlockFields({
                       )
                     })
                   }
+                  onSelect={onSelect}
+                  pathPrefix={[...path, "tabs", tab.id]}
+                  selectedPath={selectedPath}
                 />
               </div>
             </div>

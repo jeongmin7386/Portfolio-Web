@@ -360,6 +360,77 @@ function mergeSectionUpdate(
   return nextSection;
 }
 
+function findBuilderBlockById(
+  blocks: BuilderBlock[],
+  blockId: string
+): BuilderBlock | undefined {
+  for (const block of blocks) {
+    if (block.id === blockId) {
+      return block;
+    }
+
+    if (block.type === "tabs") {
+      for (const tab of block.content.tabs) {
+        const foundBlock = findBuilderBlockById(tab.blocks ?? [], blockId);
+
+        if (foundBlock) {
+          return foundBlock;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function updateBuilderBlockById(
+  blocks: BuilderBlock[],
+  nextBlock: BuilderBlock
+): BuilderBlock[] {
+  return blocks.map((block) => {
+    if (block.id === nextBlock.id) {
+      return mergeBlockUpdate(block, nextBlock);
+    }
+
+    if (block.type !== "tabs") {
+      return block;
+    }
+
+    return {
+      ...block,
+      content: {
+        tabs: block.content.tabs.map((tab) => ({
+          ...tab,
+          blocks: updateBuilderBlockById(tab.blocks ?? [], nextBlock)
+        }))
+      }
+    };
+  });
+}
+
+function deleteBuilderBlockById(
+  blocks: BuilderBlock[],
+  blockId: string
+): BuilderBlock[] {
+  return blocks
+    .filter((block) => block.id !== blockId)
+    .map((block) => {
+      if (block.type !== "tabs") {
+        return block;
+      }
+
+      return {
+        ...block,
+        content: {
+          tabs: block.content.tabs.map((tab) => ({
+            ...tab,
+            blocks: deleteBuilderBlockById(tab.blocks ?? [], blockId)
+          }))
+        }
+      };
+    });
+}
+
 function createBlock(type: BuilderBlockType): BuilderBlock {
   const id = createId("block");
 
@@ -1379,9 +1450,9 @@ export function PageBuilderEditor({
   const selectedSection = sortedSections.find(
     (section) => section.id === selectedSectionId
   );
-  const selectedBlock = selectedSection?.blocks.find(
-    (block) => block.id === selectedBlockId
-  );
+  const selectedBlock = selectedSection
+    ? findBuilderBlockById(selectedSection.blocks, selectedBlockId)
+    : undefined;
   const commandQuery = commandValue.trimStart().startsWith("/")
     ? commandValue.trimStart().slice(1).trim().toLowerCase()
     : "";
@@ -1511,7 +1582,7 @@ export function PageBuilderEditor({
         currentPage.sections.map((section) => {
           const isTargetSection =
             section.id === selectedSectionId ||
-            section.blocks.some((currentBlock) => currentBlock.id === block.id);
+            Boolean(findBuilderBlockById(section.blocks, block.id));
 
           if (!isTargetSection) {
             return section;
@@ -1519,13 +1590,7 @@ export function PageBuilderEditor({
 
           return {
             ...section,
-            blocks: orderItems(
-              section.blocks.map((currentBlock) =>
-                currentBlock.id === block.id
-                  ? mergeBlockUpdate(currentBlock, block)
-                  : currentBlock
-              )
-            )
+            blocks: orderItems(updateBuilderBlockById(section.blocks, block))
           };
         })
       )
@@ -1712,7 +1777,7 @@ export function PageBuilderEditor({
     }
 
     const blocks = orderItems(
-      selectedSection.blocks.filter((block) => block.id !== selectedBlock.id)
+      deleteBuilderBlockById(selectedSection.blocks, selectedBlock.id)
     );
     updateSelectedSection({ ...selectedSection, blocks });
     setSelectedBlockId(blocks[0]?.id ?? "");
@@ -1818,7 +1883,7 @@ export function PageBuilderEditor({
 
     updateSelectedSection({ ...section, blocks: nextBlocks });
     setSelectedSectionId(sectionId);
-    setSelectedBlockId(tabBlockId);
+    setSelectedBlockId(nextBlock.id);
     setStatus(`${blockLabels[type]} 블록을 탭 안에 추가했습니다.`);
   };
 
@@ -1874,7 +1939,7 @@ export function PageBuilderEditor({
 
     updateSelectedSection({ ...section, blocks: orderItems(nextBlocks) });
     setSelectedSectionId(sectionId);
-    setSelectedBlockId(tabBlockId);
+    setSelectedBlockId(sourceBlockId);
     setStatus("블록을 탭 안으로 옮겼습니다.");
   };
 
