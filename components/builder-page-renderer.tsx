@@ -1207,6 +1207,13 @@ function BuilderBlockRenderer({
   const [selectedTabCommandIndex, setSelectedTabCommandIndex] = useState(0);
   const optionsOpen = Boolean(selected && isOptionsOpen);
   const tabCommandMatches = getBuilderTabCommandMatches(tabCommandValue);
+  const touchDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+  } | null>(null);
+  const suppressHandleClickRef = useRef(false);
 
   const blockProps = {
     className: `${getBlockSelectionClass(Boolean(selected))} ${
@@ -1221,6 +1228,9 @@ function BuilderBlockRenderer({
     return (
       <div
         className={`group relative ${selected || optionsOpen ? "z-30" : ""}`}
+        data-builder-block-id={block.id}
+        data-builder-preview-block
+        data-builder-section-id={sectionId}
         onClick={(event) => {
           event.stopPropagation();
           selectBlock();
@@ -1288,6 +1298,12 @@ function BuilderBlockRenderer({
             }`}
             onClick={(event) => {
               event.stopPropagation();
+
+              if (suppressHandleClickRef.current) {
+                suppressHandleClickRef.current = false;
+                return;
+              }
+
               selectBlock();
               setIsOptionsOpen((current) => !current);
             }}
@@ -1302,6 +1318,91 @@ function BuilderBlockRenderer({
               );
             }}
             onMouseDown={(event) => event.stopPropagation()}
+            onPointerCancel={() => {
+              touchDragRef.current = null;
+            }}
+            onPointerDown={(event) => {
+              if (
+                event.pointerType === "mouse" ||
+                !editable ||
+                !onMoveBlock
+              ) {
+                return;
+              }
+
+              event.stopPropagation();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              touchDragRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                dragging: false
+              };
+            }}
+            onPointerMove={(event) => {
+              const dragState = touchDragRef.current;
+
+              if (!dragState || dragState.pointerId !== event.pointerId) {
+                return;
+              }
+
+              const distance = Math.hypot(
+                event.clientX - dragState.startX,
+                event.clientY - dragState.startY
+              );
+
+              if (distance > 8) {
+                dragState.dragging = true;
+              }
+
+              if (dragState.dragging) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            onPointerUp={(event) => {
+              const dragState = touchDragRef.current;
+              touchDragRef.current = null;
+
+              if (!dragState || dragState.pointerId !== event.pointerId) {
+                return;
+              }
+
+              if (!dragState.dragging) {
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+              suppressHandleClickRef.current = true;
+
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+
+              const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>("[data-builder-preview-block]");
+              const targetSectionId = target?.dataset.builderSectionId;
+              const targetBlockId = target?.dataset.builderBlockId;
+
+              if (
+                !target ||
+                targetSectionId !== sectionId ||
+                !targetBlockId ||
+                targetBlockId === block.id
+              ) {
+                return;
+              }
+
+              const rect = target.getBoundingClientRect();
+              const placement =
+                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+
+              selectBlock();
+              onMoveBlock?.(sectionId, block.id, targetBlockId, placement);
+            }}
+            style={{ touchAction: "none" }}
             type="button"
           >
             <SlidersHorizontal aria-hidden size={15} />

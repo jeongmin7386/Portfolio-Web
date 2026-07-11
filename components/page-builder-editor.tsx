@@ -6,6 +6,7 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   type DragEndEvent,
   useSensor,
   useSensors
@@ -1324,6 +1325,7 @@ function SortableRow({ id, active, children }: SortableRowProps) {
       <button
         aria-label="순서 변경"
         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+        style={{ touchAction: "none" }}
         type="button"
         {...attributes}
         {...listeners}
@@ -1397,6 +1399,9 @@ export function PageBuilderEditor({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 8 }
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates

@@ -1016,6 +1016,13 @@ export function BlockRenderer({
 
   const selectedKey = selectedBlockPath ? pathKey(selectedBlockPath) : "";
   const tabCommandMatches = getProjectTabCommandMatches(tabCommandValue);
+  const touchDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+  } | null>(null);
+  const suppressHandleClickRef = useRef(false);
 
   const openLightbox = (images: LightboxImage[], index: number) => {
     if (!editable) {
@@ -1116,6 +1123,8 @@ export function BlockRenderer({
             : "ring-1 ring-transparent hover:ring-neutral-300 dark:hover:ring-neutral-700"
         }`}
         data-project-block={pathKey(path)}
+        data-project-block-path={JSON.stringify(path)}
+        data-project-preview-block
         key={key}
         onClick={(event) => {
           event.stopPropagation();
@@ -1180,6 +1189,12 @@ export function BlockRenderer({
             }`}
             onClick={(event) => {
               event.stopPropagation();
+
+              if (suppressHandleClickRef.current) {
+                suppressHandleClickRef.current = false;
+                return;
+              }
+
               selectBlock(path);
               setOpenOptionsKey((key) => (key === currentKey ? "" : currentKey));
             }}
@@ -1194,6 +1209,98 @@ export function BlockRenderer({
               );
             }}
             onMouseDown={(event) => event.stopPropagation()}
+            onPointerCancel={() => {
+              touchDragRef.current = null;
+            }}
+            onPointerDown={(event) => {
+              if (
+                event.pointerType === "mouse" ||
+                !editable ||
+                !onMoveBlock
+              ) {
+                return;
+              }
+
+              event.stopPropagation();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              touchDragRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                dragging: false
+              };
+            }}
+            onPointerMove={(event) => {
+              const dragState = touchDragRef.current;
+
+              if (!dragState || dragState.pointerId !== event.pointerId) {
+                return;
+              }
+
+              const distance = Math.hypot(
+                event.clientX - dragState.startX,
+                event.clientY - dragState.startY
+              );
+
+              if (distance > 8) {
+                dragState.dragging = true;
+              }
+
+              if (dragState.dragging) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            onPointerUp={(event) => {
+              const dragState = touchDragRef.current;
+              touchDragRef.current = null;
+
+              if (!dragState || dragState.pointerId !== event.pointerId) {
+                return;
+              }
+
+              if (!dragState.dragging) {
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+              suppressHandleClickRef.current = true;
+
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+
+              const target = document
+                .elementFromPoint(event.clientX, event.clientY)
+                ?.closest<HTMLElement>("[data-project-preview-block]");
+              const rawTargetPath = target?.dataset.projectBlockPath;
+
+              if (!target || !rawTargetPath) {
+                return;
+              }
+
+              try {
+                const targetPath = JSON.parse(rawTargetPath) as ProjectBlockPath;
+                const targetKey = pathKey(targetPath);
+
+                if (!Array.isArray(targetPath) || targetKey === currentKey) {
+                  return;
+                }
+
+                const rect = target.getBoundingClientRect();
+                const placement =
+                  event.clientY < rect.top + rect.height / 2
+                    ? "before"
+                    : "after";
+
+                selectBlock(path);
+                onMoveBlock?.(path, targetPath, placement);
+              } catch {
+                return;
+              }
+            }}
+            style={{ touchAction: "none" }}
             type="button"
           >
             <SlidersHorizontal aria-hidden size={15} />

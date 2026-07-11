@@ -5,6 +5,7 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   type DragEndEvent,
   useSensor,
   useSensors
@@ -999,6 +1000,7 @@ function SortableProjectRow({
             ? "border-white/20 text-white/70 dark:border-neutral-950/20 dark:text-neutral-700"
             : "border-neutral-200 text-neutral-400 hover:text-neutral-800 dark:border-neutral-800 dark:hover:text-neutral-100"
         }`}
+        style={{ touchAction: "none" }}
         type="button"
         {...attributes}
         {...listeners}
@@ -2619,6 +2621,9 @@ export function AdminEditor({
       activationConstraint: {
         distance: 6
       }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 8 }
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates
