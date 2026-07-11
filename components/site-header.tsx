@@ -13,7 +13,15 @@ const adminNavItems = [
   { href: "/admin/editor", label: "홈 편집" },
   { href: "/admin/projects", label: "프로젝트" },
   { href: "/admin/archive", label: "아카이브" },
+  { href: "/admin/studio-projects", label: "내 프로젝트" },
   { href: "/admin/accounts", label: "계정 승인" }
+];
+
+const editorNavItems = [
+  { href: "", label: "홈 편집" },
+  { href: "/projects", label: "프로젝트" },
+  { href: "/archive", label: "아카이브" },
+  { href: "/studio-projects", label: "내 프로젝트" }
 ];
 
 const portfolioNavItems = [
@@ -34,6 +42,8 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
   const portfolioMatch = pathname.match(/^\/([^/]+-portfoilo)(?:\/|$)/);
   const portfolioBasePath = portfolioMatch ? `/${portfolioMatch[1]}` : "";
+  const editorMatch = pathname.match(/^\/([^/]+)\/editor(?:\/|$)/);
+  const editorBasePath = editorMatch ? `/${editorMatch[1]}/editor` : "";
   const publicBasePath = userBasePath || portfolioBasePath;
   const isAdminPath = pathname.startsWith("/admin");
 
@@ -42,6 +52,11 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
         ...item,
         href: item.href === "/" ? publicBasePath : `${publicBasePath}${item.href}`
       }))
+    : editorBasePath
+      ? editorNavItems.map((item) => ({
+          ...item,
+          href: `${editorBasePath}${item.href}`
+        }))
     : isAdminPath
       ? adminNavItems
       : serviceNavItems;
@@ -95,7 +110,7 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           className="rounded-md font-display text-sm font-semibold uppercase tracking-[0.16em] text-neutral-950 outline-none transition hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500 dark:text-neutral-50 dark:hover:text-emerald-300"
-          href={publicBasePath || "/"}
+          href={publicBasePath || editorBasePath || "/"}
         >
           Studio 낙화
         </Link>
@@ -108,6 +123,8 @@ export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
               const active =
                 publicBasePath && item.href === publicBasePath
                   ? pathname === publicBasePath
+                  : editorBasePath && item.href === editorBasePath
+                    ? pathname === editorBasePath
                   : item.href === "/admin"
                     ? pathname === "/admin"
                     : item.href === "/"

@@ -2640,6 +2640,10 @@ export function AdminEditor({
     editBasePath === "/admin" ? "/admin/editor" : editBasePath;
   const projectsEditHref = `${editBasePath}/projects`;
   const archiveEditHref = `${editBasePath}/archive`;
+  const studioProjectsHref =
+    editBasePath === "/admin"
+      ? "/admin/studio-projects"
+      : `${editBasePath}/studio-projects`;
 
   useEffect(() => {
     let mounted = true;
@@ -3193,6 +3197,12 @@ export function AdminEditor({
               href={archiveEditHref}
             >
               아카이브
+            </Link>
+            <Link
+              className={`${secondaryButtonClass} w-full sm:w-auto`}
+              href={studioProjectsHref}
+            >
+              내 프로젝트
             </Link>
             <Link
               className={`${secondaryButtonClass} w-full sm:w-auto ${

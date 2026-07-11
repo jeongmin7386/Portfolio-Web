@@ -2329,6 +2329,10 @@ export function PageBuilderEditor({
     pageSlug === "archive" ? "/archive" : `/${draftPublicSlug}`;
   const projectsEditHref = `${editBasePath}/projects`;
   const archiveEditHref = `${editBasePath}/archive`;
+  const studioProjectsHref =
+    editBasePath === "/admin"
+      ? "/admin/studio-projects"
+      : `${editBasePath}/studio-projects`;
 
   return (
     <div className="min-h-[var(--app-viewport-height)] bg-neutral-100 text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
@@ -2356,6 +2360,9 @@ export function PageBuilderEditor({
           </Link>
           <Link className={buttonClass} href={archiveEditHref}>
             아카이브 편집
+          </Link>
+          <Link className={buttonClass} href={studioProjectsHref}>
+            내 프로젝트
           </Link>
           {canManageAccounts ? (
           <Link className={buttonClass} href="/admin/accounts">
