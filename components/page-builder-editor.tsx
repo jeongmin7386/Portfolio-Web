@@ -881,6 +881,13 @@ const baseBlockInsertOptions: BlockInsertOption[] = [
     label: "임베드",
     description: "외부 영상이나 링크 삽입",
     create: () => createBlock("embed")
+  },
+  {
+    id: "block-stats",
+    kind: "block",
+    label: "지표",
+    description: "숫자와 짧은 설명을 강조",
+    create: () => createBlock("stats")
   }
 ];
 
@@ -1125,6 +1132,15 @@ const slashCommandOptions: InsertOption[] = [
     command: "/spacer",
     aliases: ["spacer", "여백"],
     create: () => createBlock("spacer")
+  },
+  {
+    id: "command-stats",
+    kind: "block",
+    label: "지표",
+    description: "숫자와 짧은 설명 블록",
+    command: "/stats",
+    aliases: ["stats", "number", "metric", "지표"],
+    create: () => createBlock("stats")
   },
   {
     id: "command-grid",
