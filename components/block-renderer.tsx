@@ -14,7 +14,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 
 import {
   ImageLightbox,
@@ -710,6 +710,134 @@ function FloatingProjectBlockToolbar({
   );
 }
 
+function FloatingProjectBlockOptions({
+  block,
+  onChange
+}: {
+  block: ProjectBlock;
+  onChange: (block: ProjectBlock) => void;
+}) {
+  if (isTextStyleProjectBlock(block)) {
+    return <FloatingProjectBlockToolbar block={block} onChange={onChange} />;
+  }
+
+  const frameClass =
+    "absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95";
+
+  const stopEvent = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <div
+      className={frameClass}
+      onClick={stopEvent}
+      onMouseDown={stopEvent}
+      onTouchStart={stopEvent}
+    >
+      {block.type === "image" ? (
+        <ProjectToolbarSelect
+          label="비율"
+          onChange={(aspectRatio) =>
+            onChange({
+              ...block,
+              aspectRatio: aspectRatio as "wide" | "square" | "portrait"
+            })
+          }
+          value={block.aspectRatio ?? "wide"}
+        >
+          <option value="wide">가로형</option>
+          <option value="square">정방형</option>
+          <option value="portrait">세로형</option>
+        </ProjectToolbarSelect>
+      ) : null}
+      {block.type === "imageGrid" ? (
+        <ProjectToolbarSelect
+          label="열"
+          onChange={(columns) =>
+            onChange({ ...block, columns: Number(columns) as 2 | 3 })
+          }
+          value={block.columns ?? 3}
+        >
+          <option value={2}>2열</option>
+          <option value={3}>3열</option>
+        </ProjectToolbarSelect>
+      ) : null}
+      {block.type === "divider" ? (
+        <>
+          <ProjectToolbarSelect
+            label="형태"
+            onChange={(style) =>
+              onChange({ ...block, style: style as "line" | "dashed" | "blank" })
+            }
+            value={block.style ?? "line"}
+          >
+            <option value="line">실선</option>
+            <option value="dashed">점선</option>
+            <option value="blank">여백</option>
+          </ProjectToolbarSelect>
+          <ProjectToolbarSelect
+            label="간격"
+            onChange={(spacing) =>
+              onChange({ ...block, spacing: spacing as "sm" | "md" | "lg" })
+            }
+            value={block.spacing ?? "md"}
+          >
+            <option value="sm">좁게</option>
+            <option value="md">보통</option>
+            <option value="lg">넓게</option>
+          </ProjectToolbarSelect>
+        </>
+      ) : null}
+      {block.type === "embed" ? (
+        <ProjectToolbarSelect
+          label="비율"
+          onChange={(ratio) =>
+            onChange({ ...block, ratio: ratio as "wide" | "square" })
+          }
+          value={block.ratio ?? "wide"}
+        >
+          <option value="wide">와이드</option>
+          <option value="square">정방형</option>
+        </ProjectToolbarSelect>
+      ) : null}
+      {block.type === "spacer" ? (
+        <ProjectToolbarNumberInput
+          label="높이"
+          min={0}
+          onChange={(height) => onChange({ ...block, height })}
+          suffix="px"
+          value={block.height ?? 48}
+        />
+      ) : null}
+      {block.type === "tabs" ? (
+        <ProjectToolbarSelect
+          label="탭"
+          onChange={(style) =>
+            onChange({ ...block, style: style as "soft" | "line" })
+          }
+          value={block.style ?? "soft"}
+        >
+          <option value="soft">버튼형</option>
+          <option value="line">밑줄형</option>
+        </ProjectToolbarSelect>
+      ) : null}
+      {[
+        "image",
+        "imageGrid",
+        "divider",
+        "embed",
+        "spacer",
+        "tabs"
+      ].includes(block.type) ? null : (
+        <span className="text-xs text-neutral-500 dark:text-neutral-400">
+          내용은 미리보기에서 바로 수정하세요.
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function BlockRenderer({
   blocks,
   editable,
@@ -720,6 +848,7 @@ export function BlockRenderer({
 }: BlockRendererProps) {
   const [lightbox, setLightbox] = useState<ActiveLightbox | null>(null);
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({});
+  const [openOptionsKey, setOpenOptionsKey] = useState("");
 
   const selectedKey = selectedBlockPath ? pathKey(selectedBlockPath) : "";
 
@@ -750,10 +879,12 @@ export function BlockRenderer({
     }
 
     const selected = selectedKey === pathKey(path);
+    const currentKey = pathKey(path);
+    const optionsOpen = selected && openOptionsKey === currentKey;
 
     return (
       <div
-        className={`relative -m-1 rounded-md p-1 transition ${
+        className={`group relative -m-1 rounded-md p-1 transition ${
           selected
             ? "ring-2 ring-emerald-500/70 ring-offset-2 ring-offset-white dark:ring-offset-neutral-950"
             : "ring-1 ring-transparent hover:ring-neutral-300 dark:hover:ring-neutral-700"
@@ -773,8 +904,28 @@ export function BlockRenderer({
           selectBlock(path);
         }}
       >
-        {selected && onChangeBlock ? (
-          <FloatingProjectBlockToolbar
+        {onChangeBlock ? (
+          <button
+            aria-expanded={optionsOpen}
+            aria-label="블록 옵션 열기"
+            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
+              selected || optionsOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(event) => {
+              event.stopPropagation();
+              selectBlock(path);
+              setOpenOptionsKey((key) => (key === currentKey ? "" : currentKey));
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden size={15} />
+          </button>
+        ) : null}
+        {optionsOpen && onChangeBlock ? (
+          <FloatingProjectBlockOptions
             block={block}
             onChange={(nextBlock) => changeBlock(path, nextBlock)}
           />

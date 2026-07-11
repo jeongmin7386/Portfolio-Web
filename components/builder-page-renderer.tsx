@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 import {
   Fragment,
   type CSSProperties,
@@ -989,6 +989,19 @@ function FloatingBlockToolbar({ block, onChange }: FloatingBlockToolbarProps) {
           />
         </label>
       ) : null}
+
+      {block.type === "tabs" ? (
+        <ToolbarSelect
+          label="탭"
+          onChange={(style) =>
+            updateSettings({ style: style as "soft" | "line" })
+          }
+          value={block.settings.style ?? "soft"}
+        >
+          <option value="soft">버튼형</option>
+          <option value="line">밑줄형</option>
+        </ToolbarSelect>
+      ) : null}
     </div>
   );
 }
@@ -1010,6 +1023,9 @@ function BuilderBlockRenderer({
     onChangeBlock?.(sectionId, nextBlock);
   };
   const [activeTabId, setActiveTabId] = useState("");
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const optionsOpen = Boolean(selected && isOptionsOpen);
+
   const blockProps = {
     className: `${getBlockSelectionClass(Boolean(selected))} ${
       editable ? "cursor-text" : ""
@@ -1022,7 +1038,7 @@ function BuilderBlockRenderer({
 
     return (
       <div
-        className={`relative ${selected ? "z-30" : ""}`}
+        className={`group relative ${selected || optionsOpen ? "z-30" : ""}`}
         onClick={(event) => {
           event.stopPropagation();
           selectBlock();
@@ -1036,7 +1052,27 @@ function BuilderBlockRenderer({
           selectBlock();
         }}
       >
-        {selected && onChangeBlock ? (
+        {onChangeBlock ? (
+          <button
+            aria-expanded={optionsOpen}
+            aria-label="블록 옵션 열기"
+            className={`absolute -left-4 top-1 z-40 inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 shadow-sm transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 ${
+              selected || optionsOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(event) => {
+              event.stopPropagation();
+              selectBlock();
+              setIsOptionsOpen((current) => !current);
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden size={15} />
+          </button>
+        ) : null}
+        {optionsOpen && onChangeBlock ? (
           <FloatingBlockToolbar block={block} onChange={changeBlock} />
         ) : null}
         {children}
