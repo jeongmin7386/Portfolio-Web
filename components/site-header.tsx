@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const serviceNavItems = [
-  { href: "/", label: "시작" },
-  { href: "/admin/login", label: "로그인" }
-];
+const serviceNavItems = [{ href: "/", label: "시작" }];
 
 const adminNavItems = [
   { href: "/admin", label: "관리" },
@@ -24,8 +22,13 @@ const portfolioNavItems = [
   { href: "/archive", label: "아카이브" }
 ];
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  authenticated?: boolean;
+};
+
+export function SiteHeader({ authenticated = false }: SiteHeaderProps) {
   const pathname = usePathname();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userMatch = pathname.match(/^\/u\/([^/]+)/);
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
   const portfolioMatch = pathname.match(/^\/([^/]+-portfoilo)(?:\/|$)/);
@@ -41,6 +44,20 @@ export function SiteHeader() {
     : isAdminPath
       ? adminNavItems
       : serviceNavItems;
+
+  const authButtonClass =
+    "shrink-0 rounded-md px-2.5 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50 sm:px-3";
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await fetch("/api/admin/logout", {
+        method: "POST"
+      });
+    } finally {
+      window.location.href = "/admin/login";
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-stone-50/90 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/90">
@@ -62,9 +79,9 @@ export function SiteHeader() {
                   ? pathname === publicBasePath
                   : item.href === "/admin"
                     ? pathname === "/admin"
-                  : item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                    : item.href === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(item.href);
 
               return (
                 <Link
@@ -81,6 +98,20 @@ export function SiteHeader() {
                 </Link>
               );
             })}
+            {authenticated ? (
+              <button
+                className={authButtonClass}
+                disabled={isLoggingOut}
+                onClick={() => void handleLogout()}
+                type="button"
+              >
+                {isLoggingOut ? "로그아웃 중" : "로그아웃"}
+              </button>
+            ) : (
+              <Link className={authButtonClass} href="/admin/login">
+                로그인
+              </Link>
+            )}
           </nav>
           <ThemeToggle />
         </div>
