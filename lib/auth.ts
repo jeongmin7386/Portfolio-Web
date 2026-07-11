@@ -39,21 +39,12 @@ function isAsciiLetterOrNumber(value: string) {
   );
 }
 
-function isHangul(value: string) {
-  const code = value.charCodeAt(0);
-  return code >= 0xac00 && code <= 0xd7a3;
-}
-
 function normalizeEditSlug(value = "") {
   const normalized = value.trim().toLowerCase().normalize("NFKC");
   let nextValue = "";
 
   for (const character of normalized) {
-    if (
-      isAsciiLetterOrNumber(character) ||
-      isHangul(character) ||
-      character === "_"
-    ) {
+    if (isAsciiLetterOrNumber(character) || character === "_") {
       nextValue += character;
       continue;
     }
@@ -110,7 +101,7 @@ export function getSessionEditPath(
     return "/admin";
   }
 
-  const basePath = `/${encodeURIComponent(getSessionEditSlug(session))}/edit`;
+  const basePath = `/${encodeURIComponent(getSessionEditSlug(session))}/editor`;
 
   if (area === "projects") {
     return `${basePath}/projects`;

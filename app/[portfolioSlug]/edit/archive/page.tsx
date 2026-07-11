@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { PageBuilderEditor } from "@/components/page-builder-editor";
-import {
-  getAdminSession,
-  getSessionEditPath,
-  isSessionEditSlug,
-  isAdminAuthEnabled
-} from "@/lib/auth";
+import { getAdminSession, getSessionEditPath } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +14,7 @@ export const metadata: Metadata = {
   }
 };
 
-type UserArchiveEditPageProps = {
-  params: Promise<{
-    portfolioSlug: string;
-  }>;
-};
-
-export default async function UserArchiveEditPage({
-  params
-}: UserArchiveEditPageProps) {
-  const authEnabled = isAdminAuthEnabled();
+export default async function UserArchiveEditPage() {
   const session = await getAdminSession();
 
   if (!session.authenticated) {
@@ -40,20 +25,6 @@ export default async function UserArchiveEditPage({
     redirect("/admin/archive");
   }
 
-  const { portfolioSlug } = await params;
-  const editBasePath = getSessionEditPath(session);
   const expectedPath = getSessionEditPath(session, "archive");
-
-  if (!isSessionEditSlug(session, portfolioSlug)) {
-    redirect(expectedPath);
-  }
-
-  return (
-    <PageBuilderEditor
-      authEnabled={authEnabled}
-      canManageAccounts={false}
-      editBasePath={editBasePath}
-      pageSlug="archive"
-    />
-  );
+  redirect(expectedPath);
 }

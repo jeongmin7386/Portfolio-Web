@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AdminEditor } from "@/components/admin-editor";
-import {
-  getAdminSession,
-  getSessionEditPath,
-  isSessionEditSlug,
-  isAdminAuthEnabled
-} from "@/lib/auth";
-import { getContentStorageMode } from "@/lib/content";
+import { getAdminSession, getSessionEditPath } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +14,7 @@ export const metadata: Metadata = {
   }
 };
 
-type UserProjectsEditPageProps = {
-  params: Promise<{
-    portfolioSlug: string;
-  }>;
-};
-
-export default async function UserProjectsEditPage({
-  params
-}: UserProjectsEditPageProps) {
-  const authEnabled = isAdminAuthEnabled();
+export default async function UserProjectsEditPage() {
   const session = await getAdminSession();
 
   if (!session.authenticated) {
@@ -41,23 +25,6 @@ export default async function UserProjectsEditPage({
     redirect("/admin/projects");
   }
 
-  const { portfolioSlug } = await params;
-  const editBasePath = getSessionEditPath(session);
   const expectedPath = getSessionEditPath(session, "projects");
-
-  if (!isSessionEditSlug(session, portfolioSlug)) {
-    redirect(expectedPath);
-  }
-
-  return (
-    <div className="min-h-[var(--app-viewport-height)] overflow-x-hidden bg-neutral-100 px-3 py-4 dark:bg-neutral-950 sm:px-4 lg:px-6">
-      <AdminEditor
-        authEnabled={authEnabled}
-        canManageAccounts={false}
-        editBasePath={editBasePath}
-        mode="projects"
-        storageMode={getContentStorageMode()}
-      />
-    </div>
-  );
+  redirect(expectedPath);
 }

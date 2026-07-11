@@ -55,9 +55,20 @@ const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
 const adminUsersPath = path.join(dataRoot, "studio-archive-admin-users.json");
 const databaseUrl =
   process.env.STUDIO_ARCHIVE_DATABASE_URL ?? process.env.DATABASE_URL;
+const reservedAdminUsernames = new Set([
+  "about",
+  "admin",
+  "api",
+  "archive",
+  "login",
+  "projects",
+  "u",
+  "uploads"
+]);
 
 let pool: Pool | undefined;
 let adminUsersTableReady = false;
+let invalidApprovedUsersCleaned = false;
 
 function getDatabaseSsl(): PoolConfig["ssl"] {
   const sslMode =
@@ -130,6 +141,19 @@ function toIso(value: Date | string | null | undefined) {
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+export function isValidAdminUsername(name: string) {
+  const normalizedName = name.trim().toLowerCase();
+
+  return (
+    /^[a-z][a-z0-9_-]{2,31}$/i.test(normalizedName) &&
+    !reservedAdminUsernames.has(normalizedName)
+  );
+}
+
+function normalizeAdminUsername(name: string) {
+  return name.trim().toLowerCase();
 }
 
 function sanitizeUser(user: AdminUser): PublicAdminUser {
@@ -378,6 +402,42 @@ async function updateDatabaseUserStatus(
   return mapRow(user);
 }
 
+async function deleteDatabaseInvalidApprovedUsers() {
+  await ensureAdminUsersTable();
+
+  await getPool().query(`
+    delete from studio_archive_admin_users
+    where status = 'approved'
+      and name !~* '^[a-z][a-z0-9_-]{2,31}$'
+  `);
+}
+
+async function deleteFileInvalidApprovedUsers() {
+  const users = await readFileUsers();
+  const nextUsers = users.filter(
+    (user) => user.status !== "approved" || isValidAdminUsername(user.name)
+  );
+
+  if (nextUsers.length !== users.length) {
+    await saveFileUsers(nextUsers);
+  }
+}
+
+async function deleteInvalidApprovedAdminUsers() {
+  if (invalidApprovedUsersCleaned) {
+    return;
+  }
+
+  if (getStorageMode() === "database") {
+    await deleteDatabaseInvalidApprovedUsers();
+    invalidApprovedUsersCleaned = true;
+    return;
+  }
+
+  await deleteFileInvalidApprovedUsers();
+  invalidApprovedUsersCleaned = true;
+}
+
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("base64url");
   const hash = crypto.scryptSync(password, salt, 64).toString("base64url");
@@ -404,10 +464,16 @@ function verifyPassword(password: string, passwordHash: string) {
 
 function validateAccessRequest(input: CreateAdminAccessRequestInput) {
   const email = normalizeEmail(input.email);
-  const name = input.name.trim();
+  const name = normalizeAdminUsername(input.name);
 
   if (!name) {
-    throw new AdminUserError("이름을 입력해주세요.");
+    throw new AdminUserError("영문 사용자 이름을 입력해주세요.");
+  }
+
+  if (!isValidAdminUsername(name)) {
+    throw new AdminUserError(
+      "사용자 이름은 영문으로 시작하고, 영문·숫자·하이픈·언더스코어만 사용할 수 있습니다. 3~32자로 입력해주세요. admin, api 같은 시스템 이름은 사용할 수 없습니다."
+    );
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -422,6 +488,8 @@ function validateAccessRequest(input: CreateAdminAccessRequestInput) {
 }
 
 export async function listAdminUsers(): Promise<PublicAdminUser[]> {
+  await deleteInvalidApprovedAdminUsers();
+
   const users =
     getStorageMode() === "database" ? await readDatabaseUsers() : await readFileUsers();
 
@@ -436,6 +504,20 @@ export async function createAdminAccessRequest(
   const passwordHash = hashPassword(input.password);
 
   if (getStorageMode() === "database") {
+    await deleteInvalidApprovedAdminUsers();
+
+    const users = await readDatabaseUsers();
+    const duplicateName = users.find(
+      (user) =>
+        user.name === name &&
+        user.email !== email &&
+        user.status !== "rejected"
+    );
+
+    if (duplicateName) {
+      throw new AdminUserError("이미 사용 중인 사용자 이름입니다.", 409);
+    }
+
     const existingUser = await findDatabaseUserByEmail(email);
 
     if (existingUser?.status === "approved") {
@@ -462,6 +544,17 @@ export async function createAdminAccessRequest(
   }
 
   const users = await readFileUsers();
+  const duplicateName = users.find(
+    (user) =>
+      user.name === name &&
+      user.email !== email &&
+      user.status !== "rejected"
+  );
+
+  if (duplicateName) {
+    throw new AdminUserError("이미 사용 중인 사용자 이름입니다.", 409);
+  }
+
   const existingUser = users.find((user) => user.email === email);
 
   if (existingUser?.status === "approved") {
@@ -497,6 +590,8 @@ export async function authenticateAdminUser(
   email: string,
   password: string
 ): Promise<PublicAdminUser> {
+  await deleteInvalidApprovedAdminUsers();
+
   const normalizedEmail = normalizeEmail(email);
   const user =
     getStorageMode() === "database"
@@ -517,18 +612,27 @@ export async function authenticateAdminUser(
     throw new AdminUserError("승인되지 않은 계정입니다.", 403);
   }
 
+  if (!isValidAdminUsername(user.name)) {
+    throw new AdminUserError(
+      "영문 사용자 이름이 필요한 계정입니다. 새 사용자 이름으로 다시 신청해주세요.",
+      403
+    );
+  }
+
   return sanitizeUser(user);
 }
 
 export async function getApprovedAdminUserById(
   id: string
 ): Promise<PublicAdminUser | undefined> {
+  await deleteInvalidApprovedAdminUsers();
+
   const user =
     getStorageMode() === "database"
       ? await findDatabaseUserById(id)
       : (await readFileUsers()).find((currentUser) => currentUser.id === id);
 
-  if (!user || user.status !== "approved") {
+  if (!user || user.status !== "approved" || !isValidAdminUsername(user.name)) {
     return undefined;
   }
 
@@ -544,6 +648,18 @@ export async function updateAdminUserStatus(
   }
 
   if (getStorageMode() === "database") {
+    const user = await findDatabaseUserById(id);
+
+    if (!user) {
+      throw new AdminUserError("계정을 찾지 못했습니다.", 404);
+    }
+
+    if (status === "approved" && !isValidAdminUsername(user.name)) {
+      throw new AdminUserError(
+        "영문 사용자 이름이 아닌 계정은 승인할 수 없습니다. 다시 신청하도록 안내해주세요."
+      );
+    }
+
     return sanitizeUser(await updateDatabaseUserStatus(id, status));
   }
 
@@ -552,6 +668,12 @@ export async function updateAdminUserStatus(
 
   if (!user) {
     throw new AdminUserError("계정을 찾지 못했습니다.", 404);
+  }
+
+  if (status === "approved" && !isValidAdminUsername(user.name)) {
+    throw new AdminUserError(
+      "영문 사용자 이름이 아닌 계정은 승인할 수 없습니다. 다시 신청하도록 안내해주세요."
+    );
   }
 
   const now = new Date().toISOString();

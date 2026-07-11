@@ -9,6 +9,17 @@ const buttonClass =
   "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-neutral-950 bg-neutral-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950 dark:hover:bg-neutral-200";
 const secondaryButtonClass =
   "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:text-neutral-50";
+const usernamePattern = /^[a-z][a-z0-9_-]{2,31}$/i;
+const reservedUsernames = new Set([
+  "about",
+  "admin",
+  "api",
+  "archive",
+  "login",
+  "projects",
+  "u",
+  "uploads"
+]);
 
 type LoginMode = "account" | "owner" | "request";
 
@@ -68,6 +79,14 @@ export function AdminLoginForm({
   };
 
   const handleRequest = async () => {
+    const username = name.trim().toLowerCase();
+
+    if (!usernamePattern.test(username) || reservedUsernames.has(username)) {
+      throw new Error(
+        "사용자 이름은 영문으로 시작하고, 영문·숫자·하이픈·언더스코어만 사용할 수 있습니다. 3~32자로 입력해주세요. admin, api 같은 시스템 이름은 사용할 수 없습니다."
+      );
+    }
+
     const response = await fetch("/api/admin/register", {
       method: "POST",
       headers: {
@@ -75,7 +94,7 @@ export function AdminLoginForm({
       },
       body: JSON.stringify({
         email: email.trim(),
-        name: name.trim(),
+        name: username,
         password
       })
     });
@@ -131,7 +150,7 @@ export function AdminLoginForm({
         </h1>
         <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
           {isRequestMode
-            ? "신청한 계정은 소유자 승인 후 사용할 수 있습니다."
+            ? "영문 사용자 이름으로 신청하면 소유자 승인 후 개인 편집 주소가 만들어집니다."
             : "승인된 계정으로 로그인하거나 소유자 비밀번호를 사용하세요."}
         </p>
       </div>
@@ -165,13 +184,19 @@ export function AdminLoginForm({
 
       {isRequestMode ? (
         <label className="grid gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200">
-          이름
+          영문 사용자 이름
           <input
-            autoComplete="name"
+            autoCapitalize="none"
+            autoComplete="username"
             className={inputClass}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => setName(event.target.value.toLowerCase())}
+            pattern="[A-Za-z][A-Za-z0-9_-]{2,31}"
+            placeholder="예: jeongmin"
             value={name}
           />
+          <span className="text-xs font-normal leading-5 text-neutral-500 dark:text-neutral-400">
+            편집 주소는 /사용자이름/editor 형식으로 만들어집니다.
+          </span>
         </label>
       ) : null}
 
