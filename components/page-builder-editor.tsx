@@ -1553,7 +1553,9 @@ export function PageBuilderEditor({
       )
     }));
     setSelectedSectionId(sectionId);
-    setSelectedBlockId(block.id);
+    setSelectedBlockId((currentBlockId) =>
+      currentBlockId && currentBlockId !== block.id ? currentBlockId : block.id
+    );
   };
 
   const insertSectionAtSelection = (section: BuilderSection) => {

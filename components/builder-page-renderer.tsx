@@ -362,6 +362,10 @@ function getBuilderTabBlocks(tab: BuilderTabItem): BuilderBlock[] {
   ];
 }
 
+function orderBuilderBlocks(blocks: BuilderBlock[]) {
+  return blocks.map((block, order) => ({ ...block, order })) as BuilderBlock[];
+}
+
 function focusEditableText(focusKey: string) {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
@@ -493,6 +497,7 @@ type BlockRendererProps = {
   block: BuilderBlock;
   editable?: boolean;
   selected?: boolean;
+  selectedBlockId?: string;
   sectionId: string;
   onSelectBlock?: (sectionId: string, blockId: string) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
@@ -1127,6 +1132,7 @@ function BuilderBlockRenderer({
   block,
   editable,
   selected,
+  selectedBlockId,
   sectionId,
   onSelectBlock,
   onChangeBlock,
@@ -1594,6 +1600,66 @@ function BuilderBlockRenderer({
           }
         });
       };
+      const updateActiveTabBlocks = (blocks: BuilderBlock[]) => {
+        if (!activeTab?.id) {
+          return;
+        }
+
+        updateTab(activeTab.id, {
+          blocks: orderBuilderBlocks(blocks),
+          text: ""
+        });
+      };
+      const updateActiveTabBlock = (nextBlock: BuilderBlock) => {
+        updateActiveTabBlocks(
+          activeTabBlocks.map((tabBlock) =>
+            tabBlock.id === nextBlock.id ? nextBlock : tabBlock
+          )
+        );
+      };
+      const deleteActiveTabBlock = (blockId: string) => {
+        updateActiveTabBlocks(
+          activeTabBlocks.filter((tabBlock) => tabBlock.id !== blockId)
+        );
+      };
+      const moveActiveTabBlock = (
+        sourceBlockId: string,
+        targetBlockId: string,
+        placement: "before" | "after"
+      ) => {
+        if (sourceBlockId === targetBlockId) {
+          return;
+        }
+
+        const movingBlock = activeTabBlocks.find(
+          (tabBlock) => tabBlock.id === sourceBlockId
+        );
+        const targetBlock = activeTabBlocks.find(
+          (tabBlock) => tabBlock.id === targetBlockId
+        );
+
+        if (!movingBlock || !targetBlock) {
+          return;
+        }
+
+        const nextBlocks = activeTabBlocks.filter(
+          (tabBlock) => tabBlock.id !== sourceBlockId
+        );
+        const targetIndex = nextBlocks.findIndex(
+          (tabBlock) => tabBlock.id === targetBlockId
+        );
+
+        if (targetIndex < 0) {
+          return;
+        }
+
+        nextBlocks.splice(
+          placement === "after" ? targetIndex + 1 : targetIndex,
+          0,
+          movingBlock
+        );
+        updateActiveTabBlocks(nextBlocks);
+      };
       const addTab = () => {
         const tab = {
           id: createClientId("tab"),
@@ -1735,10 +1801,17 @@ function BuilderBlockRenderer({
                   .map((tabBlock) => (
                     <BuilderBlockRenderer
                       block={tabBlock}
-                      editable={false}
+                      editable={editable}
                       key={tabBlock.id}
+                      onChangeBlock={(_, nextBlock) => updateActiveTabBlock(nextBlock)}
+                      onDeleteBlock={(_, blockId) => deleteActiveTabBlock(blockId)}
+                      onMoveBlock={(_, sourceBlockId, targetBlockId, placement) =>
+                        moveActiveTabBlock(sourceBlockId, targetBlockId, placement)
+                      }
+                      onSelectBlock={onSelectBlock}
                       sectionId={sectionId}
-                      selected={false}
+                      selected={selectedBlockId === tabBlock.id}
+                      selectedBlockId={selectedBlockId}
                     />
                   ))}
               </div>
@@ -2265,6 +2338,7 @@ function SectionRenderer({
             onSelectBlock={onSelectBlock}
             sectionId={section.id}
             selected={selectedBlockId === block.id}
+            selectedBlockId={selectedBlockId}
           />
           {editable ? (
             <BuilderInsertionPoint

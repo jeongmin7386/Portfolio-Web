@@ -382,6 +382,187 @@ function getProjectTabBlocks(tab: ProjectTabItem): ProjectBlock[] {
   ];
 }
 
+function projectBlockParentKey(path: ProjectBlockPath) {
+  return pathKey(path.slice(0, -1));
+}
+
+function replaceProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath,
+  nextBlock: ProjectBlock
+): ProjectBlock[] {
+  const [blockIndex, side, ...childPath] = path;
+
+  if (typeof blockIndex !== "number") {
+    return blocks;
+  }
+
+  return blocks.map((block, currentIndex) => {
+    if (currentIndex !== blockIndex) {
+      return block;
+    }
+
+    if (path.length === 1) {
+      return nextBlock;
+    }
+
+    if (block.type !== "twoColumn" || (side !== "left" && side !== "right")) {
+      return block;
+    }
+
+    return {
+      ...block,
+      [side]: replaceProjectBlockAtPath(block[side], childPath, nextBlock)
+    };
+  });
+}
+
+function updateProjectBlockListAtPath(
+  blocks: ProjectBlock[],
+  parentPath: ProjectBlockPath,
+  updater: (blockList: ProjectBlock[]) => ProjectBlock[]
+): ProjectBlock[] {
+  const [blockIndex, side, ...childParentPath] = parentPath;
+
+  if (typeof blockIndex !== "number") {
+    return updater(blocks);
+  }
+
+  if (side !== "left" && side !== "right") {
+    return blocks;
+  }
+
+  return blocks.map((block, currentIndex) => {
+    if (currentIndex !== blockIndex || block.type !== "twoColumn") {
+      return block;
+    }
+
+    return {
+      ...block,
+      [side]: updateProjectBlockListAtPath(
+        block[side],
+        childParentPath,
+        updater
+      )
+    };
+  });
+}
+
+function deleteProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  path: ProjectBlockPath
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  const blockIndex = path[path.length - 1];
+  const parentPath = path.slice(0, -1);
+
+  if (typeof blockIndex !== "number") {
+    return { blocks, path: [] };
+  }
+
+  return {
+    blocks: updateProjectBlockListAtPath(blocks, parentPath, (blockList) =>
+      blockList.filter((_, currentIndex) => currentIndex !== blockIndex)
+    ),
+    path: [...parentPath, Math.max(0, blockIndex - 1)]
+  };
+}
+
+function moveProjectBlockAtPath(
+  blocks: ProjectBlock[],
+  sourcePath: ProjectBlockPath,
+  targetPath: ProjectBlockPath,
+  placement: "before" | "after"
+): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
+  if (
+    pathKey(sourcePath) === pathKey(targetPath) ||
+    projectBlockParentKey(sourcePath) !== projectBlockParentKey(targetPath)
+  ) {
+    return { blocks, path: sourcePath };
+  }
+
+  const parentPath = sourcePath.slice(0, -1);
+  const sourceIndex = sourcePath[sourcePath.length - 1];
+  const targetIndex = targetPath[targetPath.length - 1];
+
+  if (typeof sourceIndex !== "number" || typeof targetIndex !== "number") {
+    return { blocks, path: sourcePath };
+  }
+
+  let nextPath = sourcePath;
+  const nextBlocks = updateProjectBlockListAtPath(blocks, parentPath, (blockList) => {
+    const movingBlock = blockList[sourceIndex];
+    const targetBlock = blockList[targetIndex];
+
+    if (!movingBlock || !targetBlock) {
+      return blockList;
+    }
+
+    const withoutMoving = blockList.filter(
+      (_, currentIndex) => currentIndex !== sourceIndex
+    );
+    const targetIndexAfterRemoval = withoutMoving.findIndex(
+      (block) => block === targetBlock
+    );
+
+    if (targetIndexAfterRemoval < 0) {
+      return blockList;
+    }
+
+    const insertIndex =
+      placement === "after" ? targetIndexAfterRemoval + 1 : targetIndexAfterRemoval;
+    withoutMoving.splice(insertIndex, 0, movingBlock);
+    nextPath = [...parentPath, insertIndex];
+
+    return withoutMoving;
+  });
+
+  return { blocks: nextBlocks, path: nextPath };
+}
+
+function EditableProjectTabBlockList({
+  blocks,
+  editable,
+  onChange
+}: {
+  blocks: ProjectBlock[];
+  editable?: boolean;
+  onChange: (blocks: ProjectBlock[]) => void;
+}) {
+  const [selectedPath, setSelectedPath] = useState<ProjectBlockPath>([]);
+
+  if (!editable) {
+    return <BlockRenderer blocks={blocks} />;
+  }
+
+  return (
+    <BlockRenderer
+      blocks={blocks}
+      editable
+      onChangeBlock={(path, block) => {
+        onChange(replaceProjectBlockAtPath(blocks, path, block));
+        setSelectedPath(path);
+      }}
+      onDeleteBlock={(path) => {
+        const deletion = deleteProjectBlockAtPath(blocks, path);
+        onChange(deletion.blocks);
+        setSelectedPath(deletion.path);
+      }}
+      onMoveBlock={(sourcePath, targetPath, placement) => {
+        const moved = moveProjectBlockAtPath(
+          blocks,
+          sourcePath,
+          targetPath,
+          placement
+        );
+        onChange(moved.blocks);
+        setSelectedPath(moved.path);
+      }}
+      onSelectBlock={setSelectedPath}
+      selectedBlockPath={selectedPath}
+    />
+  );
+}
+
 function focusEditableText(focusKey: string) {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
@@ -1515,7 +1696,15 @@ export function BlockRenderer({
               }}
             >
               {activeTabBlocks.length > 0 ? (
-                <BlockRenderer blocks={activeTabBlocks} />
+                <EditableProjectTabBlockList
+                  blocks={activeTabBlocks}
+                  editable={editable}
+                  onChange={(blocks) =>
+                    activeTab?.id
+                      ? updateTab(activeTab.id, { blocks, text: "" })
+                      : undefined
+                  }
+                />
               ) : (
                 <p className="text-neutral-400">
                   빈 탭입니다. 아래 입력창에서 /로 블록을 추가할 수 있습니다.
