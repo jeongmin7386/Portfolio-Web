@@ -10,8 +10,7 @@ const allowedTypes = new Map([
   ["image/x-png", ".png"],
   ["image/webp", ".webp"],
   ["image/avif", ".avif"],
-  ["image/gif", ".gif"],
-  ["image/svg+xml", ".svg"]
+  ["image/gif", ".gif"]
 ]);
 
 const allowedExtensions = new Set([...Array.from(allowedTypes.values()), ".jpeg"]);
@@ -38,6 +37,19 @@ function sanitizeName(value: string) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 64);
+}
+
+function sanitizeOwnerKey(value = "owner") {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9_-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 64) || "owner"
+  );
 }
 
 function getExtension(file: File) {
@@ -114,6 +126,73 @@ function validateUploadedImageBasics(file: File) {
   }
 }
 
+function sniffImageType(buffer: Buffer) {
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  const prefix = buffer.subarray(0, 12).toString("ascii");
+
+  if (prefix.startsWith("GIF87a") || prefix.startsWith("GIF89a")) {
+    return "image/gif";
+  }
+
+  if (prefix.startsWith("RIFF") && prefix.slice(8, 12) === "WEBP") {
+    return "image/webp";
+  }
+
+  if (buffer.length >= 12 && buffer.subarray(4, 12).toString("ascii").startsWith("ftypavif")) {
+    return "image/avif";
+  }
+
+  return undefined;
+}
+
+function assertSupportedImageContent(
+  buffer: Buffer,
+  declaredType: string,
+  extension: string
+) {
+  const sniffedType = sniffImageType(buffer);
+
+  if (!sniffedType) {
+    throw new Error("이미지 파일 내용을 확인할 수 없습니다. JPG, PNG, WebP, AVIF, GIF 파일만 업로드해주세요.");
+  }
+
+  const expectedExtension = allowedTypes.get(sniffedType);
+
+  if (!expectedExtension) {
+    throw new Error("지원하지 않는 이미지 형식입니다.");
+  }
+
+  if (declaredType && declaredType !== sniffedType && !(declaredType === "image/pjpeg" && sniffedType === "image/jpeg")) {
+    throw new Error("이미지 형식과 파일 내용이 일치하지 않습니다.");
+  }
+
+  if (extension !== expectedExtension) {
+    throw new Error("이미지 확장자와 파일 내용이 일치하지 않습니다.");
+  }
+}
+
 function assertSupportedImageExtension(
   extension: string | undefined
 ): asserts extension is string {
@@ -122,7 +201,7 @@ function assertSupportedImageExtension(
   }
 
   throw new Error(
-    "지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, AVIF, GIF, SVG로 변환한 뒤 업로드해 주세요."
+    "지원하지 않는 이미지 형식입니다. JPG, PNG, WebP, AVIF, GIF로 변환한 뒤 업로드해 주세요."
   );
 }
 
@@ -168,11 +247,20 @@ async function ensureUploadTable() {
   await getPool().query(`
     create table if not exists studio_archive_uploads (
       file_name text primary key,
+      owner_key text not null default 'owner',
       content_type text not null,
       content bytea not null,
       size_bytes integer not null,
       created_at timestamptz not null default now()
     )
+  `);
+  await getPool().query(`
+    alter table studio_archive_uploads
+      add column if not exists owner_key text not null default 'owner'
+  `);
+  await getPool().query(`
+    create index if not exists studio_archive_uploads_owner_idx
+      on studio_archive_uploads (owner_key, created_at desc)
   `);
 
   uploadTableReady = true;
@@ -180,6 +268,7 @@ async function ensureUploadTable() {
 
 async function saveUploadedImageToDatabase(
   fileName: string,
+  ownerKey: string,
   contentType: string,
   fileBuffer: Buffer
 ) {
@@ -188,19 +277,21 @@ async function saveUploadedImageToDatabase(
     `
       insert into studio_archive_uploads (
         file_name,
+        owner_key,
         content_type,
         content,
         size_bytes,
         created_at
       )
-      values ($1, $2, $3, $4, now())
+      values ($1, $2, $3, $4, $5, now())
       on conflict (file_name)
       do update set
+        owner_key = excluded.owner_key,
         content_type = excluded.content_type,
         content = excluded.content,
         size_bytes = excluded.size_bytes
     `,
-    [fileName, contentType, fileBuffer, fileBuffer.byteLength]
+    [fileName, ownerKey, contentType, fileBuffer, fileBuffer.byteLength]
   );
 }
 
@@ -233,7 +324,7 @@ async function readUploadedImageFromDatabase(fileName: string) {
   };
 }
 
-export async function saveUploadedImage(file: File) {
+export async function saveUploadedImage(file: File, ownerKey = "owner") {
   validateUploadedImageBasics(file);
 
   const extension = getExtension(file);
@@ -242,14 +333,18 @@ export async function saveUploadedImage(file: File) {
   assertStableUploadStorage();
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());
+  assertSupportedImageContent(fileBuffer, file.type.toLowerCase(), extension);
+
   const baseName = sanitizeName(path.basename(file.name, path.extname(file.name)));
+  const safeOwnerKey = sanitizeOwnerKey(ownerKey);
   const fileName = `${Date.now()}-${crypto.randomUUID()}-${
-    baseName || "image"
+    safeOwnerKey
+  }-${baseName || "image"
   }${extension}`;
   const contentType = getContentType(fileName);
 
   if (databaseUrl) {
-    await saveUploadedImageToDatabase(fileName, contentType, fileBuffer);
+    await saveUploadedImageToDatabase(fileName, safeOwnerKey, contentType, fileBuffer);
   } else {
     const filePath = path.join(uploadRoot, fileName);
 

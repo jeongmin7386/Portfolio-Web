@@ -2107,6 +2107,9 @@ export function BlockRenderer({
           >
             <iframe
               className="h-full w-full"
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
               src={block.url}
               title={block.provider || "임베드 콘텐츠"}
             />

@@ -10,6 +10,12 @@ import {
   saveBuilderPage,
   saveStudioArchiveContent
 } from "@/lib/content";
+import {
+  assertSupportedStudioProjectImport,
+  ContentValidationError,
+  validateBuilderPage,
+  validateStudioArchiveContent
+} from "@/lib/content-validation";
 import type { BuilderPage, StudioArchiveContent } from "@/lib/types";
 
 export const STUDIO_PROJECT_SCHEMA_VERSION = 1;
@@ -887,6 +893,7 @@ export async function importStudioProject(
   value: unknown,
   fallbackName = "가져온 프로젝트"
 ) {
+  assertSupportedStudioProjectImport(value);
   const exportFile = value as Partial<StudioProjectExportFile>;
   const rawData =
     exportFile?.source === "studio-fallen-flower" ? exportFile.data : value;
@@ -903,12 +910,31 @@ export async function importStudioProject(
     );
   }
 
+  let validatedData: StudioProjectData;
+
+  try {
+    validatedData = {
+      ...rawData,
+      content: validateStudioArchiveContent(rawData.content),
+      pages: {
+        home: validateBuilderPage(rawData.pages.home),
+        archive: validateBuilderPage(rawData.pages.archive)
+      }
+    };
+  } catch (error) {
+    if (error instanceof ContentValidationError) {
+      throw new StudioProjectError(error.message, 400);
+    }
+
+    throw error;
+  }
+
   const normalizedOwnerKey = normalizeOwnerKey(ownerKey);
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const importedName =
     exportFile.project?.name?.trim() || rawData.project?.name || fallbackName;
-  const data = normalizeProjectData(rawData, {
+  const data = normalizeProjectData(validatedData, {
     id,
     name: importedName,
     status: "draft",

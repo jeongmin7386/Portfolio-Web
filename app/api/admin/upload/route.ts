@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAccess } from "@/lib/auth";
+import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import { saveUploadedImage } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!(await requireAdminAccess())) {
+  const session = await getAdminSession();
+
+  if (!session.authenticated) {
     return NextResponse.json(
       { message: "관리자 로그인이 필요합니다." },
       { status: 401 }
@@ -25,7 +27,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadedImage = await saveUploadedImage(file);
+    const uploadedImage = await saveUploadedImage(
+      file,
+      getAdminContentOwnerKey(session)
+    );
 
     return NextResponse.json(uploadedImage, {
       headers: {

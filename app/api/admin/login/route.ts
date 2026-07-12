@@ -9,6 +9,12 @@ import {
   verifyAdminPassword
 } from "@/lib/auth";
 import { AdminUserError } from "@/lib/admin-users";
+import {
+  assertLoginAllowed,
+  clearLoginFailures,
+  getLoginAttemptKey,
+  recordLoginFailure
+} from "@/lib/login-rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +36,21 @@ export async function POST(request: Request) {
   const password = body.password ?? "";
 
   if (email !== undefined) {
+    const attemptKey = getLoginAttemptKey(request, email);
+    const blocked = assertLoginAllowed(attemptKey);
+
+    if (blocked) {
+      return NextResponse.json(
+        { message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." },
+        {
+          headers: {
+            "Retry-After": String(blocked.retryAfterSeconds)
+          },
+          status: 429
+        }
+      );
+    }
+
     if (!email || !password) {
       return NextResponse.json(
         { message: "이메일과 비밀번호를 입력해주세요." },
@@ -40,6 +61,7 @@ export async function POST(request: Request) {
     try {
       const user = await verifyAdminAccount(email, password);
       await setAdminSessionCookie(user);
+      clearLoginFailures(attemptKey);
 
       return NextResponse.json({
         ok: true,
@@ -56,6 +78,8 @@ export async function POST(request: Request) {
         })
       });
     } catch (error) {
+      recordLoginFailure(attemptKey);
+
       if (error instanceof AdminUserError) {
         return NextResponse.json(
           { message: error.message },
@@ -85,8 +109,23 @@ export async function POST(request: Request) {
   }
 
   const ownerPassword = body.ownerPassword;
+  const ownerAttemptKey = getLoginAttemptKey(request, "owner");
+  const ownerBlocked = assertLoginAllowed(ownerAttemptKey);
+
+  if (ownerBlocked) {
+    return NextResponse.json(
+      { message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      {
+        headers: {
+          "Retry-After": String(ownerBlocked.retryAfterSeconds)
+        },
+        status: 429
+      }
+    );
+  }
 
   if (!ownerPassword || !verifyAdminPassword(ownerPassword)) {
+    recordLoginFailure(ownerAttemptKey);
     return NextResponse.json(
       { message: "비밀번호가 올바르지 않습니다." },
       { status: 401 }
@@ -94,6 +133,7 @@ export async function POST(request: Request) {
   }
 
   await setAdminSessionCookie();
+  clearLoginFailures(ownerAttemptKey);
 
   return NextResponse.json({ ok: true, redirectTo: "/admin" });
 }

@@ -7,6 +7,10 @@ import {
   publishBuilderPage,
   saveBuilderPage
 } from "@/lib/content";
+import {
+  ContentValidationError,
+  validateBuilderPage
+} from "@/lib/content-validation";
 import type { BuilderPage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -76,10 +80,11 @@ export async function PUT(request: Request) {
     }
 
     const ownerKey = getAdminContentOwnerKey(session);
+    const validatedPage = validateBuilderPage(body);
     const savedPage = shouldPublish
-      ? await publishBuilderPage(body, ownerKey, pageKind)
+      ? await publishBuilderPage(validatedPage, ownerKey, pageKind)
       : await saveBuilderPage(
-          { ...body, status: "draft" },
+          { ...validatedPage, status: "draft" },
           ownerKey,
           pageKind
         );
@@ -90,6 +95,10 @@ export async function PUT(request: Request) {
       }
     });
   } catch (error) {
+    if (error instanceof ContentValidationError) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
     return NextResponse.json(
       {
         message:

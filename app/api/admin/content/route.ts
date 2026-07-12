@@ -5,6 +5,10 @@ import {
   saveStudioArchiveContent
 } from "@/lib/content";
 import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
+import {
+  ContentValidationError,
+  validateStudioArchiveContent
+} from "@/lib/content-validation";
 import type { StudioArchiveContent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -62,14 +66,23 @@ export async function PUT(request: Request) {
     );
   }
 
-  const savedContent = await saveStudioArchiveContent(
-    body,
-    getAdminContentOwnerKey(session)
-  );
+  try {
+    const validatedContent = validateStudioArchiveContent(body);
+    const savedContent = await saveStudioArchiveContent(
+      validatedContent,
+      getAdminContentOwnerKey(session)
+    );
 
-  return NextResponse.json(savedContent, {
-    headers: {
-      "Cache-Control": "no-store"
+    return NextResponse.json(savedContent, {
+      headers: {
+        "Cache-Control": "no-store"
+      }
+    });
+  } catch (error) {
+    if (error instanceof ContentValidationError) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
     }
-  });
+
+    throw error;
+  }
 }
