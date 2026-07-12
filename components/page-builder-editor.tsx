@@ -562,6 +562,78 @@ function insertBuilderBlockIntoTabById(
   };
 }
 
+function insertBuilderBlockAfterId(
+  blocks: BuilderBlock[],
+  targetBlockId: string,
+  nextBlock: BuilderBlock
+): { blocks: BuilderBlock[]; inserted: boolean } {
+  let inserted = false;
+  const nextBlocks: BuilderBlock[] = [];
+
+  for (const block of blocks) {
+    if (inserted) {
+      nextBlocks.push(block);
+      continue;
+    }
+
+    nextBlocks.push(block);
+
+    if (block.id === targetBlockId) {
+      nextBlocks.push(nextBlock);
+      inserted = true;
+      continue;
+    }
+
+    if (block.type !== "tabs") {
+      continue;
+    }
+
+    const tabs = block.content.tabs.map((tab) => {
+      const result = insertBuilderBlockAfterId(
+        tab.blocks ?? [],
+        targetBlockId,
+        nextBlock
+      );
+
+      if (!result.inserted) {
+        return tab;
+      }
+
+      inserted = true;
+
+      return {
+        ...tab,
+        blocks: result.blocks,
+        text: ""
+      };
+    });
+
+    if (inserted) {
+      nextBlocks[nextBlocks.length - 1] = {
+        ...block,
+        content: { tabs }
+      };
+    }
+  }
+
+  return {
+    blocks: inserted ? orderItems(nextBlocks) : blocks,
+    inserted
+  };
+}
+
+function isEditorShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [role="textbox"]'
+    )
+  );
+}
+
 function createBlock(type: BuilderBlockType): BuilderBlock {
   const id = createId("block");
 
@@ -1938,6 +2010,100 @@ export function PageBuilderEditor({
     setStatus("복사한 블록을 붙여넣었습니다.");
   };
 
+  const pasteBlockAfterPreviewBlock = (sectionId: string, blockId: string) => {
+    const section = sortedSections.find((item) => item.id === sectionId);
+
+    if (!section || !copiedBlock) {
+      return;
+    }
+
+    const nextBlock = cloneBuilderBlockForPaste(copiedBlock);
+    const insertion = insertBuilderBlockAfterId(
+      section.blocks,
+      blockId,
+      nextBlock
+    );
+
+    if (!insertion.inserted) {
+      return;
+    }
+
+    updateSelectedSection({ ...section, blocks: insertion.blocks });
+    setSelectedSectionId(sectionId);
+    setSelectedBlockId(nextBlock.id);
+    setStatus("복사한 블록을 아래에 붙여넣었습니다.");
+  };
+
+  const blockClipboardActionsRef = useRef<{
+    copy: (sectionId: string, block: BuilderBlock) => void;
+    pasteAfter: (sectionId: string, blockId: string) => void;
+    pasteAt: (sectionId: string, insertIndex: number) => void;
+  }>({
+    copy: () => undefined,
+    pasteAfter: () => undefined,
+    pasteAt: () => undefined
+  });
+
+  useEffect(() => {
+    blockClipboardActionsRef.current = {
+      copy: copyBlockFromPreview,
+      pasteAfter: pasteBlockAfterPreviewBlock,
+      pasteAt: pasteBlockAtPosition
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey ||
+        isEditorShortcutTarget(event.target)
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "c" && selectedBlock) {
+        event.preventDefault();
+        blockClipboardActionsRef.current.copy(selectedSectionId, selectedBlock);
+        return;
+      }
+
+      if (key !== "v" || !copiedBlock) {
+        return;
+      }
+
+      if (selectedBlock) {
+        event.preventDefault();
+        blockClipboardActionsRef.current.pasteAfter(
+          selectedSectionId,
+          selectedBlock.id
+        );
+        return;
+      }
+
+      if (selectedSection) {
+        event.preventDefault();
+        blockClipboardActionsRef.current.pasteAt(
+          selectedSection.id,
+          selectedSection.blocks.length
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    copiedBlock,
+    selectedBlock,
+    selectedSection,
+    selectedSectionId
+  ]);
+
   const deleteSelectedSection = () => {
     if (!page || !selectedSection) {
       return;
@@ -2675,6 +2841,7 @@ export function PageBuilderEditor({
               onInsertBlock={insertBlockAtPosition}
               onInsertBlockIntoTab={insertBlockIntoTabFromPreview}
               onPasteBlock={pasteBlockAtPosition}
+              onPasteBlockAfter={pasteBlockAfterPreviewBlock}
               onPasteBlockIntoTab={pasteBlockIntoTabFromPreview}
               onMoveBlock={moveBlockFromPreview}
               onMoveBlockIntoTab={moveBlockIntoTabFromPreview}

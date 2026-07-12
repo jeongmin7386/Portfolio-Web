@@ -93,6 +93,18 @@ function projectBlockPathKey(path: ProjectBlockPath) {
   return path.join(".");
 }
 
+function isEditorShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [role="textbox"]'
+    )
+  );
+}
+
 function scrollProjectBlockEditorIntoView(path: ProjectBlockPath) {
   const key = projectBlockPathKey(path);
 
@@ -2184,6 +2196,7 @@ type AdminLivePreviewProps = {
     path: ProjectBlockPath,
     type: ProjectBlock["type"]
   ) => void;
+  onPasteProjectBlockAfter?: (path: ProjectBlockPath) => void;
   onDeleteProjectBlock?: (path: ProjectBlockPath) => void;
   onMoveProjectBlock?: (
     sourcePath: ProjectBlockPath,
@@ -2252,6 +2265,7 @@ function ProjectLivePreview({
   onChangeBlock,
   onInsertBlock,
   onPasteBlock,
+  onPasteBlockAfter,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
@@ -2267,6 +2281,7 @@ function ProjectLivePreview({
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
   onPasteBlock?: (path: ProjectBlockPath) => void;
+  onPasteBlockAfter?: (path: ProjectBlockPath) => void;
   onDeleteBlock?: (path: ProjectBlockPath) => void;
   onMoveBlock?: (
     sourcePath: ProjectBlockPath,
@@ -2462,6 +2477,7 @@ function ProjectLivePreview({
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}
             onPasteBlock={onPasteBlock}
+            onPasteBlockAfter={onPasteBlockAfter}
             onPasteBlockIntoTab={onPasteBlockIntoTab}
             onSelectBlock={onSelectBlock}
             selectedBlockPath={selectedBlockPath}
@@ -2630,6 +2646,7 @@ function AdminLivePreview({
   onChangeProjectBlock,
   onInsertProjectBlock,
   onPasteProjectBlock,
+  onPasteProjectBlockAfter,
   onDeleteProjectBlock,
   onMoveProjectBlock,
   onInsertProjectBlockIntoTab,
@@ -2649,6 +2666,7 @@ function AdminLivePreview({
         onMoveBlock={onMoveProjectBlock}
         onMoveBlockIntoTab={onMoveProjectBlockIntoTab}
         onPasteBlock={onPasteProjectBlock}
+        onPasteBlockAfter={onPasteProjectBlockAfter}
         onPasteBlockIntoTab={onPasteProjectBlockIntoTab}
         onSelectBlock={onSelectProjectBlock}
         project={project}
@@ -2936,6 +2954,89 @@ export function AdminEditor({
     setSelectedProjectBlockPath(insertion.path);
     setStatus("복사한 블록을 붙여넣었습니다.");
   };
+
+  const pasteProjectBlockAfterPreviewPath = (path: ProjectBlockPath) => {
+    if (!selectedProject || !copiedProjectBlock) {
+      return;
+    }
+
+    const insertion = insertProjectBlockAfterPath(
+      selectedProject.blocks,
+      path,
+      cloneProjectBlockForPaste(copiedProjectBlock)
+    );
+
+    updateSelectedProject({
+      ...selectedProject,
+      blocks: insertion.blocks
+    });
+    setSelectedProjectBlockPath(insertion.path);
+    setStatus("복사한 블록을 아래에 붙여넣었습니다.");
+  };
+
+  const projectClipboardActionsRef = useRef<{
+    copy: (path: ProjectBlockPath, block: ProjectBlock) => void;
+    pasteAfter: (path: ProjectBlockPath) => void;
+  }>({
+    copy: () => undefined,
+    pasteAfter: () => undefined
+  });
+
+  useEffect(() => {
+    projectClipboardActionsRef.current = {
+      copy: copyProjectBlockFromPreview,
+      pasteAfter: pasteProjectBlockAfterPreviewPath
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (event: WindowEventMap["keydown"]) => {
+      if (
+        activePanel !== "projects" ||
+        !selectedProject ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey ||
+        isEditorShortcutTarget(event.target)
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "c" && selectedProjectBlockPath.length > 0) {
+        const block = getProjectBlockAtPath(
+          selectedProject.blocks,
+          selectedProjectBlockPath
+        );
+
+        if (!block) {
+          return;
+        }
+
+        event.preventDefault();
+        projectClipboardActionsRef.current.copy(selectedProjectBlockPath, block);
+        return;
+      }
+
+      if (key !== "v" || !copiedProjectBlock) {
+        return;
+      }
+
+      event.preventDefault();
+      projectClipboardActionsRef.current.pasteAfter(selectedProjectBlockPath);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    activePanel,
+    copiedProjectBlock,
+    selectedProject,
+    selectedProjectBlockPath
+  ]);
 
   const insertProjectBlockOption = (option: ProjectInsertOption) => {
     if (!selectedProject) {
@@ -3605,6 +3706,7 @@ export function AdminEditor({
                 onMoveProjectBlock={moveProjectBlockFromPreview}
                 onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
                 onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
+                onPasteProjectBlockAfter={pasteProjectBlockAfterPreviewPath}
                 onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
                 onSelectProjectBlock={setSelectedProjectBlockPath}
                 project={selectedProject}
@@ -4072,6 +4174,7 @@ export function AdminEditor({
               onMoveProjectBlock={moveProjectBlockFromPreview}
               onMoveProjectBlockIntoTab={moveProjectBlockIntoTabFromPreview}
               onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
+              onPasteProjectBlockAfter={pasteProjectBlockAfterPreviewPath}
               onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
               onSelectProjectBlock={setSelectedProjectBlockPath}
               project={selectedProject}

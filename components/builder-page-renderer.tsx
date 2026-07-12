@@ -63,6 +63,7 @@ type BuilderPageRendererProps = {
     options?: { headingLevel?: 1 | 2 | 3 | 4 }
   ) => void;
   onPasteBlock?: (sectionId: string, insertIndex: number) => void;
+  onPasteBlockAfter?: (sectionId: string, blockId: string) => void;
   onPasteBlockIntoTab?: (
     sectionId: string,
     tabBlockId: string,
@@ -572,6 +573,7 @@ type BlockRendererProps = {
     tabBlockId: string,
     tabId: string
   ) => void;
+  onPasteBlockAfter?: (sectionId: string, blockId: string) => void;
   onMoveBlockIntoTab?: (
     sectionId: string,
     sourceBlockId: string,
@@ -753,9 +755,11 @@ function InlineEditableText({
 
 type FloatingBlockToolbarProps = {
   block: BuilderBlock;
+  canPaste?: boolean;
   onChange: (block: BuilderBlock) => void;
   onCopy: () => void;
   onDelete: () => void;
+  onPasteAfter?: () => void;
 };
 
 function ToolbarButton({
@@ -871,9 +875,11 @@ function AlignControls({
 
 function FloatingBlockToolbar({
   block,
+  canPaste,
   onChange,
   onCopy,
-  onDelete
+  onDelete,
+  onPasteAfter
 }: FloatingBlockToolbarProps) {
   const [isColorOpen, setIsColorOpen] = useState(false);
   const frameClass =
@@ -1201,6 +1207,16 @@ function FloatingBlockToolbar({
           <option value="line">밑줄형</option>
         </ToolbarSelect>
       ) : null}
+      {canPaste && onPasteAfter ? (
+        <button
+          className="inline-flex h-8 min-w-8 touch-manipulation select-none items-center justify-center gap-1 rounded-sm border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 [@media(hover:none)]:h-11 [@media(hover:none)]:min-w-11"
+          onClick={onPasteAfter}
+          type="button"
+        >
+          <ClipboardPaste aria-hidden size={14} />
+          붙여넣기
+        </button>
+      ) : null}
       <button
         className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
         onClick={onCopy}
@@ -1235,6 +1251,7 @@ function BuilderBlockRenderer({
   onMoveBlock,
   onInsertBlockIntoTab,
   onPasteBlockIntoTab,
+  onPasteBlockAfter,
   onMoveBlockIntoTab
 }: BlockRendererProps) {
   const selectBlock = () => {
@@ -1474,12 +1491,16 @@ function BuilderBlockRenderer({
         {optionsOpen && onChangeBlock ? (
           <FloatingBlockToolbar
             block={block}
+            canPaste={canPasteBlock}
             onChange={changeBlock}
             onCopy={() => {
               onCopyBlock?.(sectionId, block);
-              setIsOptionsOpen(false);
             }}
             onDelete={deleteBlock}
+            onPasteAfter={() => {
+              onPasteBlockAfter?.(sectionId, block.id);
+              setIsOptionsOpen(false);
+            }}
           />
         ) : null}
         {children}
@@ -2040,6 +2061,7 @@ function BuilderBlockRenderer({
                       onDeleteBlock={(_, blockId) => deleteActiveTabBlock(blockId)}
                       onInsertBlockIntoTab={onInsertBlockIntoTab}
                       onMoveBlockIntoTab={onMoveBlockIntoTab}
+                      onPasteBlockAfter={onPasteBlockAfter}
                       onMoveBlock={(_, sourceBlockId, targetBlockId, placement) =>
                         moveActiveTabBlock(sourceBlockId, targetBlockId, placement)
                       }
@@ -2570,6 +2592,7 @@ function SectionRenderer({
   onChangeBlock,
   onInsertBlock,
   onPasteBlock,
+  onPasteBlockAfter,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
@@ -2611,6 +2634,7 @@ function SectionRenderer({
             onDeleteBlock={onDeleteBlock}
             onInsertBlockIntoTab={onInsertBlockIntoTab}
             onPasteBlockIntoTab={onPasteBlockIntoTab}
+            onPasteBlockAfter={onPasteBlockAfter}
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}
             onSelectBlock={onSelectBlock}
@@ -2668,6 +2692,7 @@ export function BuilderPageRenderer({
   onChangeBlock,
   onInsertBlock,
   onPasteBlock,
+  onPasteBlockAfter,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
@@ -2691,6 +2716,7 @@ export function BuilderPageRenderer({
             onInsertBlock={onInsertBlock}
             onInsertBlockIntoTab={onInsertBlockIntoTab}
             onPasteBlock={onPasteBlock}
+            onPasteBlockAfter={onPasteBlockAfter}
             onPasteBlockIntoTab={onPasteBlockIntoTab}
             onMoveBlock={onMoveBlock}
             onMoveBlockIntoTab={onMoveBlockIntoTab}

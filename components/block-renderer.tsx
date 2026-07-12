@@ -42,6 +42,7 @@ type BlockRendererProps = {
   onChangeBlock?: (path: ProjectBlockPath, block: ProjectBlock) => void;
   onInsertBlock?: (path: ProjectBlockPath, type: ProjectBlock["type"]) => void;
   onPasteBlock?: (path: ProjectBlockPath) => void;
+  onPasteBlockAfter?: (path: ProjectBlockPath) => void;
   onDeleteBlock?: (path: ProjectBlockPath) => void;
   onMoveBlock?: (
     sourcePath: ProjectBlockPath,
@@ -702,14 +703,18 @@ function ProjectAlignControls({
 
 function FloatingProjectBlockToolbar({
   block,
+  canPaste,
   onChange,
   onCopy,
-  onDelete
+  onDelete,
+  onPasteAfter
 }: {
   block: ProjectBlock;
+  canPaste?: boolean;
   onChange: (block: ProjectBlock) => void;
   onCopy: () => void;
   onDelete: () => void;
+  onPasteAfter?: () => void;
 }) {
   const [isColorOpen, setIsColorOpen] = useState(false);
 
@@ -862,6 +867,16 @@ function FloatingProjectBlockToolbar({
           <option value="text">텍스트</option>
         </ProjectToolbarSelect>
       ) : null}
+      {canPaste && onPasteAfter ? (
+        <button
+          className="inline-flex h-8 min-w-8 touch-manipulation select-none items-center justify-center gap-1 rounded-sm border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 [@media(hover:none)]:h-11 [@media(hover:none)]:min-w-11"
+          onClick={onPasteAfter}
+          type="button"
+        >
+          <ClipboardPaste aria-hidden size={14} />
+          붙여넣기
+        </button>
+      ) : null}
       <button
         className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
         onClick={onCopy}
@@ -884,22 +899,28 @@ function FloatingProjectBlockToolbar({
 
 function FloatingProjectBlockOptions({
   block,
+  canPaste,
   onChange,
   onCopy,
-  onDelete
+  onDelete,
+  onPasteAfter
 }: {
   block: ProjectBlock;
+  canPaste?: boolean;
   onChange: (block: ProjectBlock) => void;
   onCopy: () => void;
   onDelete: () => void;
+  onPasteAfter?: () => void;
 }) {
   if (isTextStyleProjectBlock(block)) {
     return (
       <FloatingProjectBlockToolbar
         block={block}
+        canPaste={canPaste}
         onChange={onChange}
         onCopy={onCopy}
         onDelete={onDelete}
+        onPasteAfter={onPasteAfter}
       />
     );
   }
@@ -918,6 +939,16 @@ function FloatingProjectBlockOptions({
       onMouseDown={stopEvent}
       onTouchStart={stopEvent}
     >
+      {canPaste && onPasteAfter ? (
+        <button
+          className="inline-flex h-8 min-w-8 touch-manipulation select-none items-center justify-center gap-1 rounded-sm border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200 [@media(hover:none)]:h-11 [@media(hover:none)]:min-w-11"
+          onClick={onPasteAfter}
+          type="button"
+        >
+          <ClipboardPaste aria-hidden size={14} />
+          붙여넣기
+        </button>
+      ) : null}
       <button
         className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-sm border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600"
         onClick={onCopy}
@@ -1048,6 +1079,7 @@ export function BlockRenderer({
   onChangeBlock,
   onInsertBlock,
   onPasteBlock,
+  onPasteBlockAfter,
   onDeleteBlock,
   onMoveBlock,
   onInsertBlockIntoTab,
@@ -1368,12 +1400,16 @@ export function BlockRenderer({
         {optionsOpen && onChangeBlock ? (
           <FloatingProjectBlockOptions
             block={block}
+            canPaste={canPasteBlock}
             onChange={(nextBlock) => changeBlock(path, nextBlock)}
             onCopy={() => {
               onCopyBlock?.(path, block);
-              setOpenOptionsKey("");
             }}
             onDelete={() => deleteBlock(path)}
+            onPasteAfter={() => {
+              onPasteBlockAfter?.(path);
+              setOpenOptionsKey("");
+            }}
           />
         ) : null}
         {children}
@@ -1765,6 +1801,7 @@ export function BlockRenderer({
                   onMoveBlock={onMoveBlock}
                   onMoveBlockIntoTab={onMoveBlockIntoTab}
                   onPasteBlock={onPasteBlock}
+                  onPasteBlockAfter={onPasteBlockAfter}
                   onPasteBlockIntoTab={onPasteBlockIntoTab}
                   onSelectBlock={onSelectBlock}
                   pathPrefix={[...path, "tabs", activeTab.id]}
