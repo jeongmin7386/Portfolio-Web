@@ -551,6 +551,10 @@ type BlockRendererProps = {
   selected?: boolean;
   selectedBlockId?: string;
   sectionId: string;
+  tabContext?: {
+    tabBlockId: string;
+    tabId: string;
+  };
   onSelectBlock?: (sectionId: string, blockId: string) => void;
   onCopyBlock?: (sectionId: string, block: BuilderBlock) => void;
   onChangeBlock?: (sectionId: string, block: BuilderBlock) => void;
@@ -1252,7 +1256,8 @@ function BuilderBlockRenderer({
   onInsertBlockIntoTab,
   onPasteBlockIntoTab,
   onPasteBlockAfter,
-  onMoveBlockIntoTab
+  onMoveBlockIntoTab,
+  tabContext
 }: BlockRendererProps) {
   const selectBlock = () => {
     if (editable) {
@@ -1295,6 +1300,8 @@ function BuilderBlockRenderer({
       <div
         className={`group relative ${selected || optionsOpen ? "z-30" : ""}`}
         data-builder-block-id={block.id}
+        data-builder-parent-tab-block-id={tabContext?.tabBlockId}
+        data-builder-parent-tab-id={tabContext?.tabId}
         data-builder-preview-block
         data-builder-section-id={sectionId}
         onClick={(event) => {
@@ -1432,6 +1439,39 @@ function BuilderBlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
+              const target = findElementFromPoint(
+                "[data-builder-preview-block]",
+                event.clientX,
+                event.clientY
+              );
+              const targetSectionId = target?.dataset.builderSectionId;
+              const targetBlockId = target?.dataset.builderBlockId;
+              const targetTabBlockId =
+                target?.dataset.builderParentTabBlockId;
+              const targetTabId = target?.dataset.builderParentTabId;
+              const sameTopLevelList =
+                !tabContext && !targetTabBlockId && !targetTabId;
+              const sameTabList =
+                Boolean(tabContext) &&
+                targetTabBlockId === tabContext?.tabBlockId &&
+                targetTabId === tabContext?.tabId;
+              const canMoveWithinCurrentList =
+                Boolean(target) &&
+                targetSectionId === sectionId &&
+                Boolean(targetBlockId) &&
+                targetBlockId !== block.id &&
+                (sameTopLevelList || sameTabList);
+
+              if (target && targetBlockId && canMoveWithinCurrentList) {
+                const rect = target.getBoundingClientRect();
+                const placement =
+                  event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+
+                selectBlock();
+                onMoveBlock?.(sectionId, block.id, targetBlockId, placement);
+                return;
+              }
+
               const tabTarget = findElementFromPoint(
                 "[data-builder-tab-drop-zone]",
                 event.clientX,
@@ -1455,32 +1495,7 @@ function BuilderBlockRenderer({
                   tabTargetBlockId,
                   tabTargetId
                 );
-                return;
               }
-
-              const target = findElementFromPoint(
-                "[data-builder-preview-block]",
-                event.clientX,
-                event.clientY
-              );
-              const targetSectionId = target?.dataset.builderSectionId;
-              const targetBlockId = target?.dataset.builderBlockId;
-
-              if (
-                !target ||
-                targetSectionId !== sectionId ||
-                !targetBlockId ||
-                targetBlockId === block.id
-              ) {
-                return;
-              }
-
-              const rect = target.getBoundingClientRect();
-              const placement =
-                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-
-              selectBlock();
-              onMoveBlock?.(sectionId, block.id, targetBlockId, placement);
             }}
             style={{ touchAction: "none" }}
             type="button"
@@ -2070,6 +2085,10 @@ function BuilderBlockRenderer({
                       sectionId={sectionId}
                       selected={selectedBlockId === tabBlock.id}
                       selectedBlockId={selectedBlockId}
+                      tabContext={{
+                        tabBlockId: block.id,
+                        tabId: activeTab?.id ?? ""
+                      }}
                     />
                   ))}
               </div>

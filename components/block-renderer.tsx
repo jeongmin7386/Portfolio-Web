@@ -1337,6 +1337,38 @@ export function BlockRenderer({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
 
+              const target = findElementFromPoint(
+                "[data-project-preview-block]",
+                event.clientX,
+                event.clientY
+              );
+              const rawTargetPath = target?.dataset.projectBlockPath;
+
+              if (target && rawTargetPath) {
+                try {
+                  const targetPath = JSON.parse(rawTargetPath) as ProjectBlockPath;
+                  const targetKey = pathKey(targetPath);
+                  const sameParent =
+                    Array.isArray(targetPath) &&
+                    pathKey(targetPath.slice(0, -1)) ===
+                      pathKey(path.slice(0, -1));
+
+                  if (sameParent && targetKey !== currentKey) {
+                    const rect = target.getBoundingClientRect();
+                    const placement =
+                      event.clientY < rect.top + rect.height / 2
+                        ? "before"
+                        : "after";
+
+                    selectBlock(path);
+                    onMoveBlock?.(path, targetPath, placement);
+                    return;
+                  }
+                } catch {
+                  // Fall through to the tab drop zone check below.
+                }
+              }
+
               const tabTarget = findElementFromPoint(
                 "[data-project-tab-drop-zone]",
                 event.clientX,
@@ -1353,42 +1385,10 @@ export function BlockRenderer({
                   if (Array.isArray(tabPath) && targetKey !== currentKey) {
                     selectBlock(path);
                     onMoveBlockIntoTab?.(path, tabPath, tabId);
-                    return;
                   }
                 } catch {
                   return;
                 }
-              }
-
-              const target = findElementFromPoint(
-                "[data-project-preview-block]",
-                event.clientX,
-                event.clientY
-              );
-              const rawTargetPath = target?.dataset.projectBlockPath;
-
-              if (!target || !rawTargetPath) {
-                return;
-              }
-
-              try {
-                const targetPath = JSON.parse(rawTargetPath) as ProjectBlockPath;
-                const targetKey = pathKey(targetPath);
-
-                if (!Array.isArray(targetPath) || targetKey === currentKey) {
-                  return;
-                }
-
-                const rect = target.getBoundingClientRect();
-                const placement =
-                  event.clientY < rect.top + rect.height / 2
-                    ? "before"
-                    : "after";
-
-                selectBlock(path);
-                onMoveBlock?.(path, targetPath, placement);
-              } catch {
-                return;
               }
             }}
             style={{ touchAction: "none" }}
