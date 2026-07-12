@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 
+import {
+  readJsonRequest,
+  RequestBodyError,
+  requestBodyErrorResponse
+} from "@/lib/api-request";
 import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import {
   getBuilderPage,
@@ -70,7 +75,7 @@ export async function PUT(request: Request) {
       url.searchParams.get("slug") ?? "home"
     );
     const shouldPublish = url.searchParams.get("publish") === "true";
-    const body = (await request.json()) as unknown;
+    const body = await readJsonRequest(request);
 
     if (!isBuilderPage(body)) {
       return NextResponse.json(
@@ -95,6 +100,10 @@ export async function PUT(request: Request) {
       }
     });
   } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return requestBodyErrorResponse(error);
+    }
+
     if (error instanceof ContentValidationError) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }

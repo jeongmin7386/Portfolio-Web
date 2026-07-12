@@ -4,6 +4,11 @@ import {
   getStudioArchiveContent,
   saveStudioArchiveContent
 } from "@/lib/content";
+import {
+  readJsonRequest,
+  RequestBodyError,
+  requestBodyErrorResponse
+} from "@/lib/api-request";
 import { getAdminContentOwnerKey, getAdminSession } from "@/lib/auth";
 import {
   ContentValidationError,
@@ -57,16 +62,16 @@ export async function PUT(request: Request) {
     return unauthorized();
   }
 
-  const body = (await request.json()) as unknown;
-
-  if (!isEditableContent(body)) {
-    return NextResponse.json(
-      { message: "저장할 콘텐츠 형식이 올바르지 않습니다." },
-      { status: 400 }
-    );
-  }
-
   try {
+    const body = await readJsonRequest(request);
+
+    if (!isEditableContent(body)) {
+      return NextResponse.json(
+        { message: "저장할 콘텐츠 형식이 올바르지 않습니다." },
+        { status: 400 }
+      );
+    }
+
     const validatedContent = validateStudioArchiveContent(body);
     const savedContent = await saveStudioArchiveContent(
       validatedContent,
@@ -79,6 +84,10 @@ export async function PUT(request: Request) {
       }
     });
   } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return requestBodyErrorResponse(error);
+    }
+
     if (error instanceof ContentValidationError) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }

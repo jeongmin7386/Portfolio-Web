@@ -623,9 +623,17 @@ function toSummary(record: StudioProjectRecord): StudioProjectSummary {
 
 function assertRevision(record: StudioProjectRecord, expectedRevision?: number) {
   if (
-    typeof expectedRevision === "number" &&
-    expectedRevision !== record.revision
+    typeof expectedRevision !== "number" ||
+    !Number.isSafeInteger(expectedRevision) ||
+    expectedRevision < 1
   ) {
+    throw new StudioProjectError(
+      "저장 기준 버전이 없습니다. 프로젝트를 다시 불러온 뒤 저장해 주세요.",
+      428
+    );
+  }
+
+  if (expectedRevision !== record.revision) {
     throw new StudioProjectConflictError(record.revision, record.updatedAt);
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { readJsonRequest } from "@/lib/api-request";
 import {
   requireStudioProjectOwnerKey,
   studioProjectErrorResponse
@@ -30,7 +31,9 @@ export async function PATCH(
 
   try {
     const { projectId } = await params;
-    const body = (await request.json()) as { name?: string };
+    const body = await readJsonRequest<{ name?: string }>(request, {
+      maxBytes: 16 * 1024
+    });
     const project = await renameStudioProject(
       context.ownerKey,
       projectId,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { readJsonRequest } from "@/lib/api-request";
 import {
   requireStudioProjectOwnerKey,
   studioProjectErrorResponse
@@ -24,9 +25,9 @@ export async function POST(request: Request, { params }: PublishRouteProps) {
 
   try {
     const { projectId } = await params;
-    const body = (await request.json().catch(() => ({}))) as {
+    const body = await readJsonRequest<{
       expectedRevision?: number;
-    };
+    }>(request, { maxBytes: 16 * 1024 });
     const project = await publishCurrentStudioProject(
       context.ownerKey,
       projectId,

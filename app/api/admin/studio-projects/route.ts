@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { readJsonRequest } from "@/lib/api-request";
 import {
   requireStudioProjectOwnerKey,
   studioProjectErrorResponse
@@ -57,7 +58,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as CreateProjectBody;
+    const body = await readJsonRequest<CreateProjectBody>(request, {
+      maxBytes: 5 * 1024 * 1024
+    });
     const project =
       body.action === "import"
         ? await importStudioProject(context.ownerKey, body.file, body.name)

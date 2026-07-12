@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { RequestBodyError } from "@/lib/api-request";
 import {
   getAdminContentOwnerKey,
   getAdminSession,
@@ -44,6 +45,13 @@ export async function requireStudioProjectOwnerKey(): Promise<StudioProjectReque
 }
 
 export function studioProjectErrorResponse(error: unknown) {
+  if (error instanceof RequestBodyError) {
+    return NextResponse.json(
+      { message: error.message },
+      { status: error.status }
+    );
+  }
+
   if (error instanceof StudioProjectConflictError) {
     return NextResponse.json(
       {
