@@ -86,6 +86,138 @@ const settingsPanelClass =
   `${editorPanelClass} lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain`;
 const previewPanelClass =
   "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain";
+
+function focusProjectSettingsListItem(fieldId: string, index: number) {
+  const focusTarget = () => {
+    document.getElementById(`${fieldId}-${index}`)?.focus();
+  };
+
+  window.requestAnimationFrame(focusTarget);
+  window.setTimeout(focusTarget, 80);
+}
+
+function isComposingProjectListInputEvent(
+  event: KeyboardEvent<HTMLInputElement>
+) {
+  return event.nativeEvent.isComposing || event.key === "Process";
+}
+
+function ProjectSettingsListItems({
+  fieldId,
+  items,
+  onChange
+}: {
+  fieldId: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+}) {
+  const listItems = items.length ? items : [""];
+
+  const updateItem = (index: number, value: string) => {
+    onChange(
+      listItems.map((item, currentIndex) =>
+        currentIndex === index ? value : item
+      )
+    );
+  };
+
+  const insertItemAfter = (index: number) => {
+    const nextIndex = index + 1;
+    const nextItems = [...listItems];
+
+    nextItems.splice(nextIndex, 0, "");
+    onChange(nextItems);
+    focusProjectSettingsListItem(fieldId, nextIndex);
+  };
+
+  const removeItem = (index: number) => {
+    if (listItems.length <= 1) {
+      onChange([""]);
+      focusProjectSettingsListItem(fieldId, 0);
+      return;
+    }
+
+    const nextItems = listItems.filter((_, currentIndex) => currentIndex !== index);
+    const nextIndex = Math.max(0, index - 1);
+
+    onChange(nextItems);
+    focusProjectSettingsListItem(fieldId, nextIndex);
+  };
+
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (isComposingProjectListInputEvent(event)) {
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (index < listItems.length - 1) {
+        focusProjectSettingsListItem(fieldId, index + 1);
+        return;
+      }
+
+      insertItemAfter(index);
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !event.currentTarget.value &&
+      listItems.length > 1
+    ) {
+      event.preventDefault();
+      removeItem(index);
+    }
+  };
+
+  return (
+    <div className="grid gap-2 normal-case tracking-normal">
+      <div className="grid gap-2">
+        {listItems.map((item, index) => (
+          <div
+            className="grid grid-cols-[1fr_2.25rem] items-center gap-2"
+            key={`${fieldId}-${index}`}
+          >
+            <input
+              aria-label={`목록 항목 ${index + 1}`}
+              autoCapitalize="off"
+              autoCorrect="off"
+              className={inputClass}
+              enterKeyHint={index < listItems.length - 1 ? "next" : "done"}
+              id={`${fieldId}-${index}`}
+              onChange={(event) => updateItem(index, event.target.value)}
+              onKeyDown={(event) => handleKeyDown(event, index)}
+              placeholder="목록 항목"
+              type="text"
+              value={item}
+            />
+            <button
+              aria-label={`목록 항목 ${index + 1} 삭제`}
+              className={iconButtonClass}
+              onClick={() => removeItem(index)}
+              type="button"
+            >
+              <Trash2 aria-hidden size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        className={`${secondaryButtonClass} justify-self-start px-3 py-1.5 text-xs`}
+        onClick={() => insertItemAfter(listItems.length - 1)}
+        type="button"
+      >
+        <Plus aria-hidden size={14} />
+        항목 추가
+      </button>
+    </div>
+  );
+}
+
 const listClass =
   "grid max-h-72 gap-2 overflow-y-auto pr-1 sm:max-h-96 xl:max-h-[34vh]";
 
@@ -1546,23 +1678,19 @@ function BlockFields({
     case "numberedList":
       return (
         <div className="grid gap-3">
-          <label className={labelClass}>
+          <div className={labelClass}>
             목록 항목
-            <textarea
-              className={textareaClass}
-              onChange={(event) =>
+            <ProjectSettingsListItems
+              fieldId={`project-list-${block.type}`}
+              items={block.items}
+              onChange={(items) =>
                 onChange({
                   ...block,
-                  items: event.target.value
-                    .split("\n")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
+                  items
                 })
               }
-              placeholder="한 줄에 항목 하나씩 입력"
-              value={block.items.join("\n")}
             />
-          </label>
+          </div>
         </div>
       );
     case "tabs":
@@ -2161,22 +2289,19 @@ function BlockFields({
               value={block.title}
             />
           </label>
-          <label className={labelClass}>
+          <div className={labelClass}>
             결과 목록
-            <textarea
-              className={textareaClass}
-              onChange={(event) =>
+            <ProjectSettingsListItems
+              fieldId="project-result-list"
+              items={block.items}
+              onChange={(items) =>
                 onChange({
                   ...block,
-                  items: event.target.value
-                    .split("\n")
-                    .map((item) => item.trim())
-                    .filter(Boolean)
+                  items
                 })
               }
-              value={block.items.join("\n")}
             />
-          </label>
+          </div>
         </div>
       );
   }

@@ -254,6 +254,137 @@ const iconButtonClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-neutral-50";
 const publicPortfolioSuffix = "portfoilo";
 
+function focusBuilderSettingsListItem(fieldId: string, index: number) {
+  const focusTarget = () => {
+    document.getElementById(`${fieldId}-${index}`)?.focus();
+  };
+
+  window.requestAnimationFrame(focusTarget);
+  window.setTimeout(focusTarget, 80);
+}
+
+function isComposingListInputEvent(
+  event: React.KeyboardEvent<HTMLInputElement>
+) {
+  return event.nativeEvent.isComposing || event.key === "Process";
+}
+
+function BuilderSettingsListItems({
+  fieldId,
+  items,
+  onChange
+}: {
+  fieldId: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+}) {
+  const listItems = items.length ? items : [""];
+
+  const updateItem = (index: number, value: string) => {
+    onChange(
+      listItems.map((item, currentIndex) =>
+        currentIndex === index ? value : item
+      )
+    );
+  };
+
+  const insertItemAfter = (index: number) => {
+    const nextIndex = index + 1;
+    const nextItems = [...listItems];
+
+    nextItems.splice(nextIndex, 0, "");
+    onChange(nextItems);
+    focusBuilderSettingsListItem(fieldId, nextIndex);
+  };
+
+  const removeItem = (index: number) => {
+    if (listItems.length <= 1) {
+      onChange([""]);
+      focusBuilderSettingsListItem(fieldId, 0);
+      return;
+    }
+
+    const nextItems = listItems.filter((_, currentIndex) => currentIndex !== index);
+    const nextIndex = Math.max(0, index - 1);
+
+    onChange(nextItems);
+    focusBuilderSettingsListItem(fieldId, nextIndex);
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (isComposingListInputEvent(event)) {
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (index < listItems.length - 1) {
+        focusBuilderSettingsListItem(fieldId, index + 1);
+        return;
+      }
+
+      insertItemAfter(index);
+      return;
+    }
+
+    if (
+      event.key === "Backspace" &&
+      !event.currentTarget.value &&
+      listItems.length > 1
+    ) {
+      event.preventDefault();
+      removeItem(index);
+    }
+  };
+
+  return (
+    <div className="grid gap-2 normal-case tracking-normal">
+      <div className="grid gap-2">
+        {listItems.map((item, index) => (
+          <div
+            className="grid grid-cols-[1fr_2.25rem] items-center gap-2"
+            key={`${fieldId}-${index}`}
+          >
+            <input
+              aria-label={`목록 항목 ${index + 1}`}
+              autoCapitalize="off"
+              autoCorrect="off"
+              className={inputClass}
+              enterKeyHint={index < listItems.length - 1 ? "next" : "done"}
+              id={`${fieldId}-${index}`}
+              onChange={(event) => updateItem(index, event.target.value)}
+              onKeyDown={(event) => handleKeyDown(event, index)}
+              placeholder="목록 항목"
+              type="text"
+              value={item}
+            />
+            <button
+              aria-label={`목록 항목 ${index + 1} 삭제`}
+              className={iconButtonClass}
+              onClick={() => removeItem(index)}
+              type="button"
+            >
+              <Trash2 aria-hidden size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        className={`${buttonClass} justify-self-start px-3 py-1.5 text-xs`}
+        onClick={() => insertItemAfter(listItems.length - 1)}
+        type="button"
+      >
+        <Plus aria-hidden size={14} />
+        항목 추가
+      </button>
+    </div>
+  );
+}
+
 function normalizePublicPortfolioName(value: string) {
   const normalized = value.trim().toLowerCase().normalize("NFKC");
   let nextValue = "";
@@ -3961,25 +4092,19 @@ function BlockFields({
     case "numberedList":
       return (
         <>
-          <label className={labelClass}>
+          <div className={labelClass}>
             목록 항목
-            <textarea
-              className={textareaClass}
-              onChange={(event) =>
+            <BuilderSettingsListItems
+              fieldId={`builder-list-${block.id}`}
+              items={block.content.items}
+              onChange={(items) =>
                 onChange({
                   ...block,
-                  content: {
-                    items: event.target.value
-                      .split("\n")
-                      .map((item) => item.trim())
-                      .filter(Boolean)
-                  }
+                  content: { items }
                 })
               }
-              placeholder="한 줄에 항목 하나씩 입력"
-              value={block.content.items.join("\n")}
             />
-          </label>
+          </div>
           {textStyleFields}
         </>
       );
