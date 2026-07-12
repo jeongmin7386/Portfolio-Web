@@ -769,7 +769,7 @@ function ToolbarButton({
 }) {
   return (
     <button
-      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-sm border px-2 text-xs font-medium transition ${
+      className={`inline-flex h-8 min-w-8 touch-manipulation select-none items-center justify-center rounded-sm border px-2 text-xs font-medium transition [@media(hover:none)]:h-11 [@media(hover:none)]:min-w-11 ${
         active
           ? "border-neutral-950 bg-neutral-950 text-white dark:border-neutral-50 dark:bg-neutral-50 dark:text-neutral-950"
           : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200"
@@ -877,7 +877,7 @@ function FloatingBlockToolbar({
 }: FloatingBlockToolbarProps) {
   const [isColorOpen, setIsColorOpen] = useState(false);
   const frameClass =
-    "absolute left-0 top-0 z-40 flex -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95";
+    "absolute left-0 top-0 z-40 flex max-w-[min(42rem,calc(100vw-1.5rem))] -translate-y-[calc(100%+8px)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 p-2 shadow-xl backdrop-blur [@media(hover:none)]:fixed [@media(hover:none)]:bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] [@media(hover:none)]:left-1/2 [@media(hover:none)]:top-auto [@media(hover:none)]:z-[80] [@media(hover:none)]:max-h-[40vh] [@media(hover:none)]:w-[calc(100vw-1.5rem)] [@media(hover:none)]:-translate-x-1/2 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:overflow-y-auto dark:border-neutral-800 dark:bg-neutral-950/95";
 
   const updateSettings = (settings: BuilderBlock["settings"]) => {
     onChange({
@@ -967,7 +967,7 @@ function FloatingBlockToolbar({
               })
             }
           >
-            B
+            <span className="font-bold">B</span>
           </ToolbarButton>
           <div className="relative">
             <ToolbarButton
