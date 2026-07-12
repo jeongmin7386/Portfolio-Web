@@ -297,6 +297,10 @@ function getProjectTextStyle(settings: ProjectTextSettings): CSSProperties | und
     style.fontFamily = projectTextFontFamily[settings.fontFamily];
   }
 
+  if (settings.fontWeight === "bold") {
+    style.fontWeight = 700;
+  }
+
   if (settings.fontSizePt) {
     style.fontSize = `${settings.fontSizePt}pt`;
     style.lineHeight =
@@ -761,6 +765,16 @@ function FloatingProjectBlockToolbar({
         suffix="배"
         value={block.lineHeight}
       />
+      <ProjectToolbarButton
+        active={block.fontWeight === "bold"}
+        onClick={() =>
+          updateTextSettings({
+            fontWeight: block.fontWeight === "bold" ? undefined : "bold"
+          })
+        }
+      >
+        B
+      </ProjectToolbarButton>
       <div className="relative">
         <ProjectToolbarButton
           active={isColorOpen || Boolean(block.color)}
@@ -1488,6 +1502,7 @@ export function BlockRenderer({
                     color: block.color,
                     fontFamily: block.fontFamily,
                     fontSizePt: block.fontSizePt,
+                    fontWeight: block.fontWeight,
                     lineHeight: block.lineHeight
                   } as ProjectBlock);
                   return true;

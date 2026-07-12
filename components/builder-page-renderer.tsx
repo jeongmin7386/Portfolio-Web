@@ -209,6 +209,10 @@ function getTextStyle(settings: BuilderTextSettings): CSSProperties | undefined 
     style.fontFamily = textFontFamily[settings.fontFamily];
   }
 
+  if (settings.fontWeight === "bold") {
+    style.fontWeight = 700;
+  }
+
   const fontSizePt = settings.fontSizePt ?? (
     settings.fontSize ? legacyTextSizePt[settings.fontSize] : undefined
   );
@@ -954,6 +958,17 @@ function FloatingBlockToolbar({
             suffix="배"
             value={block.settings.lineHeight}
           />
+          <ToolbarButton
+            active={block.settings.fontWeight === "bold"}
+            onClick={() =>
+              updateTextSettings({
+                fontWeight:
+                  block.settings.fontWeight === "bold" ? undefined : "bold"
+              })
+            }
+          >
+            B
+          </ToolbarButton>
           <div className="relative">
             <ToolbarButton
               active={isColorOpen || Boolean(block.settings.color)}
@@ -1683,6 +1698,7 @@ function BuilderBlockRenderer({
                     fontFamily: block.settings.fontFamily,
                     fontSize: block.settings.fontSize,
                     fontSizePt: block.settings.fontSizePt,
+                    fontWeight: block.settings.fontWeight,
                     lineHeight: block.settings.lineHeight
                   }
                 } as BuilderBlock);

@@ -26,6 +26,7 @@ export type ProjectTextFont = "sans" | "display" | "serif" | "mono";
 export type ProjectTextSettings = {
   fontFamily?: ProjectTextFont;
   fontSizePt?: number;
+  fontWeight?: "normal" | "bold";
   lineHeight?: number;
   color?: string;
   align?: "left" | "center" | "right";
@@ -204,6 +205,7 @@ export type BuilderTextSettings = {
   fontFamily?: BuilderTextFont;
   fontSize?: BuilderTextSize;
   fontSizePt?: number;
+  fontWeight?: "normal" | "bold";
   lineHeight?: number;
   color?: string;
 };
