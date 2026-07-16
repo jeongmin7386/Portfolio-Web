@@ -678,7 +678,7 @@ export function StudioProjectsManager({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           alt=""
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain"
                           loading="lazy"
                           src={project.thumbnail}
                         />

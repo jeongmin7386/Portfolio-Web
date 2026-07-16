@@ -100,7 +100,7 @@ export default async function PublicPortfolioProjectDetailPage({
         <div className="aspect-[16/9] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
           <Image
             alt={project.title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             height={900}
             priority
             sizes="100vw"

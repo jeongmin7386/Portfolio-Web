@@ -2458,7 +2458,7 @@ function ProjectLivePreview({
         <div className="aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
           <Image
             alt={project.title || "프로젝트 커버 이미지"}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             height={720}
             sizes="(min-width: 1280px) 360px, 100vw"
             src={coverImage}

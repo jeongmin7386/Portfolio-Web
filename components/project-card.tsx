@@ -24,7 +24,7 @@ export function ProjectCard({
         <div className="aspect-[4/3] overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
           <Image
             alt={project.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]"
             height={900}
             priority={priority}
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
