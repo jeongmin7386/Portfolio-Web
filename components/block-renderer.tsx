@@ -1949,7 +1949,8 @@ export function BlockRenderer({
                 changeBlock(path, {
                   ...block,
                   caption: normalizeOptionalText(caption)
-                })
+                }),
+              "width"
             )}
           </div>,
           path,

@@ -244,13 +244,16 @@ function scrollProjectBlockEditorIntoView(path: ProjectBlockPath) {
     return;
   }
 
-  window.requestAnimationFrame(() => {
+  const scroll = () => {
     document.querySelector(`[data-project-block-editor="${key}"]`)?.scrollIntoView({
       behavior: "smooth",
       block: "center",
       inline: "nearest"
     });
-  });
+  };
+
+  window.requestAnimationFrame(scroll);
+  window.setTimeout(scroll, 80);
 }
 
 function scrollProjectPreviewBlockIntoView(path: ProjectBlockPath) {
@@ -3326,6 +3329,12 @@ export function AdminEditor({
     scrollProjectPreviewBlockIntoView(path);
   };
 
+  const selectProjectBlockFromPreview = (path: ProjectBlockPath) => {
+    setSelectedProjectBlockPath(path);
+    setIsSettingsPanelOpen(true);
+    scrollProjectBlockEditorIntoView(path);
+  };
+
   const handleProjectCommandValueChange = (value: string) => {
     setProjectCommandValue(value);
     setSelectedProjectCommandIndex(0);
@@ -3833,7 +3842,7 @@ export function AdminEditor({
                 onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
                 onPasteProjectBlockAfter={pasteProjectBlockAfterPreviewPath}
                 onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
-                onSelectProjectBlock={setSelectedProjectBlockPath}
+                onSelectProjectBlock={selectProjectBlockFromPreview}
                 project={selectedProject}
                 selectedProjectBlockPath={selectedProjectBlockPath}
               />
@@ -4301,7 +4310,7 @@ export function AdminEditor({
               onPasteProjectBlock={pasteProjectBlockAtPreviewPath}
               onPasteProjectBlockAfter={pasteProjectBlockAfterPreviewPath}
               onPasteProjectBlockIntoTab={pasteProjectBlockIntoTabFromPreview}
-              onSelectProjectBlock={setSelectedProjectBlockPath}
+              onSelectProjectBlock={selectProjectBlockFromPreview}
               project={selectedProject}
               selectedProjectBlockPath={selectedProjectBlockPath}
             />

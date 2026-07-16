@@ -85,13 +85,26 @@ type SortableRowProps = {
 };
 
 function scrollEditorElementIntoView(selector: string) {
-  window.requestAnimationFrame(() => {
+  const scroll = () => {
     document.querySelector(selector)?.scrollIntoView({
       behavior: "smooth",
       block: "center",
       inline: "nearest"
     });
-  });
+  };
+
+  window.requestAnimationFrame(scroll);
+  window.setTimeout(scroll, 80);
+}
+
+function scrollBuilderBlockControlsIntoView(blockId: string) {
+  if (!blockId) {
+    return;
+  }
+
+  scrollEditorElementIntoView(
+    `[data-builder-block-row="${blockId}"], [data-builder-block-inspector="${blockId}"]`
+  );
 }
 
 type SectionPreset = {
@@ -1848,9 +1861,7 @@ export function PageBuilderEditor({
       return;
     }
 
-    scrollEditorElementIntoView(
-      `[data-builder-block-inspector="${selectedBlockId}"], [data-builder-block-row="${selectedBlockId}"]`
-    );
+    scrollBuilderBlockControlsIntoView(selectedBlockId);
   }, [selectedBlockId, selectedSectionId]);
 
   const commitPage = (nextPage: BuilderPage) => {
@@ -2979,6 +2990,8 @@ export function PageBuilderEditor({
               onSelectBlock={(sectionId, blockId) => {
                 setSelectedSectionId(sectionId);
                 setSelectedBlockId(blockId);
+                setIsSettingsPanelOpen(true);
+                scrollBuilderBlockControlsIntoView(blockId);
               }}
               onSelectSection={(sectionId) => {
                 setSelectedSectionId(sectionId);

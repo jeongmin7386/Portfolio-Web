@@ -119,12 +119,6 @@ const radiusClass = {
   lg: "rounded-lg"
 };
 
-const ratioClass = {
-  wide: "aspect-[16/9]",
-  square: "aspect-square",
-  portrait: "aspect-[4/5]"
-};
-
 const columnsClass = {
   1: "md:grid-cols-1",
   2: "md:grid-cols-2",
@@ -2214,12 +2208,12 @@ function BuilderBlockRenderer({
         <figure {...blockProps} className={`${blockProps.className} grid gap-3`}>
           <div
             className={`overflow-hidden border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 ${
-              ratioClass[block.settings.ratio ?? "wide"]
-            } ${radiusClass[block.settings.borderRadius ?? "md"]}`}
+              radiusClass[block.settings.borderRadius ?? "md"]
+            }`}
           >
             <Image
               alt={block.content.alt}
-              className="h-full w-full object-cover"
+              className="h-auto w-full object-contain"
               height={900}
               sizes="100vw"
               src={block.content.src}
