@@ -265,7 +265,8 @@ const dangerButtonClass =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-300 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 dark:border-red-950 dark:bg-neutral-950 dark:text-red-300 dark:hover:border-red-800";
 const iconButtonClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-neutral-50";
-const publicPortfolioSuffix = "portfoilo";
+const publicPortfolioSuffix = "portfolio";
+const legacyPublicPortfolioSuffix = "portfoilo";
 
 function focusBuilderSettingsListItem(fieldId: string, index: number) {
   const focusTarget = () => {
@@ -427,8 +428,17 @@ function getPublicPortfolioSlug(value: string) {
   const normalizedName = normalizePublicPortfolioName(value);
   const name = normalizedName || "my";
   const suffix = `-${publicPortfolioSuffix}`;
+  const legacySuffix = `-${legacyPublicPortfolioSuffix}`;
 
-  return name.endsWith(suffix) ? name : `${name}${suffix}`;
+  if (name.endsWith(suffix)) {
+    return name;
+  }
+
+  if (name.endsWith(legacySuffix)) {
+    return `${name.slice(0, -legacySuffix.length)}${suffix}`;
+  }
+
+  return `${name}${suffix}`;
 }
 
 function createId(prefix: string) {
@@ -3088,7 +3098,7 @@ export function PageBuilderEditor({
                   게시 후 공개 주소
                 </span>
                 <code className="break-all rounded-sm bg-white px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-950 dark:text-neutral-200">
-                  https://studio-archive.onrender.com{nextPublicPath}
+                  https://studiofflower.dev{nextPublicPath}
                 </code>
                 {page.publishedPublicSlug ? (
                   <span>

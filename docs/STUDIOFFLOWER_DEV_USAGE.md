@@ -274,16 +274,16 @@ https://studiofflower.dev/{사용자이름}/editor/studio-projects
 예시:
 
 ```text
-https://studiofflower.dev/jeongminoh-portfoilo
+https://studiofflower.dev/jeongminoh-portfolio
 ```
 
-현재 시스템의 공개 주소 suffix는 `portfoilo`입니다.  
-이미 사용 중인 주소와 호환성을 유지하기 위해 이 표기를 그대로 사용합니다.
+현재 시스템의 공개 주소 suffix는 `portfolio`입니다.  
+예전 `portfoilo` 주소도 기존 게시물을 위해 읽기 호환을 유지하지만, 새로 게시할 때는 `portfolio` 주소를 사용합니다.
 
 프로젝트 상세 페이지 예시:
 
 ```text
-https://studiofflower.dev/jeongminoh-portfoilo/projects/webdevelop
+https://studiofflower.dev/jeongminoh-portfolio/projects/webdevelop
 ```
 
 ## 13. 로그아웃
@@ -351,4 +351,3 @@ Render의 임시 디스크만 사용하면 재배포나 재시작 후 파일이 
 7. 게시
 8. 공개 주소 확인
 9. 중요한 변경 후 `.studiofflower.json`으로 내보내기
-

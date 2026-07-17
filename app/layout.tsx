@@ -8,7 +8,7 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://studio-archive.onrender.com"),
+  metadataBase: new URL("https://studiofflower.dev"),
   title: {
     default: "Studio 낙화",
     template: "%s | Studio 낙화"

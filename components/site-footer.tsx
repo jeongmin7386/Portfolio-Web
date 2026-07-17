@@ -7,7 +7,7 @@ export function SiteFooter() {
   const pathname = usePathname();
   const userMatch = pathname.match(/^\/u\/([^/]+)/);
   const userBasePath = userMatch ? `/u/${userMatch[1]}` : "";
-  const portfolioMatch = pathname.match(/^\/([^/]+-portfoilo)(?:\/|$)/);
+  const portfolioMatch = pathname.match(/^\/([^/]+-port(?:folio|foilo))(?:\/|$)/);
   const portfolioBasePath = portfolioMatch ? `/${portfolioMatch[1]}` : "";
   const publicBasePath = userBasePath || portfolioBasePath;
   const footerLinks = publicBasePath

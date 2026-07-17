@@ -21,7 +21,8 @@ const projectsRoot = path.join(contentRoot, "projects");
 const notesRoot = path.join(contentRoot, "notes");
 const contentRowId = "studio-archive";
 export const defaultContentOwnerKey = "owner";
-export const publicPortfolioSuffix = "portfoilo";
+export const publicPortfolioSuffix = "portfolio";
+const legacyPublicPortfolioSuffix = "portfoilo";
 
 const dataRoot = process.env.STUDIO_ARCHIVE_DATA_DIR
   ? path.resolve(process.env.STUDIO_ARCHIVE_DATA_DIR)
@@ -81,8 +82,24 @@ export function getPublicPortfolioSlug(value: string) {
   const normalizedName = normalizePublicPortfolioName(value);
   const name = normalizedName || "my";
   const suffix = `-${publicPortfolioSuffix}`;
+  const legacySuffix = `-${legacyPublicPortfolioSuffix}`;
 
-  return name.endsWith(suffix) ? name : `${name}${suffix}`;
+  if (name.endsWith(suffix)) {
+    return name;
+  }
+
+  if (name.endsWith(legacySuffix)) {
+    return `${name.slice(0, -legacySuffix.length)}${suffix}`;
+  }
+
+  return `${name}${suffix}`;
+}
+
+function isPublicPortfolioSlug(value: string) {
+  return (
+    value.endsWith(`-${publicPortfolioSuffix}`) ||
+    value.endsWith(`-${legacyPublicPortfolioSuffix}`)
+  );
 }
 
 function getOwnerKeyFromPageSlug(slug: string) {
@@ -1360,17 +1377,27 @@ export async function getPublishedPortfolioByPublicSlug(
 
   const normalizedValue = normalizePublicPortfolioName(value);
 
-  if (!normalizedValue.endsWith(`-${publicPortfolioSuffix}`)) {
+  if (!isPublicPortfolioSlug(normalizedValue)) {
     return undefined;
   }
 
   const publicSlug = getPublicPortfolioSlug(normalizedValue);
+  const requestedSlug = normalizedValue;
 
-  if (getContentStorageMode() === "database") {
-    return readDatabasePublishedPortfolioByPublicSlug(publicSlug);
+  const readPublishedPortfolio = (slug: string) =>
+    getContentStorageMode() === "database"
+      ? readDatabasePublishedPortfolioByPublicSlug(slug)
+      : readFilePublishedPortfolioByPublicSlug(slug);
+
+  if (requestedSlug !== publicSlug) {
+    const legacyPortfolio = await readPublishedPortfolio(requestedSlug);
+
+    if (legacyPortfolio) {
+      return legacyPortfolio;
+    }
   }
 
-  return readFilePublishedPortfolioByPublicSlug(publicSlug);
+  return readPublishedPortfolio(publicSlug);
 }
 
 export async function getAllCategories(
