@@ -5,6 +5,7 @@ import { Pool, type PoolConfig } from "pg";
 
 import {
   getBuilderPage,
+  getPublicPortfolioSlug,
   getStudioArchiveContent,
   normalizeContentOwnerKey,
   saveBuilderPage,
@@ -359,6 +360,12 @@ function makeAsset(url: string): StudioProjectAsset {
   };
 }
 
+function getHomePublicSlug(page: BuilderPage) {
+  return getPublicPortfolioSlug(
+    page.publishedPublicSlug ?? page.publicSlug ?? page.publishName ?? page.title
+  );
+}
+
 function pickThumbnail(data: StudioProjectData) {
   const featuredCover = data.content.projects.find(
     (project) => project.coverImage
@@ -441,8 +448,7 @@ function normalizeProjectData(
     theme: nextData.theme ?? {},
     seo: nextData.seo ?? {},
     publish: {
-      homePublicSlug:
-        nextData.pages.home.publishedPublicSlug ?? nextData.pages.home.publicSlug,
+      homePublicSlug: getHomePublicSlug(nextData.pages.home),
       archivePath: "/archive"
     }
   };
@@ -672,7 +678,7 @@ export async function buildCurrentStudioProjectData(
       archiveDescription: archivePage.seoDescription
     },
     publish: {
-      homePublicSlug: homePage.publishedPublicSlug ?? homePage.publicSlug,
+      homePublicSlug: getHomePublicSlug(homePage),
       archivePath: "/archive"
     }
   };

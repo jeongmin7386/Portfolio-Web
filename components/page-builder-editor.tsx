@@ -2666,7 +2666,12 @@ export function PageBuilderEditor({
       const publicPath =
         pageSlug === "archive"
           ? "/archive"
-          : `/${publishedPage.publishedPublicSlug ?? publishedPage.publicSlug ?? ""}`;
+          : `/${getPublicPortfolioSlug(
+              publishedPage.publishedPublicSlug ??
+                publishedPage.publicSlug ??
+                publishedPage.publishName ??
+                publishedPage.title
+            )}`;
       setStatus(`게시되었습니다. 공개 주소: ${publicPath}`);
     } catch (error) {
       setStatus(
@@ -2750,11 +2755,14 @@ export function PageBuilderEditor({
   const draftPublicSlug = getPublicPortfolioSlug(
     page.publicSlug || page.publishName || page.title
   );
+  const publishedPublicSlug = page.publishedPublicSlug
+    ? getPublicPortfolioSlug(page.publishedPublicSlug)
+    : "";
   const publishedPublicPath =
     pageSlug === "archive"
       ? "/archive"
-      : page.publishedPublicSlug
-        ? `/${page.publishedPublicSlug}`
+      : publishedPublicSlug
+        ? `/${publishedPublicSlug}`
         : "";
   const nextPublicPath =
     pageSlug === "archive" ? "/archive" : `/${draftPublicSlug}`;
@@ -3100,7 +3108,7 @@ export function PageBuilderEditor({
                 <code className="break-all rounded-sm bg-white px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-950 dark:text-neutral-200">
                   https://studiofflower.dev{nextPublicPath}
                 </code>
-                {page.publishedPublicSlug ? (
+                {publishedPublicSlug ? (
                   <span>
                     현재 게시 주소:{" "}
                     <Link
@@ -3108,7 +3116,7 @@ export function PageBuilderEditor({
                       href={publishedPublicPath}
                       target="_blank"
                     >
-                      /{page.publishedPublicSlug}
+                      /{publishedPublicSlug}
                     </Link>
                   </span>
                 ) : (
