@@ -1267,6 +1267,7 @@ export function BlockRenderer({
                 ? "opacity-100"
                 : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             }`}
+            draggable={editable && Boolean(onMoveBlock || onMoveBlockIntoTab)}
             onClick={(event) => {
               event.stopPropagation();
 
@@ -1277,6 +1278,27 @@ export function BlockRenderer({
 
               selectBlock(path);
               setOpenOptionsKey((key) => (key === currentKey ? "" : currentKey));
+            }}
+            onDragEnd={() => {
+              window.setTimeout(() => {
+                suppressHandleClickRef.current = false;
+              }, 0);
+            }}
+            onDragStart={(event) => {
+              if (!editable || (!onMoveBlock && !onMoveBlockIntoTab)) {
+                event.preventDefault();
+                return;
+              }
+
+              event.stopPropagation();
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData(
+                "application/x-studio-project-block",
+                JSON.stringify({ path })
+              );
+              suppressHandleClickRef.current = true;
+              setOpenOptionsKey("");
+              selectBlock(path);
             }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerCancel={() => {
@@ -1348,12 +1370,8 @@ export function BlockRenderer({
                 try {
                   const targetPath = JSON.parse(rawTargetPath) as ProjectBlockPath;
                   const targetKey = pathKey(targetPath);
-                  const sameParent =
-                    Array.isArray(targetPath) &&
-                    pathKey(targetPath.slice(0, -1)) ===
-                      pathKey(path.slice(0, -1));
 
-                  if (sameParent && targetKey !== currentKey) {
+                  if (Array.isArray(targetPath) && targetKey !== currentKey) {
                     const rect = target.getBoundingClientRect();
                     const placement =
                       event.clientY < rect.top + rect.height / 2

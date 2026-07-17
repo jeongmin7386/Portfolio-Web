@@ -776,6 +776,77 @@ function insertBuilderBlockAfterId(
   };
 }
 
+function insertBuilderBlockRelativeToId(
+  blocks: BuilderBlock[],
+  targetBlockId: string,
+  movingBlock: BuilderBlock,
+  placement: "before" | "after"
+): { blocks: BuilderBlock[]; inserted: boolean } {
+  let inserted = false;
+  const nextBlocks: BuilderBlock[] = [];
+
+  for (const block of blocks) {
+    if (inserted) {
+      nextBlocks.push(block);
+      continue;
+    }
+
+    if (block.id === targetBlockId && placement === "before") {
+      nextBlocks.push(movingBlock, block);
+      inserted = true;
+      continue;
+    }
+
+    let nextBlock = block;
+
+    if (block.type === "tabs") {
+      const tabs = block.content.tabs.map((tab) => {
+        if (inserted) {
+          return tab;
+        }
+
+        const result = insertBuilderBlockRelativeToId(
+          tab.blocks ?? [],
+          targetBlockId,
+          movingBlock,
+          placement
+        );
+
+        if (!result.inserted) {
+          return tab;
+        }
+
+        inserted = true;
+
+        return {
+          ...tab,
+          blocks: result.blocks,
+          text: ""
+        };
+      });
+
+      if (inserted) {
+        nextBlock = {
+          ...block,
+          content: { tabs }
+        };
+      }
+    }
+
+    nextBlocks.push(nextBlock);
+
+    if (block.id === targetBlockId && placement === "after") {
+      nextBlocks.push(movingBlock);
+      inserted = true;
+    }
+  }
+
+  return {
+    blocks: inserted ? orderItems(nextBlocks) : blocks,
+    inserted
+  };
+}
+
 function isEditorShortcutTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -2327,29 +2398,24 @@ export function PageBuilderEditor({
       return;
     }
 
-    const blocks = section.blocks.slice().sort((a, b) => a.order - b.order);
-    const movingBlock = blocks.find((block) => block.id === sourceBlockId);
-    const targetBlock = blocks.find((block) => block.id === targetBlockId);
+    const extracted = extractBuilderBlockById(section.blocks, sourceBlockId);
 
-    if (!movingBlock || !targetBlock) {
+    if (!extracted.block) {
       return;
     }
 
-    const nextBlocks = blocks.filter((block) => block.id !== sourceBlockId);
-    const targetIndex = nextBlocks.findIndex(
-      (block) => block.id === targetBlockId
+    const inserted = insertBuilderBlockRelativeToId(
+      extracted.blocks,
+      targetBlockId,
+      extracted.block,
+      placement
     );
 
-    if (targetIndex < 0) {
+    if (!inserted.inserted) {
       return;
     }
 
-    nextBlocks.splice(
-      placement === "after" ? targetIndex + 1 : targetIndex,
-      0,
-      movingBlock
-    );
-    updateSelectedSection({ ...section, blocks: orderItems(nextBlocks) });
+    updateSelectedSection({ ...section, blocks: orderItems(inserted.blocks) });
     setSelectedSectionId(sectionId);
     setSelectedBlockId(sourceBlockId);
   };

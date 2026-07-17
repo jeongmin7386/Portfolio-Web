@@ -888,10 +888,6 @@ function insertProjectBlockAtPath(
   return { blocks: nextBlocks, path: [...parentPath, insertedIndex] };
 }
 
-function projectBlockParentKey(path: ProjectBlockPath) {
-  return projectBlockPathKey(path.slice(0, -1));
-}
-
 function updateProjectBlockListAtPath(
   blocks: ProjectBlock[],
   parentPath: ProjectBlockPath,
@@ -977,51 +973,33 @@ function moveProjectBlockAtPath(
 ): { blocks: ProjectBlock[]; path: ProjectBlockPath } {
   if (
     projectBlockPathKey(sourcePath) === projectBlockPathKey(targetPath) ||
-    projectBlockParentKey(sourcePath) !== projectBlockParentKey(targetPath)
+    isProjectPathPrefix(sourcePath, targetPath)
   ) {
     return { blocks, path: sourcePath };
   }
 
-  const parentPath = sourcePath.slice(0, -1);
-  const sourceIndex = sourcePath[sourcePath.length - 1];
-  const targetIndex = targetPath[targetPath.length - 1];
+  const movingBlock = getProjectBlockAtPath(blocks, sourcePath);
 
-  if (typeof sourceIndex !== "number" || typeof targetIndex !== "number") {
+  if (!movingBlock) {
     return { blocks, path: sourcePath };
   }
 
-  let nextPath = sourcePath;
-  const nextBlocks = updateProjectBlockListAtPath(blocks, parentPath, (blockList) => {
-    const movingBlock = blockList[sourceIndex];
-    const targetBlock = blockList[targetIndex];
+  const deleted = deleteProjectBlockAtPath(blocks, sourcePath);
+  const adjustedTargetPath = adjustProjectPathAfterDelete(targetPath, sourcePath);
+  const targetIndex = adjustedTargetPath[adjustedTargetPath.length - 1];
 
-    if (!movingBlock || !targetBlock) {
-      return blockList;
-    }
+  if (typeof targetIndex !== "number") {
+    return { blocks, path: sourcePath };
+  }
 
-    const withoutMoving = blockList.filter(
-      (_, currentIndex) => currentIndex !== sourceIndex
-    );
-    const targetIndexAfterRemoval = withoutMoving.findIndex(
-      (block) => block === targetBlock
-    );
+  const insertIndex = placement === "after" ? targetIndex + 1 : targetIndex;
+  const inserted = insertProjectBlockAtPath(
+    deleted.blocks,
+    [...adjustedTargetPath.slice(0, -1), insertIndex],
+    movingBlock
+  );
 
-    if (targetIndexAfterRemoval < 0) {
-      return blockList;
-    }
-
-    const insertIndex =
-      placement === "after"
-        ? targetIndexAfterRemoval + 1
-        : targetIndexAfterRemoval;
-
-    withoutMoving.splice(insertIndex, 0, movingBlock);
-    nextPath = [...parentPath, insertIndex];
-
-    return withoutMoving;
-  });
-
-  return { blocks: nextBlocks, path: nextPath };
+  return inserted;
 }
 
 function insertProjectBlockIntoTabAtPath(

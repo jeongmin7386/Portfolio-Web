@@ -1363,6 +1363,7 @@ function BuilderBlockRenderer({
                 ? "opacity-100"
                 : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             }`}
+            draggable={editable && Boolean(onMoveBlock || onMoveBlockIntoTab)}
             onClick={(event) => {
               event.stopPropagation();
 
@@ -1373,6 +1374,32 @@ function BuilderBlockRenderer({
 
               selectBlock();
               setIsOptionsOpen((current) => !current);
+            }}
+            onDragEnd={() => {
+              window.setTimeout(() => {
+                suppressHandleClickRef.current = false;
+              }, 0);
+            }}
+            onDragStart={(event) => {
+              if (!editable || (!onMoveBlock && !onMoveBlockIntoTab)) {
+                event.preventDefault();
+                return;
+              }
+
+              event.stopPropagation();
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData(
+                "application/x-studio-builder-block",
+                JSON.stringify({
+                  blockId: block.id,
+                  parentTabBlockId: tabContext?.tabBlockId,
+                  parentTabId: tabContext?.tabId,
+                  sectionId
+                })
+              );
+              suppressHandleClickRef.current = true;
+              setIsOptionsOpen(false);
+              selectBlock();
             }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerCancel={() => {
@@ -1440,21 +1467,11 @@ function BuilderBlockRenderer({
               );
               const targetSectionId = target?.dataset.builderSectionId;
               const targetBlockId = target?.dataset.builderBlockId;
-              const targetTabBlockId =
-                target?.dataset.builderParentTabBlockId;
-              const targetTabId = target?.dataset.builderParentTabId;
-              const sameTopLevelList =
-                !tabContext && !targetTabBlockId && !targetTabId;
-              const sameTabList =
-                Boolean(tabContext) &&
-                targetTabBlockId === tabContext?.tabBlockId &&
-                targetTabId === tabContext?.tabId;
               const canMoveWithinCurrentList =
                 Boolean(target) &&
                 targetSectionId === sectionId &&
                 Boolean(targetBlockId) &&
-                targetBlockId !== block.id &&
-                (sameTopLevelList || sameTabList);
+                targetBlockId !== block.id;
 
               if (target && targetBlockId && canMoveWithinCurrentList) {
                 const rect = target.getBoundingClientRect();
