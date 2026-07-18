@@ -87,6 +87,20 @@ const settingsPanelClass =
 const previewPanelClass =
   "grid self-start gap-5 rounded-md border border-neutral-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95 sm:p-5 lg:sticky lg:top-4 lg:max-h-[calc(var(--app-viewport-height)-2rem)] lg:overflow-y-auto lg:overscroll-contain";
 
+async function readResponseMessage(response: Response, fallback: string) {
+  try {
+    const body = (await response.clone().json()) as { message?: unknown };
+
+    if (typeof body.message === "string" && body.message.trim()) {
+      return body.message;
+    }
+  } catch {
+    // Some responses are empty or not JSON. Keep the user-facing fallback.
+  }
+
+  return fallback;
+}
+
 function focusProjectSettingsListItem(fieldId: string, index: number) {
   const focusTarget = () => {
     document.getElementById(`${fieldId}-${index}`)?.focus();
@@ -2840,6 +2854,7 @@ export function AdminEditor({
   mode = "all"
 }: AdminEditorProps) {
   const [content, setContent] = useState<StudioArchiveContent | null>(null);
+  const contentRef = useRef<StudioArchiveContent | null>(null);
   const [selectedProjectSlug, setSelectedProjectSlug] = useState("");
   const [selectedProjectBlockPath, setSelectedProjectBlockPath] =
     useState<ProjectBlockPath>([]);
@@ -2918,6 +2933,7 @@ export function AdminEditor({
           return;
         }
 
+        contentRef.current = nextContent;
         setContent(nextContent);
         setSelectedProjectSlug(nextContent.projects[0]?.slug ?? "");
         setSelectedNoteSlug(nextContent.notes[0]?.slug ?? "");
@@ -2997,9 +3013,12 @@ export function AdminEditor({
   const updateContent = (
     updater: (currentContent: StudioArchiveContent) => StudioArchiveContent
   ) => {
-    setContent((currentContent) =>
-      currentContent ? updater(currentContent) : currentContent
-    );
+    setContent((currentContent) => {
+      const nextContent = currentContent ? updater(currentContent) : currentContent;
+
+      contentRef.current = nextContent;
+      return nextContent;
+    });
   };
 
   const updateSelectedProject = (project: Project) => {
@@ -3018,7 +3037,7 @@ export function AdminEditor({
     path: ProjectBlockPath,
     block: ProjectBlock
   ) => {
-    if (!selectedProject) {
+    if (!selectedProjectSlug) {
       return;
     }
 
@@ -3027,10 +3046,17 @@ export function AdminEditor({
         ? currentPath
         : path
     );
-    updateSelectedProject({
-      ...selectedProject,
-      blocks: replaceProjectBlockAtPath(selectedProject.blocks, path, block)
-    });
+    updateContent((currentContent) => ({
+      ...currentContent,
+      projects: currentContent.projects.map((project) =>
+        project.slug === selectedProjectSlug
+          ? {
+              ...project,
+              blocks: replaceProjectBlockAtPath(project.blocks, path, block)
+            }
+          : project
+      )
+    }));
   };
 
   const copyProjectBlockFromPreview = (
@@ -3413,6 +3439,7 @@ export function AdminEditor({
     }
 
     const nextContent = (await response.json()) as StudioArchiveContent;
+    contentRef.current = nextContent;
     setContent(nextContent);
     setSelectedProjectSlug(nextContent.projects[0]?.slug ?? "");
     setSelectedProjectBlockPath([]);
@@ -3422,7 +3449,9 @@ export function AdminEditor({
   };
 
   const saveContent = async () => {
-    if (!content) {
+    const contentToSave = contentRef.current ?? content;
+
+    if (!contentToSave) {
       return;
     }
 
@@ -3435,7 +3464,7 @@ export function AdminEditor({
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(content)
+        body: JSON.stringify(contentToSave)
       });
 
       if (response.status === 401) {
@@ -3444,10 +3473,13 @@ export function AdminEditor({
       }
 
       if (!response.ok) {
-        throw new Error("저장하지 못했습니다.");
+        throw new Error(
+          await readResponseMessage(response, "저장하지 못했습니다.")
+        );
       }
 
       const savedContent = (await response.json()) as StudioArchiveContent;
+      contentRef.current = savedContent;
       setContent(savedContent);
       setStatus("저장되었습니다. 공개 페이지에 바로 반영됩니다.");
     } catch (error) {
