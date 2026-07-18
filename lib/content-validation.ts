@@ -42,25 +42,6 @@ const allowedProjectBlockTypes = new Set<string>([
   "process",
   "result"
 ]);
-const allowedEmbedHosts = [
-  "youtube.com",
-  "www.youtube.com",
-  "youtube-nocookie.com",
-  "www.youtube-nocookie.com",
-  "youtu.be",
-  "player.vimeo.com",
-  "vimeo.com",
-  "figma.com",
-  "www.figma.com",
-  "codepen.io",
-  "open.spotify.com",
-  "notion.site",
-  "www.notion.so",
-  "google.com",
-  "www.google.com",
-  "maps.google.com"
-];
-
 function assertObject(value: unknown, label: string): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ContentValidationError(`${label} 형식이 올바르지 않습니다.`);
@@ -117,7 +98,7 @@ function isSafeUrl(value: unknown, options: { embed?: boolean } = {}) {
   const url = value.trim();
 
   if (url.startsWith("/") && !url.startsWith("//")) {
-    return true;
+    return !options.embed;
   }
 
   if (url.startsWith("mailto:")) {
@@ -144,9 +125,7 @@ function isSafeUrl(value: unknown, options: { embed?: boolean } = {}) {
     return false;
   }
 
-  return allowedEmbedHosts.some(
-    (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
-  );
+  return true;
 }
 
 function assertTextSettings(settings: Record<string, unknown>, label: string) {
