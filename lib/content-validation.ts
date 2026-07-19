@@ -84,9 +84,13 @@ function isSafeColor(value: unknown) {
     return true;
   }
 
+  const color = value.trim();
+  const safeColorKeywords = new Set(["transparent", "currentcolor"]);
+
   return (
-    /^#[0-9a-f]{3,8}$/i.test(value.trim()) ||
-    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(value.trim())
+    safeColorKeywords.has(color.toLowerCase()) ||
+    /^#[0-9a-f]{3,8}$/i.test(color) ||
+    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(color)
   );
 }
 
