@@ -85,12 +85,24 @@ function isSafeColor(value: unknown) {
   }
 
   const color = value.trim();
-  const safeColorKeywords = new Set(["transparent", "currentcolor"]);
+  const normalizedColor = color.toLowerCase();
+
+  if (
+    color.length > 160 ||
+    /[<>{};`]/.test(color) ||
+    /\b(?:expression|url)\s*\(/i.test(color)
+  ) {
+    return false;
+  }
 
   return (
-    safeColorKeywords.has(color.toLowerCase()) ||
     /^#[0-9a-f]{3,8}$/i.test(color) ||
-    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(color)
+    /^[a-z][a-z-]*$/i.test(color) ||
+    /^var\(\s*--[a-z0-9_-]+\s*(?:,\s*#[0-9a-f]{3,8})?\s*\)$/i.test(color) ||
+    /^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch)\(\s*[-+.\d%a-z\s,\/]+\)$/i.test(
+      normalizedColor
+    ) ||
+    /^color\(\s*[a-z0-9-]+\s+[-+.\d%a-z\s,\/]+\)$/i.test(normalizedColor)
   );
 }
 
