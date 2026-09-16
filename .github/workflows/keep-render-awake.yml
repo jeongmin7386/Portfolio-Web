@@ -1,0 +1,27 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    # 10분마다 실행
+    # 정각 혼잡을 조금 피하기 위해 3분부터 시작
+    - cron: "3,13,23,33,43,53 * * * *"
+
+  # Actions 화면에서 직접 테스트할 수 있게 추가
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render health endpoint
+        run: |
+          echo "Pinging Render..."
+          curl --fail \
+               --silent \
+               --show-error \
+               --max-time 60 \
+               --retry 2 \
+               "https://studio-archive.onrender.com/api/health"
+          echo ""
+          echo "Render ping successful."
