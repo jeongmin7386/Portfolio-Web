@@ -51,6 +51,7 @@ import {
 } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
 import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
+import { scrollEditorPanelToElement } from "@/lib/scroll-editor-panel";
 import {
   getImageFileFromDataTransfer,
   readClipboardImageFile,
@@ -259,16 +260,7 @@ function scrollProjectBlockEditorIntoView(path: ProjectBlockPath) {
     return;
   }
 
-  const scroll = () => {
-    document.querySelector(`[data-project-block-editor="${key}"]`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-      inline: "nearest"
-    });
-  };
-
-  window.requestAnimationFrame(scroll);
-  window.setTimeout(scroll, 80);
+  scrollEditorPanelToElement(`[data-project-block-editor="${key}"]`);
 }
 
 function scrollProjectPreviewBlockIntoView(path: ProjectBlockPath) {
@@ -1429,7 +1421,7 @@ function BlockListEditor({
   };
 
   return (
-    <div className={nested ? "grid gap-3" : "grid gap-4"}>
+    <div className={nested ? "grid min-w-0 gap-3" : "grid min-w-0 gap-4"}>
       {blocks.map((block, index) => {
         const currentPath: ProjectBlockPath = [...pathPrefix, index];
         const currentPathKey = projectBlockPathKey(currentPath);
@@ -1437,7 +1429,7 @@ function BlockListEditor({
 
         return (
           <section
-            className={`rounded-md border bg-white p-3 transition dark:bg-neutral-950 sm:p-4 ${
+            className={`min-w-0 rounded-md border bg-white p-3 transition dark:bg-neutral-950 sm:p-4 ${
               active
                 ? "border-neutral-950 ring-2 ring-emerald-500/30 dark:border-neutral-50"
                 : "border-neutral-200 dark:border-neutral-800"
@@ -1465,7 +1457,7 @@ function BlockListEditor({
               </p>
               <p className="text-xs text-neutral-500">블록 {index + 1}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <button
                 aria-label="블록 순서 변경"
                 className={iconButtonClass}
@@ -2069,8 +2061,8 @@ function BlockFields({
       );
     case "twoColumn":
       return (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="grid gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-4">
+          <div className="grid min-w-0 gap-3">
             <p className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
               왼쪽
             </p>
@@ -2083,7 +2075,7 @@ function BlockFields({
               selectedPath={selectedPath}
             />
           </div>
-          <div className="grid gap-3">
+          <div className="grid min-w-0 gap-3">
             <p className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
               오른쪽
             </p>
@@ -3872,6 +3864,7 @@ export function AdminEditor({
         <div className={isProjectBuilderMode ? "min-w-0 lg:order-3" : "min-w-0"}>
           {activePanel === "projects" && selectedProject ? (
             <section
+              data-editor-settings-panel
               className={
                 isProjectBuilderMode ? settingsPanelClass : editorPanelClass
               }

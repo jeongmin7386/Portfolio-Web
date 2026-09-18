@@ -47,6 +47,7 @@ import {
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
 import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
+import { scrollEditorPanelToElement } from "@/lib/scroll-editor-panel";
 import {
   getImageFileFromDataTransfer,
   readClipboardImageFile
@@ -86,16 +87,7 @@ type SortableRowProps = {
 };
 
 function scrollEditorElementIntoView(selector: string) {
-  const scroll = () => {
-    document.querySelector(selector)?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-      inline: "nearest"
-    });
-  };
-
-  window.requestAnimationFrame(scroll);
-  window.setTimeout(scroll, 80);
+  scrollEditorPanelToElement(selector);
 }
 
 function scrollBuilderBlockControlsIntoView(blockId: string) {
@@ -2683,6 +2675,7 @@ export function PageBuilderEditor({
       pageRef.current = savedPage;
       setPage(savedPage);
       setStatus("초안이 저장되었습니다. 공개 페이지에는 아직 반영되지 않습니다.");
+      return true;
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "페이지를 저장하지 못했습니다."
@@ -2754,7 +2747,13 @@ export function PageBuilderEditor({
     }
   };
 
-  useEditorSaveShortcut({ onSave: savePage, onPublish: publishPage });
+  useEditorSaveShortcut({
+    onSave: async () => {
+      const saved = await savePage();
+      if (saved && pageSlug === "home") await publishPage();
+    },
+    onPublish: publishPage
+  });
 
   const handleImageUpload = async (onUploaded: (url: string) => void, file?: File) => {
     if (!file) {
@@ -2940,7 +2939,7 @@ export function PageBuilderEditor({
             disabled={isSaving}
             onClick={() => void savePage()}
             aria-keyshortcuts="Control+s Meta+s"
-            title="초안 저장 (Ctrl+S / ⌘S)"
+            title={pageSlug === "home" ? "초안 저장 (Ctrl+S / ⌘S: 저장 후 게시)" : "초안 저장 (Ctrl+S / ⌘S)"}
             type="button"
           >
             {isSaving ? (
@@ -3102,7 +3101,7 @@ export function PageBuilderEditor({
         </main>
 
         {isSettingsPanelOpen ? (
-        <aside className="border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
+        <aside data-editor-settings-panel className="min-w-0 border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
               설정
