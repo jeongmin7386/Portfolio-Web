@@ -9,6 +9,7 @@ import {
   type ProjectBlock,
   type StudioArchiveContent
 } from "@/lib/types";
+import { isUploadedVideoUrl } from "@/lib/video";
 
 export class ContentValidationError extends Error {
   constructor(message: string) {
@@ -359,7 +360,7 @@ function assertProjectBlock(block: unknown, stats: { blocks: number }, depth: nu
     }
   }
 
-  if (type === "embed" && !isSafeUrl(block.url, { embed: true })) {
+  if (type === "embed" && !isUploadedVideoUrl(block.url) && !isSafeUrl(block.url, { embed: true })) {
     throw new ContentValidationError("허용되지 않는 프로젝트 임베드 주소입니다.");
   }
 

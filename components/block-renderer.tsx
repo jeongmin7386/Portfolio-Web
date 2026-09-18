@@ -14,6 +14,8 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { UploadedVideo } from "@/components/uploaded-video";
+import { isUploadedVideoUrl } from "@/lib/video";
 import { ClipboardPaste, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import {
@@ -116,7 +118,7 @@ const projectInsertOptions: Array<{
   { label: "버튼", type: "button" },
   { label: "구분선", type: "divider" },
   { label: "여백", type: "spacer" },
-  { label: "임베드", type: "embed" },
+  { label: "동영상 / 임베드", type: "embed" },
   { label: "2열", type: "twoColumn" },
   { label: "지표", type: "stats" },
   { label: "과정", type: "process" },
@@ -2124,14 +2126,16 @@ export function BlockRenderer({
               block.ratio === "square" ? "aspect-square" : "aspect-video"
             }`}
           >
-            <iframe
+            {isUploadedVideoUrl(block.url) ? (
+              <UploadedVideo key={block.url} src={block.url} title={block.provider || "동영상"} />
+            ) : <iframe
               className="h-full w-full"
               loading="lazy"
               referrerPolicy="strict-origin-when-cross-origin"
               sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
               src={block.url}
               title={block.provider || "임베드 콘텐츠"}
-            />
+            />}
           </div>,
           path,
           key,

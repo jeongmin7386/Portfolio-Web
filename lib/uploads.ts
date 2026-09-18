@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Pool, type PoolConfig } from "pg";
+import { MAX_VIDEO_BYTES } from "./video";
 
 const allowedTypes = new Map([
   ["image/jpeg", ".jpg"],
@@ -83,6 +84,10 @@ function getContentType(filePath: string) {
       return "image/avif";
     case ".gif":
       return "image/gif";
+    case ".mp4":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
     case ".svg":
       return "image/svg+xml";
     default:
@@ -324,16 +329,39 @@ async function readUploadedImageFromDatabase(fileName: string) {
   };
 }
 
-export async function saveUploadedImage(file: File, ownerKey = "owner") {
-  validateUploadedImageBasics(file);
+export async function saveUploadedImage(file: File, ownerKey = "owner", kind: "image" | "video" = "image") {
+  const isVideo = kind === "video";
+  if (isVideo) {
+    if (!file.size || file.size > MAX_VIDEO_BYTES) {
+      throw new Error("동영상은 50MB 이하의 비어 있지 않은 파일을 선택해 주세요.");
+    }
+  } else {
+    validateUploadedImageBasics(file);
+  }
 
-  const extension = getExtension(file);
+  const extension = isVideo ? path.extname(file.name).toLowerCase() : getExtension(file);
+  if (isVideo && extension !== ".mp4" && extension !== ".webm") {
+    throw new Error("MP4 또는 WebM 파일을 선택해 주세요.");
+  }
   assertSupportedImageExtension(extension);
 
   assertStableUploadStorage();
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());
-  assertSupportedImageContent(fileBuffer, file.type.toLowerCase(), extension);
+  if (isVideo) {
+    const type = getContentType(file.name);
+    const declaredType = file.type.toLowerCase();
+    const header = fileBuffer.subarray(0, 256);
+    const valid = extension === ".mp4"
+      ? header.length >= 16 && header.toString("ascii", 4, 8) === "ftyp" &&
+        /^(isom|iso[2-9]|mp4[12]|avc1|M4V |MSNV|dash)$/.test(header.toString("ascii", 8, 12))
+      : header.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])) && header.includes(Buffer.from("webm"));
+    if (!valid || (declaredType && declaredType !== "application/octet-stream" && declaredType !== type)) {
+      throw new Error("동영상 형식과 파일 내용이 일치하지 않습니다. MP4 또는 WebM 파일을 확인해 주세요.");
+    }
+  } else {
+    assertSupportedImageContent(fileBuffer, file.type.toLowerCase(), extension);
+  }
 
   const baseName = sanitizeName(path.basename(file.name, path.extname(file.name)));
   const safeOwnerKey = sanitizeOwnerKey(ownerKey);

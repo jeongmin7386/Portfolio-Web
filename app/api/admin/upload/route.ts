@@ -17,19 +17,23 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (Number(request.headers.get("content-length")) > 51 * 1024 * 1024) {
+      return NextResponse.json({ message: "파일은 50MB 이하로 업로드해 주세요." }, { status: 413 });
+    }
     const formData = await request.formData();
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
       return NextResponse.json(
-        { message: "업로드할 이미지 파일을 선택해 주세요." },
+        { message: "업로드할 파일을 선택해 주세요." },
         { status: 400 }
       );
     }
 
     const uploadedImage = await saveUploadedImage(
       file,
-      getAdminContentOwnerKey(session)
+      getAdminContentOwnerKey(session),
+      formData.get("kind") === "video" ? "video" : "image"
     );
 
     return NextResponse.json(uploadedImage, {

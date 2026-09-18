@@ -301,7 +301,7 @@ const blockLabels: Record<ProjectBlock["type"], string> = {
   quote: "인용",
   button: "버튼",
   divider: "구분선",
-  embed: "임베드",
+  embed: "동영상 / 임베드",
   spacer: "여백",
   twoColumn: "2단 구성",
   stats: "지표",
@@ -435,9 +435,9 @@ const projectSlashCommandOptions: ProjectInsertOption[] = [
   },
   {
     command: "/embed",
-    description: "외부 콘텐츠 임베드를 추가합니다.",
-    keywords: ["embed", "iframe", "임베드"],
-    label: "임베드",
+    description: "동영상 또는 외부 콘텐츠를 추가합니다.",
+    keywords: ["embed", "iframe", "임베드", "video", "동영상"],
+    label: "동영상 / 임베드",
     type: "embed"
   },
   {
@@ -1089,6 +1089,7 @@ type ImageFieldsProps = {
 };
 
 type UploadImageInputProps = {
+  kind?: "image" | "video";
   onUploaded: (url: string) => void;
 };
 
@@ -1154,13 +1155,14 @@ function SortableProjectRow({
   );
 }
 
-function UploadImageInput({ onUploaded }: UploadImageInputProps) {
+function UploadImageInput({ onUploaded, kind = "image" }: UploadImageInputProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleUpload = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("kind", kind);
 
     setIsUploading(true);
 
@@ -1180,13 +1182,13 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
       }
 
       if (!response.ok || !body.url) {
-        throw new Error(body.message ?? "이미지를 업로드하지 못했습니다.");
+        throw new Error(body.message ?? "파일을 업로드하지 못했습니다.");
       }
 
       onUploaded(body.url);
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "이미지를 업로드하지 못했습니다."
+        error instanceof Error ? error.message : "파일을 업로드하지 못했습니다."
       );
     } finally {
       setIsUploading(false);
@@ -1218,9 +1220,9 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
       ) : (
         <Upload aria-hidden size={15} />
       )}
-      이미지 업로드
+      {isUploading ? "업로드 중…" : kind === "video" ? "동영상 업로드" : "이미지 업로드"}
       <input
-        accept="image/*"
+        accept={kind === "video" ? ".mp4,.webm,video/mp4,video/webm" : "image/*"}
         className="sr-only"
         disabled={isUploading}
         ref={fileInputRef}
@@ -1236,7 +1238,7 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
         type="file"
       />
       </label>
-      <button
+      {kind === "image" ? <button
         className={secondaryButtonClass}
         disabled={isUploading}
         onClick={() => {
@@ -1251,7 +1253,7 @@ function UploadImageInput({ onUploaded }: UploadImageInputProps) {
       >
         <Clipboard aria-hidden size={15} />
         클립보드 붙여넣기
-      </button>
+      </button> : null}
     </div>
   );
 }
@@ -2005,6 +2007,10 @@ function BlockFields({
     case "embed":
       return (
         <div className="grid gap-3 md:grid-cols-2">
+          <div className="min-w-0 md:col-span-2">
+            <UploadImageInput kind="video" onUploaded={(url) => onChange({ ...block, url, provider: "동영상" })} />
+            <p className="mt-2 text-xs text-neutral-500">MP4·WebM, 최대 50MB</p>
+          </div>
           <label className={`${labelClass} md:col-span-2`}>
             임베드 URL
             <input
