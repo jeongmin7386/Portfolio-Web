@@ -46,6 +46,7 @@ import {
 } from "react";
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
+import { VideoUploadInput } from "@/components/video-upload-input";
 import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
 import { scrollEditorPanelToElement } from "@/lib/scroll-editor-panel";
 import {
@@ -4555,6 +4556,8 @@ function BlockFields({
       );
     case "embed":
       return (
+        <div className="grid min-w-0 gap-3">
+        <VideoUploadInput onUploaded={(url) => onChange({ ...block, content: { ...block.content, url, provider: "동영상" } })} />
         <label className={labelClass}>
           URL
           <input
@@ -4568,6 +4571,7 @@ function BlockFields({
             value={block.content.url}
           />
         </label>
+        </div>
       );
     case "spacer":
       return (

@@ -17,6 +17,9 @@ import {
 
 import { ProjectCard } from "@/components/project-card";
 import { TagList } from "@/components/tag-list";
+import { VideoUploadInput } from "@/components/video-upload-input";
+import { UploadedVideo } from "@/components/uploaded-video";
+import { isUploadedVideoUrl } from "@/lib/video";
 import type {
   BuilderBlock,
   BuilderBlockType,
@@ -1176,6 +1179,10 @@ function FloatingBlockToolbar({
             <option value="lg">넓게</option>
           </ToolbarSelect>
         </>
+      ) : null}
+
+      {block.type === "embed" ? (
+        <VideoUploadInput onUploaded={(url) => onChange({ ...block, content: { ...block.content, url, provider: "동영상" } })} />
       ) : null}
 
       {block.type === "spacer" ? (
@@ -2386,14 +2393,20 @@ function BuilderBlockRenderer({
             block.settings.ratio === "square" ? "aspect-square" : "aspect-video"
           }`}
         >
-          <iframe
+          {editable && onChangeBlock && (!block.content.url.trim() || block.content.url === "https://www.youtube.com/embed/") ? (
+            <div className="flex h-full min-h-40 items-center justify-center">
+              <VideoUploadInput onUploaded={(url) => changeBlock({ ...block, content: { ...block.content, url, provider: "동영상" } })} />
+            </div>
+          ) : isUploadedVideoUrl(block.content.url) ? (
+            <UploadedVideo key={block.content.url} src={block.content.url} title={block.content.provider || "동영상"} />
+          ) : <iframe
             className="h-full w-full"
             loading="lazy"
             referrerPolicy="strict-origin-when-cross-origin"
             sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
             src={block.content.url}
             title={block.content.provider || "임베드 콘텐츠"}
-          />
+          />}
         </div>
       );
     case "spacer":

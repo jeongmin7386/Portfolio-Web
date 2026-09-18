@@ -217,7 +217,7 @@ function assertBuilderBlock(
     }
   }
 
-  if (type === "embed" && !isSafeUrl(blockContent.url, { embed: true })) {
+  if (type === "embed" && !isUploadedVideoUrl(blockContent.url) && !isSafeUrl(blockContent.url, { embed: true })) {
     throw new ContentValidationError("허용되지 않는 임베드 주소입니다.");
   }
 
