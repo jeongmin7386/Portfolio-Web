@@ -50,6 +50,7 @@ import {
   type ProjectTabInsertOptions
 } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
+import { VideoUploadInput } from "@/components/video-upload-input";
 import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
 import { scrollEditorPanelToElement } from "@/lib/scroll-editor-panel";
 import {
@@ -1089,7 +1090,6 @@ type ImageFieldsProps = {
 };
 
 type UploadImageInputProps = {
-  kind?: "image" | "video";
   onUploaded: (url: string) => void;
 };
 
@@ -1155,14 +1155,13 @@ function SortableProjectRow({
   );
 }
 
-function UploadImageInput({ onUploaded, kind = "image" }: UploadImageInputProps) {
+function UploadImageInput({ onUploaded }: UploadImageInputProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleUpload = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("kind", kind);
 
     setIsUploading(true);
 
@@ -1220,9 +1219,9 @@ function UploadImageInput({ onUploaded, kind = "image" }: UploadImageInputProps)
       ) : (
         <Upload aria-hidden size={15} />
       )}
-      {isUploading ? "업로드 중…" : kind === "video" ? "동영상 업로드" : "이미지 업로드"}
+      {isUploading ? "업로드 중…" : "이미지 업로드"}
       <input
-        accept={kind === "video" ? ".mp4,.webm,video/mp4,video/webm" : "image/*"}
+        accept="image/*"
         className="sr-only"
         disabled={isUploading}
         ref={fileInputRef}
@@ -1238,7 +1237,7 @@ function UploadImageInput({ onUploaded, kind = "image" }: UploadImageInputProps)
         type="file"
       />
       </label>
-      {kind === "image" ? <button
+      <button
         className={secondaryButtonClass}
         disabled={isUploading}
         onClick={() => {
@@ -1253,7 +1252,7 @@ function UploadImageInput({ onUploaded, kind = "image" }: UploadImageInputProps)
       >
         <Clipboard aria-hidden size={15} />
         클립보드 붙여넣기
-      </button> : null}
+      </button>
     </div>
   );
 }
@@ -2008,7 +2007,7 @@ function BlockFields({
       return (
         <div className="grid gap-3 md:grid-cols-2">
           <div className="min-w-0 md:col-span-2">
-            <UploadImageInput kind="video" onUploaded={(url) => onChange({ ...block, url, provider: "동영상" })} />
+            <VideoUploadInput onUploaded={(url) => onChange({ ...block, url, provider: "동영상" })} />
             <p className="mt-2 text-xs text-neutral-500">MP4·WebM, 최대 50MB</p>
           </div>
           <label className={`${labelClass} md:col-span-2`}>

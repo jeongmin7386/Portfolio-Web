@@ -15,6 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { UploadedVideo } from "@/components/uploaded-video";
+import { VideoUploadInput } from "@/components/video-upload-input";
 import { isUploadedVideoUrl } from "@/lib/video";
 import { ClipboardPaste, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
@@ -1014,6 +1015,8 @@ function FloatingProjectBlockOptions({
         </>
       ) : null}
       {block.type === "embed" ? (
+        <>
+        <VideoUploadInput onUploaded={(url) => onChange({ ...block, url, provider: "동영상" })} />
         <ProjectToolbarSelect
           label="비율"
           onChange={(ratio) =>
@@ -1024,6 +1027,7 @@ function FloatingProjectBlockOptions({
           <option value="wide">와이드</option>
           <option value="square">정방형</option>
         </ProjectToolbarSelect>
+        </>
       ) : null}
       {block.type === "spacer" ? (
         <ProjectToolbarNumberInput
@@ -2126,7 +2130,11 @@ export function BlockRenderer({
               block.ratio === "square" ? "aspect-square" : "aspect-video"
             }`}
           >
-            {isUploadedVideoUrl(block.url) ? (
+            {editable && onChangeBlock && (!block.url.trim() || block.url === "https://www.youtube.com/embed/") ? (
+              <div className="flex h-full min-h-40 items-center justify-center">
+                <VideoUploadInput onUploaded={(url) => changeBlock(path, { ...block, url, provider: "동영상" })} />
+              </div>
+            ) : isUploadedVideoUrl(block.url) ? (
               <UploadedVideo key={block.url} src={block.url} title={block.provider || "동영상"} />
             ) : <iframe
               className="h-full w-full"

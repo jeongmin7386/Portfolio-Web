@@ -1,6 +1,7 @@
-export async function uploadAdminImage(file: File) {
+export async function uploadAdminFile(file: File, kind: "image" | "video" = "image") {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("kind", kind);
 
   const response = await fetch("/api/admin/upload", {
     method: "POST",
@@ -14,11 +15,13 @@ export async function uploadAdminImage(file: File) {
   }
 
   if (!response.ok || !body.url) {
-    throw new Error(body.message ?? "이미지를 업로드하지 못했습니다.");
+    throw new Error(body.message ?? "파일을 업로드하지 못했습니다.");
   }
 
   return body.url;
 }
+
+export const uploadAdminImage = (file: File) => uploadAdminFile(file);
 
 export function getImageFileFromDataTransfer(dataTransfer: DataTransfer | null) {
   if (!dataTransfer) {
