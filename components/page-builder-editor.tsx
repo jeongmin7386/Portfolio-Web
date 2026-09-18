@@ -46,6 +46,7 @@ import {
 } from "react";
 
 import { BuilderPageRenderer } from "@/components/builder-page-renderer";
+import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
 import {
   getImageFileFromDataTransfer,
   readClipboardImageFile
@@ -1813,6 +1814,7 @@ export function PageBuilderEditor({
   const [copiedBlock, setCopiedBlock] = useState<BuilderBlock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const [history, setHistory] = useState<BuilderHistory>({
     past: [],
@@ -2650,10 +2652,11 @@ export function PageBuilderEditor({
   const savePage = async (nextPage?: BuilderPage | null) => {
     const pageToSave = nextPage ?? pageRef.current;
 
-    if (!pageToSave) {
+    if (!pageToSave || saveInFlightRef.current) {
       return;
     }
 
+    saveInFlightRef.current = true;
     try {
       setIsSaving(true);
       setStatus("초안을 저장하는 중입니다.");
@@ -2685,6 +2688,7 @@ export function PageBuilderEditor({
         error instanceof Error ? error.message : "페이지를 저장하지 못했습니다."
       );
     } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
   };
@@ -2692,7 +2696,7 @@ export function PageBuilderEditor({
   const publishPage = async () => {
     const currentPage = pageRef.current;
 
-    if (!currentPage) {
+    if (!currentPage || saveInFlightRef.current) {
       return;
     }
 
@@ -2703,6 +2707,7 @@ export function PageBuilderEditor({
       )
     };
 
+    saveInFlightRef.current = true;
     try {
       setIsSaving(true);
       setStatus("게시하는 중입니다.");
@@ -2744,9 +2749,12 @@ export function PageBuilderEditor({
         error instanceof Error ? error.message : "페이지를 게시하지 못했습니다."
       );
     } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
   };
+
+  useEditorSaveShortcut({ onSave: savePage, onPublish: publishPage });
 
   const handleImageUpload = async (onUploaded: (url: string) => void, file?: File) => {
     if (!file) {
@@ -2931,6 +2939,8 @@ export function PageBuilderEditor({
             className={buttonClass}
             disabled={isSaving}
             onClick={() => void savePage()}
+            aria-keyshortcuts="Control+s Meta+s"
+            title="초안 저장 (Ctrl+S / ⌘S)"
             type="button"
           >
             {isSaving ? (
@@ -2944,6 +2954,8 @@ export function PageBuilderEditor({
             className={primaryButtonClass}
             disabled={isSaving}
             onClick={() => void publishPage()}
+            aria-keyshortcuts="Control+Shift+s Meta+Shift+s"
+            title="게시 (Ctrl+Shift+S / ⌘Shift+S)"
             type="button"
           >
             <Send aria-hidden size={16} />

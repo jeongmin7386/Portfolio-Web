@@ -50,6 +50,7 @@ import {
   type ProjectTabInsertOptions
 } from "@/components/block-renderer";
 import { TagList } from "@/components/tag-list";
+import { useEditorSaveShortcut } from "@/lib/use-editor-save-shortcut";
 import {
   getImageFileFromDataTransfer,
   readClipboardImageFile,
@@ -2873,6 +2874,7 @@ export function AdminEditor({
     useState<ProjectBlock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -3451,10 +3453,11 @@ export function AdminEditor({
   const saveContent = async () => {
     const contentToSave = contentRef.current ?? content;
 
-    if (!contentToSave) {
+    if (!contentToSave || saveInFlightRef.current) {
       return;
     }
 
+    saveInFlightRef.current = true;
     try {
       setIsSaving(true);
       setStatus("저장하는 중입니다.");
@@ -3485,9 +3488,12 @@ export function AdminEditor({
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "저장하지 못했습니다.");
     } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
   };
+
+  useEditorSaveShortcut({ onSave: saveContent });
 
   const logout = async () => {
     await fetch("/api/admin/logout", {
@@ -3606,6 +3612,8 @@ export function AdminEditor({
             className={`${primaryButtonClass} col-span-2 w-full sm:col-span-1 sm:w-auto`}
             disabled={isSaving}
             onClick={() => void saveContent()}
+            aria-keyshortcuts="Control+s Meta+s"
+            title="저장하기 (Ctrl+S / ⌘S)"
             type="button"
           >
             {isSaving ? (
