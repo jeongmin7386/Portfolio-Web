@@ -2,9 +2,9 @@ name: Keep Render Awake
 
 on:
   schedule:
-    # 10분마다 실행
-    # 정각 혼잡을 조금 피하기 위해 3분부터 시작
-    - cron: "3,13,23,33,43,53 * * * *"
+    # STUDIOFFLOWER를 12분마다 깨움
+    # 정각 혼잡을 조금 피하기 위해 2분부터 시작
+    - cron: "2,14,26,38,50 * * * *"
 
   # Actions 화면에서 직접 테스트할 수 있게 추가
   workflow_dispatch:
